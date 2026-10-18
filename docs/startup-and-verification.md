@@ -1,6 +1,6 @@
 # Hanai Worth · 值见 DSH 启动与验收报告
 
-> 最近适配验收：2026-10-01；首版验收：2026-08-23
+> 最近适配验收：2026-10-18；首版验收：2026-08-23
 
 ## 1. 结论
 
@@ -12,7 +12,7 @@ Hanai Worth · 值见当前以兼容包名 `hanai-investment-dsh` 和独立 DSH 
 | --- | --- |
 | Node.js | `v22.22.0` |
 | pnpm | `11.7.0` |
-| DeepSeek Harness | `0.2.0-rc.2` |
+| DeepSeek Harness | `0.2.1-rc.2` |
 | Profile | `hanai-investment` |
 | 默认监听 | `http://127.0.0.1:3080` |
 
@@ -29,7 +29,7 @@ pnpm --version
 在仓库根目录执行：
 
 ```bash
-npm install -g @deepseek-ai/dsh@0.2.0-rc.2
+npm install -g @deepseek-ai/dsh@0.2.1-rc.2
 pnpm install --frozen-lockfile
 pnpm run build
 pnpm run profile:install -- --package .
@@ -301,3 +301,21 @@ Profile 校验改用当前 CLI 的 `createRuntimeResolution` 与 `PluginPackages
 **实际行为边界。** 复杂压力题曾自行补PE倍数、将未确认改成否定、混情景与交易PB、错配少数权益归属及把扣非当常态。已在入口加入四种计算分列、复算/标签、归母市值和扣非边界。改数值变体正确区分100/98情景与120市值；最终短题正确用120/100=1.2并拒绝扣非直接等常态。这不是整个压力集稳定通过，仍需核对具体输出。v6没有重跑完整真实证券报告，研判写入/封存/普通追问合同由Host集成测试覆盖，不复用第14节v5报告为v6结果。
 
 新版使用方法：刷新后新建“东泰山”研判或对谈，使用v6快照；已有会话保留创建时版本。自行启动用README中的`dsh --profile hanai-investment --port 3080`，打开本次终端打印的完整认证URL；旧进程入口不能用于新进程登录。
+
+## 16. DSH 0.2.1 兼容升级（2026-10-18）
+
+CLI、Hanai 的 DSH peer/dev dependencies 和 Profile 安装器统一锁定 `0.2.1-rc.2`；包内新增同版本的 `engines.dsh`，供新版插件兼容检查使用。Cordis、Schemastery 及 Profile 装配需要的 Group/Loader/Include 同步到该版本所需的依赖。
+
+实际启动发现旧 Connection patch 依赖的 `webRuntime` 已被上游移除，导致 Connection 和 Hanai Host 无法激活。现改为 `webStartup`，保留注册认证业务通道所需的 `webServer`；配置组合校验通过不能代替实际启动验收。
+
+| 验证 | 结果 |
+| --- | --- |
+| 依赖可复现性 | `pnpm install --frozen-lockfile --ignore-scripts --strict-peer-dependencies` 通过，无 DSH peer 版本冲突 |
+| 完整门禁 | `pnpm run check` 通过：TypeScript、Host/Client/Profile tools 构建、30 个测试文件的 230 项测试、105 个发布文件检查均通过 |
+| 独立 Profile | 全新 `DSH_HOME` 中安装及 runtime identity 验证通过；生产 tarball 脱离仓库链接启动，七位专家及认证业务 RPC 正常 |
+| 认证 | 未认证业务请求返回 401；启动 token 换取浏览器会话后 bootstrap 返回 200 |
+| 既有数据 | 先在用户数据副本上验收；正式升级后，6 只自选、4 条研判、4 个报告版本、4 条对谈的数据库记录和 140 个业务文件指纹均与升级前一致，官方 `web` Profile 的 manifest/patch 保持不变 |
+| 真实模型与工具 | 隔离环境中新建段永平对谈，默认 DeepSeek-V4.1-Flash 实际调用 `read` 读取 `AGENTS.md` 并回复“兼容验证通过”；调用期间浏览器无警告或错误 |
+| 重启与页面 | 重启后恢复测试消息、工具记录及回复；自选列表和详情页下拉切换通过；正式服务重新监听 3080，设置页连接、模型目录及凭据状态正常 |
+
+切换前备份 DSH 配置与 Session、Hanai 数据、旧 CLI、旧构建和源码快照至本机 `~/.hanai-backups/`。本轮真实模型检查限于最小工具调用，不重新执行证券研判或改写既有报告。新版模型目录使用上游定义；后续 DSH 版本仍需重新验收后才能放宽版本约束。

@@ -1,6 +1,6 @@
 # Hanai client chat
 
-Standalone React presentation for a DeepSeek Harness 0.2.0-rc.2 Session. It uses
+Standalone React presentation for a DeepSeek Harness 0.2.1-rc.2 Session. It uses
 DSH-owned history/live projections and Agent actions with Hanai's own chat rows
 and composer. Shared DSH Markdown primitives render rich text.
 

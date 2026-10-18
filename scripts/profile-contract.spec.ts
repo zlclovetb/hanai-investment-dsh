@@ -42,9 +42,9 @@ function legacyManifest(): Record<string, unknown> {
 
 describe('Hanai DSH profile contract', () => {
   it('accepts only the verified CLI release before profile mutation', () => {
-    expect(assertDshVersion('0.2.0-rc.2\n')).toBe('0.2.0-rc.2')
-    expect(() => assertDshVersion('0.1.1-rc.2')).toThrow(/请先更新/)
-    expect(() => assertDshVersion('0.2.0-rc.3')).toThrow(/需要 DSH/)
+    expect(assertDshVersion('0.2.1-rc.2\n')).toBe('0.2.1-rc.2')
+    expect(() => assertDshVersion('0.2.0-rc.2')).toThrow(/请先更新/)
+    expect(() => assertDshVersion('0.2.1-rc.3')).toThrow(/需要 DSH/)
     expect(() => assertDshVersion('unknown')).toThrow(/无法识别/)
   })
   it('migrates the legacy web-app dependency while preserving it as an ordered bundle', () => {

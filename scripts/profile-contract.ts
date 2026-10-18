@@ -16,7 +16,7 @@ import type * as DshBoot from '@deepseek-ai/dsh-app-boot'
 export const BASE_BUNDLE = '@deepseek-ai/dsh-base'
 export const WEB_APP_BUNDLE = '@deepseek-ai/dsh-web-app'
 export const HANAI_BUNDLE = 'hanai-investment-dsh'
-export const SUPPORTED_DSH_VERSION = '0.2.0-rc.2'
+export const SUPPORTED_DSH_VERSION = '0.2.1-rc.2'
 export const EXPECTED_PROFILE_BUNDLES = [
   BASE_BUNDLE,
   WEB_APP_BUNDLE,

@@ -4,7 +4,7 @@
 
 ![Hanai Worth · 值见——以向上 K 线、MACD 金叉与证据点构成的价值研究品牌图](docs/assets/hanai-worth-hero.svg)
 
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-0.2.0--rc.2-4F7CFF)](https://github.com/deepseek-ai/deepseek-harness)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-0.2.1--rc.2-4F7CFF)](https://github.com/deepseek-ai/deepseek-harness)
 [![Node.js](https://img.shields.io/badge/Node.js-22.19%2B-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![Tests](https://img.shields.io/badge/tests-passing-2EA44F)](packages)
 [![License](https://img.shields.io/badge/license-MIT-111827)](LICENSE)
@@ -13,7 +13,7 @@
 
 DeepSeek Harness（DSH）负责模型、Agent、工具、Session、流式事件和会话持久化；Hanai Worth 负责证券与估值数据、自选分组、研究资料、不可变报告快照和全部产品界面。产品包含“今日市场、自选与发现、大师研判、专家对谈、专家中心、设置与诊断”六个一级页面，以及个股、研判和对谈详情页。
 
-插件包名为 `hanai-investment-dsh`，独立 DSH Profile 名为 `hanai-investment`；安装和启动命令使用这两个名称。当前已验证的 DSH 版本为 `0.2.0-rc.2`。
+插件包名为 `hanai-investment-dsh`，独立 DSH Profile 名为 `hanai-investment`；安装和启动命令使用这两个名称。当前已验证的 DSH 版本为 `0.2.1-rc.2`。
 
 品牌中的两条趋势线在证据点形成金叉：价格给出市场报价，研究帮助看见价值。每一份研判，都应能回到证据、方法与上下文。
 
@@ -201,17 +201,17 @@ flowchart LR
 
 - Node.js `^22.19.0` 或 `>=24.0.0`
 - pnpm `11.7.0`
-- DeepSeek Harness `0.2.0-rc.2`；CLI、CLI 自带的 Web App 与 Hanai 声明的 DSH 依赖版本必须一致
+- DeepSeek Harness `0.2.1-rc.2`；CLI、CLI 自带的 Web App 与 Hanai 声明的 DSH 依赖版本必须一致
 - 一个 DeepSeek API Key（只在实际运行 Agent 时需要）
 
-DSH 仍处于 pre-release，rc 之间不承诺兼容。安装器会在修改 Profile 前检查 CLI 是否为已验证的 `0.2.0-rc.2`。仓库把 Host、Client 和 profile 装配都纳入兼容性检查，但升级前仍应运行完整门禁。
+DSH 仍处于 pre-release，rc 之间不承诺兼容。安装器会在修改 Profile 前检查 CLI 是否为已验证的 `0.2.1-rc.2`。包内 `engines.dsh` 也限定同一版本，供 DSH 明确识别已验证的兼容版本。仓库把 Host、Client 和 profile 装配都纳入兼容性检查；升级时需运行完整门禁，并实际启动独立 Profile，不能只检查配置组合。
 
 ## 从源码安装
 
 ```bash
 git clone git@github.com:hancao97/hanai-investment-dsh.git
 cd hanai-investment-dsh
-npm install -g @deepseek-ai/dsh@0.2.0-rc.2
+npm install -g @deepseek-ai/dsh@0.2.1-rc.2
 pnpm install --frozen-lockfile
 pnpm run build
 pnpm run profile:install -- --package .
