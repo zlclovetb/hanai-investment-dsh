@@ -28,6 +28,7 @@ describe('Hanai RPC request validation', () => {
     })).toEqual({ secId: '1.600519', period: 'daily', before: '2018-06-08' })
     expect(parseHanaiRequest('security.valuation', { secId: '1.600519' })).toEqual({ secId: '1.600519' })
     expect(parseHanaiRequest('watch.valuations', { groupId: 'default' })).toEqual({ groupId: 'default' })
+    expect(parseHanaiRequest('watch.securities', {})).toEqual({})
     expect(parseHanaiRequest('judgement.remove', { id: 'judgement-1' })).toEqual({ id: 'judgement-1' })
     expect(parseHanaiRequest('expert-chat.create', {
       masterId: 'sun-yuchen-perspective',
@@ -49,6 +50,7 @@ describe('Hanai RPC request validation', () => {
       secId: '1.600519', refreshAll: true,
     })).toThrow()
     expect(() => parseHanaiRequest('watch.valuations', { groupId: '../default' })).toThrow()
+    expect(() => parseHanaiRequest('watch.securities', { groupId: 'default' })).toThrow()
     expect(() => parseHanaiRequest('judgement.remove', { id: '../judgement-1' })).toThrow()
     expect(() => parseHanaiRequest('expert-chat.create', {
       masterId: 'sun-yuchen-perspective', openingMessage: '   ',

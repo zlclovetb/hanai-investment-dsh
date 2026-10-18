@@ -589,6 +589,30 @@ describe('HanaiService report lifecycle', () => {
 })
 
 describe('HanaiService parity endpoints and diagnostics', () => {
+  it('reads unique watch securities locally even when market providers are unavailable', async () => {
+    const { database, market, service } = fixture()
+    try {
+      const security = stockDetail().security!
+      database.sqlite.prepare(`
+        INSERT INTO security_master(sec_id, code, name, exchange, pinyin_full, pinyin_initial, updated_at)
+        VALUES(?, ?, ?, ?, ?, ?, ?)
+      `).run(security.secId, security.code, security.name, security.exchange, security.pinyinFull, security.pinyinInitial, new Date().toISOString())
+      const group = database.listWatchGroups()[0]!
+      const second = database.createWatchGroup('观察组')
+      database.addWatchItem(group.id, security.secId, null)
+      database.addWatchItem(second.id, security.secId, null)
+      database.addWatchItem(second.id, '0.000001', null)
+      const quotes = vi.spyOn(market, 'getQuotes').mockRejectedValue(new Error('offline'))
+      const search = vi.spyOn(market, 'searchSecurities').mockRejectedValue(new Error('offline'))
+
+      await expect(service.call('watch.securities', {}, new AbortController().signal)).resolves.toEqual([security])
+      expect(quotes).not.toHaveBeenCalled()
+      expect(search).not.toHaveBeenCalled()
+    } finally {
+      database.close()
+    }
+  })
+
   it('loads daily watch valuations as one resilient group batch', async () => {
     const { database, market, service } = fixture()
     const group = database.listWatchGroups()[0]!

@@ -20,6 +20,7 @@ const schemas = {
   'security.kline': z.object({ secId, period: z.enum(['daily', 'weekly', 'monthly']), before: tradingDate.optional() }).strict(),
   'security.valuation': z.object({ secId }).strict(),
   'watch.list': empty,
+  'watch.securities': empty,
   'watch.quotes': z.object({ groupId: identifier }).strict(),
   'watch.valuations': z.object({ groupId: identifier }).strict(),
   'watch.group.create': z.object({ name: groupName }).strict(),

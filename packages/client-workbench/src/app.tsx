@@ -211,6 +211,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
               theme={bootstrap.theme}
               groups={bootstrap.groups}
               onGroups={setGroups}
+              onStock={openStock}
               onCreateJudgement={(stock) => {
                 setLaunchRequest({ key: Date.now(), stock, masterId: null })
                 navigate('/judgements')
@@ -862,7 +863,7 @@ function WatchGroupDialog({ client, open, groups, stock, mode, sourceGroupId = '
 
 type StockChart = 'trend' | 'daily' | 'weekly' | 'monthly'
 
-function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, onCreateJudgement, notify }: { client: HanaiClient; secId: string; theme: ThemeId; groups: WatchGroup[]; onGroups: (groups: WatchGroup[]) => void; onCreateJudgement: (stock: SearchResult) => void; notify: Notify }) {
+function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, onStock, onCreateJudgement, notify }: { client: HanaiClient; secId: string; theme: ThemeId; groups: WatchGroup[]; onGroups: (groups: WatchGroup[]) => void; onStock: (stock: Pick<SecurityMaster, 'secId'>) => void; onCreateJudgement: (stock: SearchResult) => void; notify: Notify }) {
   const [detailState, setDetailState] = useState<{ secId: string; detail: StockDetail } | null>(null)
   const [valuationLoading, setValuationLoading] = useState(true)
   const [dailyHistoryLoading, setDailyHistoryLoading] = useState(false)
@@ -873,6 +874,7 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
   const [klineMaMode, setKlineMaMode] = useState<KlineMaMode>('short')
   const [turningMarkersVisible, setTurningMarkersVisible] = useState(true)
   const [groups, setGroups] = useState(bootstrapGroups)
+  const [watchSecurities, setWatchSecurities] = useState<SecurityMaster[]>([])
   const [watchDialogOpen, setWatchDialogOpen] = useState(false)
   const requestGeneration = useRef(0)
   const routeController = useRef<AbortController | null>(null)
@@ -881,8 +883,18 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
   const dailyHistoryLoadingRef = useRef(false)
   const dailyHasMoreRef = useRef(true)
   const detail = detailState?.secId === secId ? detailState.detail : null
+  const watchSecIds = [...new Set(groups.flatMap(group => group.secIds))].sort().join(',')
+  const watchSecurityMap = useMemo(() => new Map(watchSecurities.map(security => [security.secId, security])), [watchSecurities])
 
   useEffect(() => setGroups(bootstrapGroups), [bootstrapGroups])
+  useEffect(() => {
+    if (watchSecIds === '') { setWatchSecurities([]); return }
+    const controller = new AbortController()
+    void client.call('watch.securities', {}, controller.signal)
+      .then(securities => { if (!controller.signal.aborted) setWatchSecurities(securities) })
+      .catch(() => { /* Stock codes remain selectable if local names are unavailable. */ })
+    return () => controller.abort()
+  }, [client, watchSecIds])
   useEffect(() => {
     const generation = ++requestGeneration.current
     activeSecId.current = secId
@@ -892,8 +904,7 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
     loadedSurfaces.current = new Set()
     dailyHistoryLoadingRef.current = false
     dailyHasMoreRef.current = true
-    setChart('daily')
-    setChartLoading({ daily: true })
+    setChartLoading({ daily: true, weekly: true, monthly: true, trend: true })
     setWatchDialogOpen(false)
     setDetailState({ secId, detail: emptyStockDetail() })
     setValuationLoading(true)
@@ -1150,7 +1161,27 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
   return <Page>
     <header className={styles['stockHeader']}>
       <div>
-        <div className={styles['stockNameRow']}><h1>{name}</h1><span>{code}</span><em>{security?.exchange === 'SH' || secId.startsWith('1.') ? '上交所' : security?.exchange === 'BJ' ? '北交所' : '深交所'}</em>{metrics?.industry && <em>{metrics.industry}</em>}</div>
+        <div className={styles['stockNameRow']}>
+          <h1>{name}</h1><span>{code}</span><em>{security?.exchange === 'SH' || secId.startsWith('1.') ? '上交所' : security?.exchange === 'BJ' ? '北交所' : '深交所'}</em>{metrics?.industry && <em>{metrics.industry}</em>}
+          <label className={styles['stockSwitcher']}>
+            <span>自选切换</span>
+            <select
+              aria-label="从自选切换股票"
+              value={watched ? secId : ''}
+              disabled={watchSecIds === ''}
+              onChange={event => { if (event.target.value !== secId) onStock({ secId: event.target.value }) }}
+            >
+              {!watched && <option value="" disabled>{watchSecIds === '' ? '暂无自选股' : '选择自选股票'}</option>}
+              {groups.filter(group => group.secIds.length > 0).map(group => <optgroup key={group.id} label={group.name}>
+                {group.secIds.map(id => {
+                  const item = watchSecurityMap.get(id)
+                  const label = id === secId ? `${name} · ${code}` : item === undefined ? id.slice(2) : `${item.name} · ${item.code}`
+                  return <option key={id} value={id}>{label}</option>
+                })}
+              </optgroup>)}
+            </select>
+          </label>
+        </div>
         <div className={styles['metaLine']}><DataStateBadge meta={detail.sources.quote} /><DataSourceText meta={detail.sources.quote} /></div>
       </div>
       <div className={`${styles['stockLast']} ${styles[classForChange(stock.changePct)]}`}><b>{number(stock.price)}</b><span>{signedNumber(quote?.change ?? metrics?.change ?? null)} / {percent(stock.changePct)}</span></div>

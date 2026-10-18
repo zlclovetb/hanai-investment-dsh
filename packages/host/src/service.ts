@@ -280,6 +280,13 @@ export class HanaiService {
         return result
       }
       case 'watch.list': return this.database.listWatchGroups()
+      case 'watch.securities': {
+        const secIds = new Set(this.database.listWatchGroups().flatMap(group => group.secIds))
+        return [...secIds].flatMap(secId => {
+          const security = this.database.getSecurity(secId)
+          return security === null ? [] : [security]
+        })
+      }
       case 'watch.quotes': return this.watchQuotes((request as HanaiRequest<'watch.quotes'>).groupId)
       case 'watch.valuations': return this.watchValuations(
         (request as HanaiRequest<'watch.valuations'>).groupId,

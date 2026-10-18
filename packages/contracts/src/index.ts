@@ -434,6 +434,7 @@ export interface HanaiEndpointMap {
   'security.kline': { request: { secId: string; period: KLinePeriod; before?: string }; response: StockKLineData }
   'security.valuation': { request: { secId: string }; response: StockValuationData }
   'watch.list': { request: Record<string, never>; response: WatchGroup[] }
+  'watch.securities': { request: Record<string, never>; response: SecurityMaster[] }
   'watch.quotes': {
     request: { groupId: string }
     response: { quotes: WatchQuote[]; meta: ProviderMeta }

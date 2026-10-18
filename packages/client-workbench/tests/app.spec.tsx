@@ -681,6 +681,95 @@ describe('HanaiWorkbench old-client parity', () => {
     expect(screen.queryByText('图表数据加载中')).toBeNull()
   })
 
+  it('switches stocks from grouped watch choices, preserves chart controls, and ignores late data from the previous stock', async () => {
+    const bank = { secId: '0.000001', code: '000001', name: '平安银行', exchange: 'SZ' as const, pinyinFull: 'pinganyinhang', pinyinInitial: 'payh' }
+    const oldQuote = deferred<{ quote: StockDetail['quote']; metrics: null; sources: { quote: ProviderMeta; metrics: null } }>()
+    const oldWeekly = deferred<{ period: 'weekly'; bars: StockDetail['weekly']; meta: ProviderMeta; hasMore: false }>()
+    const groups = [group, { ...secondGroup, secIds: [bank.secId, group.secIds[0]!] }]
+    const client = makeClient({
+      'bootstrap': () => ({ ...bootstrap, groups }),
+      'watch.list': () => groups,
+      'watch.securities': () => [stockDetail.security, bank],
+      'security.search': request => (request as { query: string }).query === bank.code ? [bank] : [stockDetail.security],
+      'security.quote': request => (request as { secId: string }).secId === bank.secId
+        ? { quote: { ...watchQuote, ...bank, price: 10 }, metrics: null, sources: { quote: fresh, metrics: null } }
+        : oldQuote.promise,
+      'security.kline': request => {
+        const { secId, period } = request as { secId: string; period: 'daily' | 'weekly' | 'monthly' }
+        if (secId === group.secIds[0] && period === 'weekly') return oldWeekly.promise
+        return { period, bars: stockDetail.daily.map(bar => secId === bank.secId ? { ...bar, open: 9, close: 10, high: 11, low: 8 } : bar), meta: fresh, hasMore: false }
+      },
+    })
+    renderAt('/watch', client)
+    fireEvent.click(await screen.findByLabelText('查看 贵州茅台 600519'))
+    await screen.findByRole('heading', { name: '贵州茅台' })
+    const selector = screen.getByRole('combobox', { name: '从自选切换股票' })
+    expect((selector as HTMLSelectElement).value).toBe('1.600519')
+    expect(within(selector).getByRole('group', { name: '默认自选' })).not.toBeNull()
+    expect(within(selector).getByRole('group', { name: '观察组' })).not.toBeNull()
+    expect(await within(selector).findByRole('option', { name: '平安银行 · 000001' })).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '周K' }))
+    fireEvent.click(screen.getByRole('button', { name: '中线 MA20 / MA60' }))
+    fireEvent.click(screen.getByRole('button', { name: '变盘点' }))
+    fireEvent.change(selector, { target: { value: bank.secId } })
+
+    await screen.findByRole('heading', { name: bank.name })
+    expect(window.location.hash).toBe('#/stock/0.000001')
+    expect((screen.getByRole('combobox', { name: '从自选切换股票' }) as HTMLSelectElement).value).toBe(bank.secId)
+    expect((await screen.findByRole('img', { name: '周K线图' })).getAttribute('data-latest-kline-close')).toBe('10')
+    expect(screen.getByRole('button', { name: '中线 MA20 / MA60' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: '变盘点' }).getAttribute('aria-pressed')).toBe('false')
+    expect(client.call).toHaveBeenCalledWith('security.kline', { secId: bank.secId, period: 'weekly' }, expect.any(AbortSignal))
+
+    await act(async () => {
+      oldQuote.resolve({ quote: watchQuote, metrics: null, sources: { quote: fresh, metrics: null } })
+      oldWeekly.resolve({ period: 'weekly', bars: stockDetail.daily, meta: fresh, hasMore: false })
+    })
+    expect(screen.getByRole('heading', { name: bank.name }).closest('header')?.textContent).toContain('10.00')
+    expect(screen.getByRole('img', { name: '周K线图' }).getAttribute('data-latest-kline-close')).toBe('10')
+    expect((client.call as ReturnType<typeof vi.fn>).mock.calls.filter(([endpoint]) => endpoint === 'watch.securities')).toHaveLength(1)
+
+    act(() => {
+      window.history.replaceState(null, '', '#/stock/1.600519')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    await screen.findByRole('heading', { name: '贵州茅台' })
+    expect((screen.getByRole('combobox', { name: '从自选切换股票' }) as HTMLSelectElement).value).toBe('1.600519')
+  })
+
+  it('keeps stocks selectable by code when local watch names cannot load', async () => {
+    renderAt('/stock/1.600519', makeClient({
+      'bootstrap': () => ({ ...bootstrap, groups: [group, secondGroup] }),
+      'watch.list': () => [group, secondGroup],
+      'watch.securities': () => { throw new Error('local names unavailable') },
+    }))
+    await screen.findByRole('heading', { name: '贵州茅台' })
+    const selector = screen.getByRole('combobox', { name: '从自选切换股票' })
+    expect((selector as HTMLSelectElement).disabled).toBe(false)
+    expect(within(selector).getByRole('option', { name: '000001' })).not.toBeNull()
+  })
+
+  it('offers watch choices for an unwatched stock and disables the selector for an empty watch list', async () => {
+    renderAt('/stock/1.600519', makeClient({
+      'bootstrap': () => ({ ...bootstrap, groups: [secondGroup] }),
+      'watch.list': () => [secondGroup],
+    }))
+    await screen.findByRole('heading', { name: '贵州茅台' })
+    const selector = screen.getByRole('combobox', { name: '从自选切换股票' })
+    expect((selector as HTMLSelectElement).disabled).toBe(false)
+    expect((selector as HTMLSelectElement).value).toBe('')
+    expect((within(selector).getByRole('option', { name: '选择自选股票' }) as HTMLOptionElement).disabled).toBe(true)
+    cleanup()
+
+    renderAt('/stock/1.600519', makeClient({
+      'bootstrap': () => ({ ...bootstrap, groups: [{ ...group, secIds: [], items: [] }] }),
+      'watch.list': () => [{ ...group, secIds: [], items: [] }],
+    }))
+    await screen.findByRole('heading', { name: '贵州茅台' })
+    expect((screen.getByRole('combobox', { name: '从自选切换股票' }) as HTMLSelectElement).disabled).toBe(true)
+    expect(screen.getByRole('option', { name: '暂无自选股' })).not.toBeNull()
+  })
+
   it('loads quote, daily K, and valuation independently and lazily requests longer periods', async () => {
     const quote = deferred<{
       quote: StockDetail['quote']
@@ -1092,6 +1181,7 @@ function makeClient(overrides: Record<string, CallOverride> = {}): HanaiClient {
         meta: valuationFresh,
       }
       case 'watch.list': return [group]
+      case 'watch.securities': return [stockDetail.security]
       case 'security.search': return [{ ...stockDetail.security, price: 1500, changePct: .67 }]
       case 'security.detail': return stockDetail
       case 'security.quote': return { quote: stockDetail.quote, metrics: stockDetail.metrics, sources: { quote: fresh, metrics: null } }
