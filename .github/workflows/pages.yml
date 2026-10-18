@@ -5,6 +5,11 @@ on:
     branches:
       - main
     paths:
+      - docs/index.html
+      - docs/a-share-investment-report-2026-10-18.html
+      - docs/research-data/a-share-investment-2026-10-18.json
+      - docs/research-data/a-share-investment-theses-2026-10-18.json
+      - scripts/research/render-a-share-investment.mjs
       - docs/turning-point-capability-audit-2026-08-23.html
       - docs/a-share-cycle-outlook-2026-08-23.html
       - docs/a-share-cycle-outlook-2026-08-25.html
@@ -38,6 +43,9 @@ jobs:
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+
+      - name: Verify October investment report
+        run: node scripts/research/render-a-share-investment.mjs --check
 
       - name: Verify research data contracts
         run: |
@@ -82,7 +90,11 @@ jobs:
       - name: Prepare self-contained reports
         run: |
           mkdir -p _site/research-data
-          cp docs/turning-point-capability-audit-2026-08-23.html _site/index.html
+          cp docs/index.html _site/index.html
+          cp docs/a-share-investment-report-2026-10-18.html _site/a-share-investment-report-2026-10-18.html
+          cp docs/a-share-investment-report-2026-10-18.html _site/a-share-investment-report.html
+          cp docs/research-data/a-share-investment-2026-10-18.json _site/research-data/a-share-investment-2026-10-18.json
+          cp docs/research-data/a-share-investment-theses-2026-10-18.json _site/research-data/a-share-investment-theses-2026-10-18.json
           cp docs/turning-point-capability-audit-2026-08-23.html _site/turning-point-capability-audit-2026-08-23.html
           cp docs/a-share-cycle-outlook-2026-08-23.html _site/a-share-cycle-outlook-2026-08-23.html
           cp docs/a-share-cycle-outlook-2026-08-25.html _site/a-share-cycle-outlook-2026-08-25.html

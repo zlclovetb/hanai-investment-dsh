@@ -28,3 +28,16 @@ pnpm exec tsx scripts/research/run-a-share-expert-council.ts
 pnpm exec tsx scripts/research/finalize-a-share-cycle-council.ts
 pnpm exec tsx scripts/research/render-a-share-cycle-outlook.ts
 ```
+
+2026-10-18 投资报告使用独立的数据链，不经过历史周期报告的专家会商：
+
+```bash
+# 用已经冻结的公开数据重建 HTML；无网络、无额外依赖。
+node scripts/research/render-a-share-investment.mjs
+node scripts/research/render-a-share-investment.mjs --check
+```
+
+- `collect-a-share-investment.ts` 通过软件原有 MarketDataService 收集 20 家公司的公开行情、财报、前复权价格和价值大师数值摘要，并记录五个方法 Skill 的 SHA256。只支持抓取当日的新快照，不读取个人自选、账户或对话，不覆盖已有日期文件。
+- `docs/research-data/a-share-investment-2026-10-18.json` 保存软件快照；`a-share-investment-theses-2026-10-18.json` 保存人工策展的方向、来源、价格假设、经营前提和反证。公告仅链接，不存储完整财报或价值大师曲线。
+- 渲染器验证公司身份、5 × 4 覆盖、行情日期、无未来数据、来源、Skill 哈希、内部锚点与 HTML 确定性；`--check` 已接入 Pages 发布流程。PE / PB / 股息率门槛是报告假设，不是 DCF 公允价值或模型买入信号。
+- 新一期报告应新建日期产物、更新来源与所有经营假设，并明确新的模型数据日期；不能只替换报价沿用旧结论。冻结报告保持可复核。

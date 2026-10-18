@@ -1,0 +1,8018 @@
+{
+  "schema": "hanai.public-investment-snapshot.v1",
+  "asOf": "2026-10-18",
+  "collectedAt": "2026-10-18T03:17:04.554Z",
+  "completedAt": "2026-10-18T03:17:11.160Z",
+  "notes": [
+    "行情与财报通过 Hanai MarketDataService 原有数据链取得；来源、缓存与数据日期逐项保留。",
+    "财务收入、归母净利润和 ROE 为报告期累计口径；PE TTM 使用软件财务口径。",
+    "股息率为软件计算的近十二个月已实施税前分红／当前股价，不是未来分红预测。",
+    "价值大师仅保留分析需要的数值摘要，不转存价格曲线、模型曲线或完整原始数据集；不代表再分发授权。",
+    "技术指标用软件前复权日线计算；用于描述近期位置，不提供未来收益概率。"
+  ],
+  "skills": [
+    {
+      "path": "packages/masters/assets/dong-taishan-perspective/SKILL.md",
+      "sha256": "f92bcfa7fbdfc840a02c2dfc98588d7035b41d2f2371acfa1a787ca9ebd3131f"
+    },
+    {
+      "path": "packages/masters/assets/sanhu-yi-perspective/SKILL.md",
+      "sha256": "bf0f5e45283cec3aeb2c4466e94eba809191c0fb021ecd53c48ad52dcc86e1c6"
+    },
+    {
+      "path": "packages/masters/assets/duan-yongping-perspective/SKILL.md",
+      "sha256": "f63ef9ced37e115fccc7edae531e9827d2b370160ef5f4a7c72d101bab70ece7"
+    },
+    {
+      "path": "packages/masters/assets/warren-buffett-perspective/SKILL.md",
+      "sha256": "72230027e53cb18f40a99c0288075fa33b61511ad57c21af85b2f03c416eddaf"
+    },
+    {
+      "path": "packages/masters/assets/munger-perspective/SKILL.md",
+      "sha256": "c1671ff0875d1ce50f0fe3840f0115072d47d019ea9c5234edbe4596bf0d60ba"
+    }
+  ],
+  "indices": {
+    "quotes": [
+      {
+        "secId": "1.000001",
+        "code": "000001",
+        "name": "上证指数",
+        "price": 3716.28,
+        "change": 8.8,
+        "changePct": 0.24,
+        "amount": 732475190000,
+        "volume": 472632158,
+        "turnoverRate": 0.97,
+        "marketCap": 65201173000000,
+        "floatCap": 58244377000000,
+        "pe": 16.16,
+        "pb": 0,
+        "high": 3750.77,
+        "low": 3681.28,
+        "open": 3723.8,
+        "prevClose": 3707.48,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:15:00.000Z",
+          "fetchedAt": "2026-10-18T03:17:06.824Z",
+          "cacheState": "stale"
+        }
+      },
+      {
+        "secId": "0.399001",
+        "code": "399001",
+        "name": "深证成指",
+        "price": 11802.46,
+        "change": -14.33,
+        "changePct": -0.12,
+        "amount": 822945590000,
+        "volume": 550865831,
+        "turnoverRate": 2.22,
+        "marketCap": 39170155000000,
+        "floatCap": 33460858000000,
+        "pe": 37.36,
+        "pb": 0,
+        "high": 11993.85,
+        "low": 11698.5,
+        "open": 11965.57,
+        "prevClose": 11816.79,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:39.000Z",
+          "fetchedAt": "2026-10-18T03:17:06.824Z",
+          "cacheState": "stale"
+        }
+      },
+      {
+        "secId": "0.399006",
+        "code": "399006",
+        "name": "创业板指",
+        "price": 2772.38,
+        "change": -10.79,
+        "changePct": -0.39,
+        "amount": 394225950000,
+        "volume": 166968940,
+        "turnoverRate": 3.05,
+        "marketCap": 15920642000000.002,
+        "floatCap": 12861111000000,
+        "pe": 47.99,
+        "pb": 0,
+        "high": 2832.13,
+        "low": 2743.87,
+        "open": 2831.89,
+        "prevClose": 2783.17,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:54.000Z",
+          "fetchedAt": "2026-10-18T03:17:06.825Z",
+          "cacheState": "stale"
+        }
+      },
+      {
+        "secId": "1.000300",
+        "code": "000300",
+        "name": "沪深300",
+        "price": 4170.61,
+        "change": 4.6,
+        "changePct": 0.11,
+        "amount": 413749300000,
+        "volume": 184705168,
+        "turnoverRate": 0.55,
+        "marketCap": 51874907000000,
+        "floatCap": 49252311000000,
+        "pe": 13.01,
+        "pb": 0,
+        "high": 4206.89,
+        "low": 4127.94,
+        "open": 4189.26,
+        "prevClose": 4166.01,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:12.000Z",
+          "fetchedAt": "2026-10-18T03:17:06.825Z",
+          "cacheState": "stale"
+        }
+      }
+    ],
+    "meta": {
+      "providerId": "tencent-fallback",
+      "sourceName": "腾讯行情（备源）",
+      "sourceTimestamp": "2026-10-16T08:14:12.000Z",
+      "fetchedAt": "2026-10-18T03:17:06.825Z",
+      "cacheState": "stale"
+    }
+  },
+  "overview": {
+    "indices": [
+      {
+        "code": "000001",
+        "name": "上证指数",
+        "price": 3716.28,
+        "change": 8.8,
+        "changePct": 0.24,
+        "amount": 732475190000,
+        "upCount": null,
+        "downCount": null,
+        "flatCount": null
+      },
+      {
+        "code": "399001",
+        "name": "深证成指",
+        "price": 11802.46,
+        "change": -14.33,
+        "changePct": -0.12,
+        "amount": 822945590000,
+        "upCount": null,
+        "downCount": null,
+        "flatCount": null
+      },
+      {
+        "code": "399006",
+        "name": "创业板指",
+        "price": 2772.38,
+        "change": -10.79,
+        "changePct": -0.39,
+        "amount": 394225950000,
+        "upCount": null,
+        "downCount": null,
+        "flatCount": null
+      },
+      {
+        "code": "000300",
+        "name": "沪深300",
+        "price": 4170.61,
+        "change": 4.6,
+        "changePct": 0.11,
+        "amount": 413749300000,
+        "upCount": null,
+        "downCount": null,
+        "flatCount": null
+      },
+      {
+        "code": "000688",
+        "name": "科创50",
+        "price": 1358.65,
+        "change": -0.87,
+        "changePct": -0.06,
+        "amount": 71607600000,
+        "upCount": null,
+        "downCount": null,
+        "flatCount": null
+      },
+      {
+        "code": "899050",
+        "name": "北证50",
+        "price": 950,
+        "change": -17.51,
+        "changePct": -1.81,
+        "amount": 13811611900,
+        "upCount": null,
+        "downCount": null,
+        "flatCount": null
+      }
+    ],
+    "breadth": {
+      "up": 3197,
+      "down": 2058,
+      "flat": 115,
+      "limitUp": 61,
+      "limitDown": 10,
+      "totalAmount": 1555420780000
+    },
+    "marketStatus": "closed",
+    "meta": {
+      "providerId": "tencent-fallback",
+      "sourceName": "腾讯行情（备源）",
+      "sourceTimestamp": "2026-10-16T07:34:10.000Z",
+      "fetchedAt": "2026-10-18T03:17:06.392Z",
+      "cacheState": "stale"
+    }
+  },
+  "securities": [
+    {
+      "direction": "cash",
+      "secId": "1.600941",
+      "code": "600941",
+      "name": "中国移动",
+      "quote": {
+        "secId": "1.600941",
+        "code": "600941",
+        "name": "中国移动",
+        "price": 101.4,
+        "change": -0.1,
+        "changePct": -0.1,
+        "amount": 1094000000,
+        "volume": 107838,
+        "turnoverRate": 1.19,
+        "marketCap": 2199963000000,
+        "floatCap": 91541000000,
+        "pe": 16.69,
+        "pb": 1.61,
+        "high": 102.36,
+        "low": 100.5,
+        "open": 101,
+        "prevClose": 101.5,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:53.000Z",
+          "fetchedAt": "2026-10-18T03:17:06.892Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600941",
+        "code": "600941",
+        "name": "中国移动",
+        "price": 101.4,
+        "change": -0.1,
+        "changePct": -0.1,
+        "open": 101,
+        "high": 102.36,
+        "low": 100.5,
+        "prevClose": 101.5,
+        "volume": 107838,
+        "amount": 1094000000,
+        "turnoverRate": 1.19,
+        "marketCap": 2199963000000,
+        "floatCap": 91541000000,
+        "pb": 1.61,
+        "averagePrice": 101.45,
+        "amplitude": 1.83,
+        "mainNetInflow": null,
+        "volumeRatio": 0.8,
+        "totalShares": 21695890446,
+        "floatShares": 902767867,
+        "peDynamic": 13.93545873767958,
+        "peTtm": 16.692436681487777,
+        "peStatic": 16.0469966081914,
+        "psTtm": 2.106330299209251,
+        "roe": 5.6,
+        "totalRevenue": 538035000000,
+        "revenueYoy": -1.054491889019,
+        "netProfit": 78934000000,
+        "netProfitYoy": -6.293108565323,
+        "grossMargin": 29.5120205935,
+        "netMargin": 14.6849182674,
+        "debtRatio": 32.7857501094,
+        "dividendYield": 4.646153846153846,
+        "eps": 3.64,
+        "bvps": 65.558149257614,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.048Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:53.000Z",
+          "fetchedAt": "2026-10-18T03:17:06.892Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.048Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 101.4,
+        "ma20": 96.4605,
+        "ma60": 95.17783333333334,
+        "return20": 7.120219733784072,
+        "return60": 11.994698475811806,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            90.89
+          ],
+          [
+            "2026-07-20",
+            93.29
+          ],
+          [
+            "2026-07-21",
+            92.43
+          ],
+          [
+            "2026-07-22",
+            91.58
+          ],
+          [
+            "2026-07-23",
+            91.92
+          ],
+          [
+            "2026-07-24",
+            92.18
+          ],
+          [
+            "2026-07-27",
+            91.88
+          ],
+          [
+            "2026-07-28",
+            93.84
+          ],
+          [
+            "2026-07-29",
+            94.79
+          ],
+          [
+            "2026-07-30",
+            96.19
+          ],
+          [
+            "2026-07-31",
+            94.9
+          ],
+          [
+            "2026-08-03",
+            96.46
+          ],
+          [
+            "2026-08-04",
+            93.91
+          ],
+          [
+            "2026-08-05",
+            93.48
+          ],
+          [
+            "2026-08-06",
+            93.94
+          ],
+          [
+            "2026-08-07",
+            92.99
+          ],
+          [
+            "2026-08-10",
+            94.19
+          ],
+          [
+            "2026-08-11",
+            93.91
+          ],
+          [
+            "2026-08-12",
+            93.71
+          ],
+          [
+            "2026-08-13",
+            93.6
+          ],
+          [
+            "2026-08-14",
+            95.2
+          ],
+          [
+            "2026-08-17",
+            93.51
+          ],
+          [
+            "2026-08-18",
+            93.23
+          ],
+          [
+            "2026-08-19",
+            94.66
+          ],
+          [
+            "2026-08-20",
+            94.19
+          ],
+          [
+            "2026-08-21",
+            93.74
+          ],
+          [
+            "2026-08-24",
+            95.02
+          ],
+          [
+            "2026-08-25",
+            96.35
+          ],
+          [
+            "2026-08-26",
+            95.94
+          ],
+          [
+            "2026-08-27",
+            95.53
+          ],
+          [
+            "2026-08-28",
+            95.35
+          ],
+          [
+            "2026-08-31",
+            96.54
+          ],
+          [
+            "2026-09-01",
+            97.38
+          ],
+          [
+            "2026-09-02",
+            98.29
+          ],
+          [
+            "2026-09-03",
+            98.02
+          ],
+          [
+            "2026-09-04",
+            97.79
+          ],
+          [
+            "2026-09-07",
+            96.19
+          ],
+          [
+            "2026-09-08",
+            95.19
+          ],
+          [
+            "2026-09-09",
+            94.6
+          ],
+          [
+            "2026-09-10",
+            94.66
+          ],
+          [
+            "2026-09-11",
+            95.21
+          ],
+          [
+            "2026-09-14",
+            95.65
+          ],
+          [
+            "2026-09-15",
+            95.28
+          ],
+          [
+            "2026-09-16",
+            94.43
+          ],
+          [
+            "2026-09-17",
+            94.39
+          ],
+          [
+            "2026-09-18",
+            94.12
+          ],
+          [
+            "2026-09-21",
+            93.5
+          ],
+          [
+            "2026-09-22",
+            93.94
+          ],
+          [
+            "2026-09-23",
+            93.89
+          ],
+          [
+            "2026-09-24",
+            94.94
+          ],
+          [
+            "2026-09-28",
+            95.2
+          ],
+          [
+            "2026-09-29",
+            94.85
+          ],
+          [
+            "2026-09-30",
+            95.8
+          ],
+          [
+            "2026-10-08",
+            97.96
+          ],
+          [
+            "2026-10-09",
+            97.98
+          ],
+          [
+            "2026-10-12",
+            99.31
+          ],
+          [
+            "2026-10-13",
+            99.37
+          ],
+          [
+            "2026-10-14",
+            100.49
+          ],
+          [
+            "2026-10-15",
+            101.5
+          ],
+          [
+            "2026-10-16",
+            101.4
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:07.575Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN03RM",
+        "ivDcf": 104.88,
+        "medps": 105.2,
+        "gfScore": 79,
+        "valuationRank": 5,
+        "dimensions": {
+          "financialStrength": 9,
+          "profitability": 7,
+          "growth": 7,
+          "gfValue": 7,
+          "momentum": 3
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.363Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:08.363Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600941.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600941/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "cash",
+      "secId": "1.600900",
+      "code": "600900",
+      "name": "长江电力",
+      "quote": {
+        "secId": "1.600900",
+        "code": "600900",
+        "name": "长江电力",
+        "price": 29.38,
+        "change": -0.22,
+        "changePct": -0.74,
+        "amount": 4185610000,
+        "volume": 1427959,
+        "turnoverRate": 0.58,
+        "marketCap": 718876000000,
+        "floatCap": 718876000000,
+        "pe": 19.86,
+        "pb": 3.33,
+        "high": 29.57,
+        "low": 29.08,
+        "open": 29.38,
+        "prevClose": 29.6,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:46.000Z",
+          "fetchedAt": "2026-10-18T03:17:07.023Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600900",
+        "code": "600900",
+        "name": "长江电力",
+        "price": 29.38,
+        "change": -0.22,
+        "changePct": -0.74,
+        "open": 29.38,
+        "high": 29.57,
+        "low": 29.08,
+        "prevClose": 29.6,
+        "volume": 1427959,
+        "amount": 4185610000,
+        "turnoverRate": 0.58,
+        "marketCap": 718876000000,
+        "floatCap": 718876000000,
+        "pb": 3.33,
+        "averagePrice": 29.31,
+        "amplitude": 1.66,
+        "mainNetInflow": null,
+        "volumeRatio": 1.24,
+        "totalShares": 24468217716,
+        "floatShares": 24468217716,
+        "peDynamic": 24.359273181797626,
+        "peTtm": 19.85727285985669,
+        "peStatic": 20.83528898545227,
+        "psTtm": 8.218205726204383,
+        "roe": 6.55,
+        "totalRevenue": 37929268927.18,
+        "revenueYoy": 3.356225988482,
+        "netProfit": 14755694774.53,
+        "netProfitYoy": 13.015444431533,
+        "grossMargin": 57.8922527476,
+        "netMargin": 39.6356860747,
+        "debtRatio": 59.3634606739,
+        "dividendYield": 3.4036759700476518,
+        "eps": 0.6031,
+        "bvps": 8.83314658132,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.138Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:46.000Z",
+          "fetchedAt": "2026-10-18T03:17:07.023Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.138Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 29.38,
+        "ma20": 28.682500000000005,
+        "ma60": 28.464000000000002,
+        "return20": 4.5923816304734855,
+        "return60": 7.030965391621136,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            27.99
+          ],
+          [
+            "2026-07-20",
+            28.98
+          ],
+          [
+            "2026-07-21",
+            28.73
+          ],
+          [
+            "2026-07-22",
+            29.09
+          ],
+          [
+            "2026-07-23",
+            28.94
+          ],
+          [
+            "2026-07-24",
+            28.9
+          ],
+          [
+            "2026-07-27",
+            28.35
+          ],
+          [
+            "2026-07-28",
+            29.07
+          ],
+          [
+            "2026-07-29",
+            28.93
+          ],
+          [
+            "2026-07-30",
+            29.49
+          ],
+          [
+            "2026-07-31",
+            29.09
+          ],
+          [
+            "2026-08-03",
+            29.05
+          ],
+          [
+            "2026-08-04",
+            28.3
+          ],
+          [
+            "2026-08-05",
+            27.76
+          ],
+          [
+            "2026-08-06",
+            27.75
+          ],
+          [
+            "2026-08-07",
+            27.75
+          ],
+          [
+            "2026-08-10",
+            28.05
+          ],
+          [
+            "2026-08-11",
+            28.31
+          ],
+          [
+            "2026-08-12",
+            28.02
+          ],
+          [
+            "2026-08-13",
+            28.24
+          ],
+          [
+            "2026-08-14",
+            28.1
+          ],
+          [
+            "2026-08-17",
+            27.96
+          ],
+          [
+            "2026-08-18",
+            28.12
+          ],
+          [
+            "2026-08-19",
+            28.42
+          ],
+          [
+            "2026-08-20",
+            28.16
+          ],
+          [
+            "2026-08-21",
+            27.96
+          ],
+          [
+            "2026-08-24",
+            28.15
+          ],
+          [
+            "2026-08-25",
+            28.21
+          ],
+          [
+            "2026-08-26",
+            28.24
+          ],
+          [
+            "2026-08-27",
+            28.1
+          ],
+          [
+            "2026-08-28",
+            28.05
+          ],
+          [
+            "2026-08-31",
+            28.09
+          ],
+          [
+            "2026-09-01",
+            28.4
+          ],
+          [
+            "2026-09-02",
+            28.72
+          ],
+          [
+            "2026-09-03",
+            28.44
+          ],
+          [
+            "2026-09-04",
+            28.42
+          ],
+          [
+            "2026-09-07",
+            27.85
+          ],
+          [
+            "2026-09-08",
+            27.87
+          ],
+          [
+            "2026-09-09",
+            28.05
+          ],
+          [
+            "2026-09-10",
+            28.09
+          ],
+          [
+            "2026-09-11",
+            28.45
+          ],
+          [
+            "2026-09-14",
+            28.63
+          ],
+          [
+            "2026-09-15",
+            28.5
+          ],
+          [
+            "2026-09-16",
+            28.46
+          ],
+          [
+            "2026-09-17",
+            28.46
+          ],
+          [
+            "2026-09-18",
+            28.27
+          ],
+          [
+            "2026-09-21",
+            28.1
+          ],
+          [
+            "2026-09-22",
+            28.02
+          ],
+          [
+            "2026-09-23",
+            28.08
+          ],
+          [
+            "2026-09-24",
+            28.36
+          ],
+          [
+            "2026-09-28",
+            28.55
+          ],
+          [
+            "2026-09-29",
+            28.38
+          ],
+          [
+            "2026-09-30",
+            28.54
+          ],
+          [
+            "2026-10-08",
+            28.9
+          ],
+          [
+            "2026-10-09",
+            28.99
+          ],
+          [
+            "2026-10-12",
+            29.38
+          ],
+          [
+            "2026-10-13",
+            29.15
+          ],
+          [
+            "2026-10-14",
+            29.45
+          ],
+          [
+            "2026-10-15",
+            29.6
+          ],
+          [
+            "2026-10-16",
+            29.38
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:07.676Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN00LE",
+        "ivDcf": 28.44,
+        "medps": 28.5,
+        "gfScore": 82,
+        "valuationRank": 5,
+        "dimensions": {
+          "financialStrength": 3,
+          "profitability": 8,
+          "growth": 8,
+          "gfValue": 6,
+          "momentum": 10
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.271Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:08.271Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600900.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600900/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "cash",
+      "secId": "1.601088",
+      "code": "601088",
+      "name": "中国神华",
+      "quote": {
+        "secId": "1.601088",
+        "code": "601088",
+        "name": "中国神华",
+        "price": 50.98,
+        "change": 0.38,
+        "changePct": 0.75,
+        "amount": 1997640000,
+        "volume": 396599,
+        "turnoverRate": 0.23,
+        "marketCap": 1105727000000,
+        "floatCap": 864045000000.0001,
+        "pe": 20.48,
+        "pb": 2.45,
+        "high": 51,
+        "low": 49.5,
+        "open": 50.1,
+        "prevClose": 50.6,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:49.000Z",
+          "fetchedAt": "2026-10-18T03:17:07.015Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.601088",
+        "code": "601088",
+        "name": "中国神华",
+        "price": 50.98,
+        "change": 0.38,
+        "changePct": 0.75,
+        "open": 50.1,
+        "high": 51,
+        "low": 49.5,
+        "prevClose": 50.6,
+        "volume": 396599,
+        "amount": 1997640000,
+        "turnoverRate": 0.23,
+        "marketCap": 1105727000000,
+        "floatCap": 864045000000.0001,
+        "pb": 2.45,
+        "averagePrice": 50.37,
+        "amplitude": 2.96,
+        "mainNetInflow": null,
+        "volumeRatio": 0.99,
+        "totalShares": 21689434304,
+        "floatShares": 16948703858,
+        "peDynamic": 19.253473794184224,
+        "peTtm": 20.48363313017543,
+        "peStatic": 20.92238263732521,
+        "psTtm": 3.580362722654138,
+        "roe": 5.83,
+        "totalRevenue": 189338000000,
+        "revenueYoy": 7.932255177485,
+        "netProfit": 28715000000,
+        "netProfitYoy": 4.103977087336,
+        "grossMargin": 35.4841606017,
+        "netMargin": 18.7601009834,
+        "debtRatio": 40.2727751505,
+        "dividendYield": 3.9427226363279724,
+        "eps": 1.339,
+        "bvps": 20.790861727143,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.108Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:49.000Z",
+          "fetchedAt": "2026-10-18T03:17:07.015Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.108Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 50.98,
+        "ma20": 48.07149999999999,
+        "ma60": 46.572166666666675,
+        "return20": 7.825719120135344,
+        "return60": 17.81834989600184,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            43.95
+          ],
+          [
+            "2026-07-20",
+            46.14
+          ],
+          [
+            "2026-07-21",
+            45.1
+          ],
+          [
+            "2026-07-22",
+            45.44
+          ],
+          [
+            "2026-07-23",
+            45.32
+          ],
+          [
+            "2026-07-24",
+            45.7
+          ],
+          [
+            "2026-07-27",
+            44.83
+          ],
+          [
+            "2026-07-28",
+            45.44
+          ],
+          [
+            "2026-07-29",
+            45.03
+          ],
+          [
+            "2026-07-30",
+            45.7
+          ],
+          [
+            "2026-07-31",
+            45.69
+          ],
+          [
+            "2026-08-03",
+            43.73
+          ],
+          [
+            "2026-08-04",
+            43.15
+          ],
+          [
+            "2026-08-05",
+            43
+          ],
+          [
+            "2026-08-06",
+            43.97
+          ],
+          [
+            "2026-08-07",
+            43.94
+          ],
+          [
+            "2026-08-10",
+            44.68
+          ],
+          [
+            "2026-08-11",
+            44.7
+          ],
+          [
+            "2026-08-12",
+            44.07
+          ],
+          [
+            "2026-08-13",
+            44.34
+          ],
+          [
+            "2026-08-14",
+            44.72
+          ],
+          [
+            "2026-08-17",
+            44.79
+          ],
+          [
+            "2026-08-18",
+            45.7
+          ],
+          [
+            "2026-08-19",
+            46.52
+          ],
+          [
+            "2026-08-20",
+            46.55
+          ],
+          [
+            "2026-08-21",
+            46.41
+          ],
+          [
+            "2026-08-24",
+            46.89
+          ],
+          [
+            "2026-08-25",
+            47.17
+          ],
+          [
+            "2026-08-26",
+            47.26
+          ],
+          [
+            "2026-08-27",
+            47.8
+          ],
+          [
+            "2026-08-28",
+            47.63
+          ],
+          [
+            "2026-08-31",
+            48.78
+          ],
+          [
+            "2026-09-01",
+            48.3
+          ],
+          [
+            "2026-09-02",
+            48.05
+          ],
+          [
+            "2026-09-03",
+            47.78
+          ],
+          [
+            "2026-09-04",
+            47.61
+          ],
+          [
+            "2026-09-07",
+            46.09
+          ],
+          [
+            "2026-09-08",
+            46.32
+          ],
+          [
+            "2026-09-09",
+            47.33
+          ],
+          [
+            "2026-09-10",
+            47.28
+          ],
+          [
+            "2026-09-11",
+            47.51
+          ],
+          [
+            "2026-09-14",
+            47.2
+          ],
+          [
+            "2026-09-15",
+            46.98
+          ],
+          [
+            "2026-09-16",
+            47.1
+          ],
+          [
+            "2026-09-17",
+            46.48
+          ],
+          [
+            "2026-09-18",
+            46.23
+          ],
+          [
+            "2026-09-21",
+            46.8
+          ],
+          [
+            "2026-09-22",
+            47.51
+          ],
+          [
+            "2026-09-23",
+            47.21
+          ],
+          [
+            "2026-09-24",
+            48.03
+          ],
+          [
+            "2026-09-28",
+            48.39
+          ],
+          [
+            "2026-09-29",
+            47.3
+          ],
+          [
+            "2026-09-30",
+            47.8
+          ],
+          [
+            "2026-10-08",
+            47.49
+          ],
+          [
+            "2026-10-09",
+            48.4
+          ],
+          [
+            "2026-10-12",
+            49.38
+          ],
+          [
+            "2026-10-13",
+            49.49
+          ],
+          [
+            "2026-10-14",
+            50.55
+          ],
+          [
+            "2026-10-15",
+            50.6
+          ],
+          [
+            "2026-10-16",
+            50.98
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:07.698Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN00N2",
+        "ivDcf": 41.91,
+        "medps": 33.99,
+        "gfScore": 81,
+        "valuationRank": 6,
+        "dimensions": {
+          "financialStrength": 8,
+          "profitability": 7,
+          "growth": 8,
+          "gfValue": 5,
+          "momentum": 4
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2025-12-31",
+          "fetchedAt": "2026-10-18T03:17:07.854Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2025-12-31",
+        "fetchedAt": "2026-10-18T03:17:07.854Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh601088.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:601088/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "cash",
+      "secId": "1.600036",
+      "code": "600036",
+      "name": "招商银行",
+      "quote": {
+        "secId": "1.600036",
+        "code": "600036",
+        "name": "招商银行",
+        "price": 42.45,
+        "change": -0.21,
+        "changePct": -0.49,
+        "amount": 3560860000,
+        "volume": 840913,
+        "turnoverRate": 0.41,
+        "marketCap": 1070582000000,
+        "floatCap": 875699000000,
+        "pe": 7.06,
+        "pb": 0.93,
+        "high": 42.74,
+        "low": 41.92,
+        "open": 42.6,
+        "prevClose": 42.66,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:44.000Z",
+          "fetchedAt": "2026-10-18T03:17:07.910Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600036",
+        "code": "600036",
+        "name": "招商银行",
+        "price": 42.45,
+        "change": -0.21,
+        "changePct": -0.49,
+        "open": 42.6,
+        "high": 42.74,
+        "low": 41.92,
+        "prevClose": 42.66,
+        "volume": 840913,
+        "amount": 3560860000,
+        "turnoverRate": 0.41,
+        "marketCap": 1070582000000,
+        "floatCap": 875699000000,
+        "pb": 0.93,
+        "averagePrice": 42.35,
+        "amplitude": 1.92,
+        "mainNetInflow": null,
+        "volumeRatio": 0.99,
+        "totalShares": 25219845601,
+        "floatShares": 20628944429,
+        "peDynamic": 7.0023023088495,
+        "peTtm": 7.057417466511971,
+        "peStatic": 7.128611475486246,
+        "psTtm": 3.096458651487806,
+        "roe": 6.71,
+        "totalRevenue": 178181000000,
+        "revenueYoy": 4.831469267925,
+        "netProfit": 76445000000,
+        "netProfitYoy": 2.021887094622,
+        "grossMargin": null,
+        "netMargin": 43.1690247557,
+        "debtRatio": 90.1829995473,
+        "dividendYield": 4.749116607773852,
+        "eps": 2.98,
+        "bvps": 45.4,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.960Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:44.000Z",
+          "fetchedAt": "2026-10-18T03:17:07.910Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:07.960Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 42.45,
+        "ma20": 41.421,
+        "ma60": 40.151333333333326,
+        "return20": 2.1169112340630347,
+        "return60": 12.689142553756305,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            38.02
+          ],
+          [
+            "2026-07-20",
+            38.91
+          ],
+          [
+            "2026-07-21",
+            37.99
+          ],
+          [
+            "2026-07-22",
+            38.71
+          ],
+          [
+            "2026-07-23",
+            38.91
+          ],
+          [
+            "2026-07-24",
+            39.2
+          ],
+          [
+            "2026-07-27",
+            39
+          ],
+          [
+            "2026-07-28",
+            39.59
+          ],
+          [
+            "2026-07-29",
+            39.66
+          ],
+          [
+            "2026-07-30",
+            40.55
+          ],
+          [
+            "2026-07-31",
+            39.62
+          ],
+          [
+            "2026-08-03",
+            40.36
+          ],
+          [
+            "2026-08-04",
+            39.28
+          ],
+          [
+            "2026-08-05",
+            38.94
+          ],
+          [
+            "2026-08-06",
+            38.97
+          ],
+          [
+            "2026-08-07",
+            38.8
+          ],
+          [
+            "2026-08-10",
+            38.91
+          ],
+          [
+            "2026-08-11",
+            38.95
+          ],
+          [
+            "2026-08-12",
+            38.7
+          ],
+          [
+            "2026-08-13",
+            38.77
+          ],
+          [
+            "2026-08-14",
+            38.46
+          ],
+          [
+            "2026-08-17",
+            38.2
+          ],
+          [
+            "2026-08-18",
+            38.29
+          ],
+          [
+            "2026-08-19",
+            39.15
+          ],
+          [
+            "2026-08-20",
+            38.86
+          ],
+          [
+            "2026-08-21",
+            38.9
+          ],
+          [
+            "2026-08-24",
+            39.58
+          ],
+          [
+            "2026-08-25",
+            39.5
+          ],
+          [
+            "2026-08-26",
+            39.8
+          ],
+          [
+            "2026-08-27",
+            39.58
+          ],
+          [
+            "2026-08-28",
+            39.35
+          ],
+          [
+            "2026-08-31",
+            40.12
+          ],
+          [
+            "2026-09-01",
+            40.86
+          ],
+          [
+            "2026-09-02",
+            40.87
+          ],
+          [
+            "2026-09-03",
+            41.07
+          ],
+          [
+            "2026-09-04",
+            41.69
+          ],
+          [
+            "2026-09-07",
+            41.07
+          ],
+          [
+            "2026-09-08",
+            40.9
+          ],
+          [
+            "2026-09-09",
+            41
+          ],
+          [
+            "2026-09-10",
+            41.57
+          ],
+          [
+            "2026-09-11",
+            41.35
+          ],
+          [
+            "2026-09-14",
+            41.83
+          ],
+          [
+            "2026-09-15",
+            41.1
+          ],
+          [
+            "2026-09-16",
+            40.92
+          ],
+          [
+            "2026-09-17",
+            40.6
+          ],
+          [
+            "2026-09-18",
+            40.59
+          ],
+          [
+            "2026-09-21",
+            41.04
+          ],
+          [
+            "2026-09-22",
+            40.82
+          ],
+          [
+            "2026-09-23",
+            40.6
+          ],
+          [
+            "2026-09-24",
+            40.69
+          ],
+          [
+            "2026-09-28",
+            40.64
+          ],
+          [
+            "2026-09-29",
+            40.51
+          ],
+          [
+            "2026-09-30",
+            41.26
+          ],
+          [
+            "2026-10-08",
+            41.71
+          ],
+          [
+            "2026-10-09",
+            41.42
+          ],
+          [
+            "2026-10-12",
+            42.76
+          ],
+          [
+            "2026-10-13",
+            42.8
+          ],
+          [
+            "2026-10-14",
+            42.67
+          ],
+          [
+            "2026-10-15",
+            42.66
+          ],
+          [
+            "2026-10-16",
+            42.45
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:07.993Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN000R",
+        "ivDcf": 39.07,
+        "medps": 39.12,
+        "gfScore": 75,
+        "valuationRank": 5,
+        "dimensions": {
+          "financialStrength": 1,
+          "profitability": 7,
+          "growth": 9,
+          "gfValue": 6,
+          "momentum": 7
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.998Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:08.998Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600036.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600036/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "grid",
+      "secId": "1.600406",
+      "code": "600406",
+      "name": "国电南瑞",
+      "quote": {
+        "secId": "1.600406",
+        "code": "600406",
+        "name": "国电南瑞",
+        "price": 22.73,
+        "change": 0.24,
+        "changePct": 1.07,
+        "amount": 1039010000,
+        "volume": 461959,
+        "turnoverRate": 0.58,
+        "marketCap": 182562000000,
+        "floatCap": 182026000000,
+        "pe": 21.73,
+        "pb": 3.59,
+        "high": 22.75,
+        "low": 22.22,
+        "open": 22.49,
+        "prevClose": 22.49,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:58.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.329Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600406",
+        "code": "600406",
+        "name": "国电南瑞",
+        "price": 22.73,
+        "change": 0.24,
+        "changePct": 1.07,
+        "open": 22.49,
+        "high": 22.75,
+        "low": 22.22,
+        "prevClose": 22.49,
+        "volume": 461959,
+        "amount": 1039010000,
+        "turnoverRate": 0.58,
+        "marketCap": 182562000000,
+        "floatCap": 182026000000,
+        "pb": 3.59,
+        "averagePrice": 22.49,
+        "amplitude": 2.36,
+        "mainNetInflow": null,
+        "volumeRatio": 1.12,
+        "totalShares": 8031756156,
+        "floatShares": 8008176162,
+        "peDynamic": 29.707206020764165,
+        "peTtm": 21.734944677643696,
+        "peStatic": 22.051289230251136,
+        "psTtm": 2.6172658255779915,
+        "roe": 5.73,
+        "totalRevenue": 27767190529.75,
+        "revenueYoy": 14.535955907094,
+        "netProfit": 3072688826.28,
+        "netProfitYoy": 4.08163089096,
+        "grossMargin": 25.3392957491,
+        "netMargin": 11.6985487453,
+        "debtRatio": 40.4219260336,
+        "dividendYield": 2.7628684557853056,
+        "eps": 0.38,
+        "bvps": 6.483508343909,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.511Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:58.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.329Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.511Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 22.73,
+        "ma20": 22.2554,
+        "ma60": 22.98146666666667,
+        "return20": 1.7548571940191549,
+        "return60": 3.5629670129396773,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            22.038
+          ],
+          [
+            "2026-07-20",
+            23.408
+          ],
+          [
+            "2026-07-21",
+            23.648
+          ],
+          [
+            "2026-07-22",
+            23.598
+          ],
+          [
+            "2026-07-23",
+            24.218
+          ],
+          [
+            "2026-07-24",
+            23.428
+          ],
+          [
+            "2026-07-27",
+            23.748
+          ],
+          [
+            "2026-07-28",
+            23.408
+          ],
+          [
+            "2026-07-29",
+            23.778
+          ],
+          [
+            "2026-07-30",
+            24.168
+          ],
+          [
+            "2026-07-31",
+            24.198
+          ],
+          [
+            "2026-08-03",
+            24.918
+          ],
+          [
+            "2026-08-04",
+            24.818
+          ],
+          [
+            "2026-08-05",
+            24.388
+          ],
+          [
+            "2026-08-06",
+            24.018
+          ],
+          [
+            "2026-08-07",
+            23.968
+          ],
+          [
+            "2026-08-10",
+            23.988
+          ],
+          [
+            "2026-08-11",
+            23.838
+          ],
+          [
+            "2026-08-12",
+            23.908
+          ],
+          [
+            "2026-08-13",
+            23.538
+          ],
+          [
+            "2026-08-14",
+            23.078
+          ],
+          [
+            "2026-08-17",
+            23.398
+          ],
+          [
+            "2026-08-18",
+            23.388
+          ],
+          [
+            "2026-08-19",
+            23.358
+          ],
+          [
+            "2026-08-20",
+            22.918
+          ],
+          [
+            "2026-08-21",
+            23.018
+          ],
+          [
+            "2026-08-24",
+            23.118
+          ],
+          [
+            "2026-08-25",
+            22.998
+          ],
+          [
+            "2026-08-26",
+            23.268
+          ],
+          [
+            "2026-08-27",
+            22.908
+          ],
+          [
+            "2026-08-28",
+            22.858
+          ],
+          [
+            "2026-08-31",
+            22.818
+          ],
+          [
+            "2026-09-01",
+            22.768
+          ],
+          [
+            "2026-09-02",
+            22.438
+          ],
+          [
+            "2026-09-03",
+            22.438
+          ],
+          [
+            "2026-09-04",
+            22.558
+          ],
+          [
+            "2026-09-07",
+            22.538
+          ],
+          [
+            "2026-09-08",
+            22.258
+          ],
+          [
+            "2026-09-09",
+            22.298
+          ],
+          [
+            "2026-09-10",
+            22.338
+          ],
+          [
+            "2026-09-11",
+            22.138
+          ],
+          [
+            "2026-09-14",
+            22.058
+          ],
+          [
+            "2026-09-15",
+            21.838
+          ],
+          [
+            "2026-09-16",
+            21.868
+          ],
+          [
+            "2026-09-17",
+            21.798
+          ],
+          [
+            "2026-09-18",
+            21.898
+          ],
+          [
+            "2026-09-21",
+            21.948
+          ],
+          [
+            "2026-09-22",
+            22.078
+          ],
+          [
+            "2026-09-23",
+            22.228
+          ],
+          [
+            "2026-09-24",
+            22.118
+          ],
+          [
+            "2026-09-28",
+            22.488
+          ],
+          [
+            "2026-09-29",
+            22.21
+          ],
+          [
+            "2026-09-30",
+            22.52
+          ],
+          [
+            "2026-10-08",
+            22.86
+          ],
+          [
+            "2026-10-09",
+            22.4
+          ],
+          [
+            "2026-10-12",
+            22.8
+          ],
+          [
+            "2026-10-13",
+            22.46
+          ],
+          [
+            "2026-10-14",
+            22.18
+          ],
+          [
+            "2026-10-15",
+            22.49
+          ],
+          [
+            "2026-10-16",
+            22.73
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:08.403Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN009L",
+        "ivDcf": 30.29,
+        "medps": 28.93,
+        "gfScore": 90,
+        "valuationRank": 4,
+        "dimensions": {
+          "financialStrength": 9,
+          "profitability": 10,
+          "growth": 10,
+          "gfValue": 8,
+          "momentum": 2
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.612Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:08.612Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600406.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600406/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "grid",
+      "secId": "0.000400",
+      "code": "000400",
+      "name": "许继电气",
+      "quote": {
+        "secId": "0.000400",
+        "code": "000400",
+        "name": "许继电气",
+        "price": 22.21,
+        "change": 0.33,
+        "changePct": 1.51,
+        "amount": 460520000,
+        "volume": 208288,
+        "turnoverRate": 2.05,
+        "marketCap": 22622000000,
+        "floatCap": 22545000000,
+        "pe": 23.83,
+        "pb": 1.86,
+        "high": 22.35,
+        "low": 21.65,
+        "open": 21.88,
+        "prevClose": 21.88,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:15:00.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.420Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.000400",
+        "code": "000400",
+        "name": "许继电气",
+        "price": 22.21,
+        "change": 0.33,
+        "changePct": 1.51,
+        "open": 21.88,
+        "high": 22.35,
+        "low": 21.65,
+        "prevClose": 21.88,
+        "volume": 208288,
+        "amount": 460520000,
+        "turnoverRate": 2.05,
+        "marketCap": 22622000000,
+        "floatCap": 22545000000,
+        "pb": 1.86,
+        "averagePrice": 22.11,
+        "amplitude": 3.2,
+        "mainNetInflow": null,
+        "volumeRatio": 1.44,
+        "totalShares": 1018558239,
+        "floatShares": 1015065609,
+        "peDynamic": 27.197911372841947,
+        "peTtm": 23.833400375333728,
+        "peStatic": 19.381259423257465,
+        "psTtm": 1.501136335822872,
+        "roe": 3.4,
+        "totalRevenue": 6525206200.08,
+        "revenueYoy": 1.209998140526,
+        "netProfit": 415877522.54,
+        "netProfitYoy": -34.395419706931,
+        "grossMargin": 19.8958216746,
+        "netMargin": 7.364579265,
+        "debtRatio": 48.4169945601,
+        "dividendYield": 2.8050427735254386,
+        "eps": 0.4096,
+        "bvps": 12.136703481557,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.489Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:15:00.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.420Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.489Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 22.21,
+        "ma20": 20.8585,
+        "ma60": 21.628666666666668,
+        "return20": 5.782053724518965,
+        "return60": 12.251086626907902,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            20.656
+          ],
+          [
+            "2026-07-20",
+            21.796
+          ],
+          [
+            "2026-07-21",
+            21.726
+          ],
+          [
+            "2026-07-22",
+            21.556
+          ],
+          [
+            "2026-07-23",
+            22.916
+          ],
+          [
+            "2026-07-24",
+            22.026
+          ],
+          [
+            "2026-07-27",
+            22.136
+          ],
+          [
+            "2026-07-28",
+            21.616
+          ],
+          [
+            "2026-07-29",
+            22.466
+          ],
+          [
+            "2026-07-30",
+            22.796
+          ],
+          [
+            "2026-07-31",
+            22.636
+          ],
+          [
+            "2026-08-03",
+            23.476
+          ],
+          [
+            "2026-08-04",
+            23.666
+          ],
+          [
+            "2026-08-05",
+            23.316
+          ],
+          [
+            "2026-08-06",
+            22.696
+          ],
+          [
+            "2026-08-07",
+            22.596
+          ],
+          [
+            "2026-08-10",
+            22.686
+          ],
+          [
+            "2026-08-11",
+            22.306
+          ],
+          [
+            "2026-08-12",
+            22.466
+          ],
+          [
+            "2026-08-13",
+            22.066
+          ],
+          [
+            "2026-08-14",
+            21.866
+          ],
+          [
+            "2026-08-17",
+            22.136
+          ],
+          [
+            "2026-08-18",
+            22.036
+          ],
+          [
+            "2026-08-19",
+            22.166
+          ],
+          [
+            "2026-08-20",
+            21.696
+          ],
+          [
+            "2026-08-21",
+            21.506
+          ],
+          [
+            "2026-08-24",
+            21.706
+          ],
+          [
+            "2026-08-25",
+            22.106
+          ],
+          [
+            "2026-08-26",
+            22.286
+          ],
+          [
+            "2026-08-27",
+            21.876
+          ],
+          [
+            "2026-08-28",
+            21.686
+          ],
+          [
+            "2026-08-31",
+            21.416
+          ],
+          [
+            "2026-09-01",
+            21.326
+          ],
+          [
+            "2026-09-02",
+            20.896
+          ],
+          [
+            "2026-09-03",
+            20.856
+          ],
+          [
+            "2026-09-04",
+            21.756
+          ],
+          [
+            "2026-09-07",
+            21.776
+          ],
+          [
+            "2026-09-08",
+            21.426
+          ],
+          [
+            "2026-09-09",
+            21.436
+          ],
+          [
+            "2026-09-10",
+            20.996
+          ],
+          [
+            "2026-09-11",
+            20.476
+          ],
+          [
+            "2026-09-14",
+            20.436
+          ],
+          [
+            "2026-09-15",
+            20.246
+          ],
+          [
+            "2026-09-16",
+            20.196
+          ],
+          [
+            "2026-09-17",
+            20.146
+          ],
+          [
+            "2026-09-18",
+            20.206
+          ],
+          [
+            "2026-09-21",
+            20.216
+          ],
+          [
+            "2026-09-22",
+            20.256
+          ],
+          [
+            "2026-09-23",
+            20.136
+          ],
+          [
+            "2026-09-24",
+            20.026
+          ],
+          [
+            "2026-09-28",
+            20.59
+          ],
+          [
+            "2026-09-29",
+            21.03
+          ],
+          [
+            "2026-09-30",
+            21.61
+          ],
+          [
+            "2026-10-08",
+            21.74
+          ],
+          [
+            "2026-10-09",
+            21.49
+          ],
+          [
+            "2026-10-12",
+            21.61
+          ],
+          [
+            "2026-10-13",
+            21.4
+          ],
+          [
+            "2026-10-14",
+            21.27
+          ],
+          [
+            "2026-10-15",
+            21.88
+          ],
+          [
+            "2026-10-16",
+            22.21
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:08.487Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN00Z9",
+        "ivDcf": 24.52,
+        "medps": 22.91,
+        "gfScore": 81,
+        "valuationRank": 5,
+        "dimensions": {
+          "financialStrength": 8,
+          "profitability": 7,
+          "growth": 9,
+          "gfValue": 9,
+          "momentum": 2
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.732Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:08.732Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz000400.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:000400/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "grid",
+      "secId": "1.600312",
+      "code": "600312",
+      "name": "平高电气",
+      "quote": {
+        "secId": "1.600312",
+        "code": "600312",
+        "name": "平高电气",
+        "price": 20.74,
+        "change": 0.51,
+        "changePct": 2.52,
+        "amount": 408820000,
+        "volume": 197864,
+        "turnoverRate": 1.46,
+        "marketCap": 28143000000,
+        "floatCap": 28143000000,
+        "pe": 22.13,
+        "pb": 2.44,
+        "high": 21,
+        "low": 20.12,
+        "open": 20.2,
+        "prevClose": 20.23,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:55.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.669Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600312",
+        "code": "600312",
+        "name": "平高电气",
+        "price": 20.74,
+        "change": 0.51,
+        "changePct": 2.52,
+        "open": 20.2,
+        "high": 21,
+        "low": 20.12,
+        "prevClose": 20.23,
+        "volume": 197864,
+        "amount": 408820000,
+        "turnoverRate": 1.46,
+        "marketCap": 28143000000,
+        "floatCap": 28143000000,
+        "pb": 2.44,
+        "averagePrice": 20.66,
+        "amplitude": 4.35,
+        "mainNetInflow": null,
+        "volumeRatio": 1.29,
+        "totalShares": 1356921309,
+        "floatShares": 1356921309,
+        "peDynamic": 17.226491021136116,
+        "peTtm": 22.12692790096286,
+        "peStatic": 25.13142515172448,
+        "psTtm": 2.3076059393756823,
+        "roe": 7.01,
+        "totalRevenue": 5374387439.86,
+        "revenueYoy": -5.639044904453,
+        "netProfit": 816852368.99,
+        "netProfitYoy": 22.872593776289,
+        "grossMargin": 29.7540277297,
+        "netMargin": 16.0230155854,
+        "debtRatio": 42.8521775668,
+        "dividendYield": 2.7627772420443586,
+        "eps": 0.602,
+        "bvps": 8.744982084035,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.739Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:55.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.669Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.739Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 20.74,
+        "ma20": 19.5482,
+        "ma60": 19.517066666666665,
+        "return20": 8.825689998950569,
+        "return60": 21.300736928295706,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            17.908
+          ],
+          [
+            "2026-07-20",
+            18.278
+          ],
+          [
+            "2026-07-21",
+            18.358
+          ],
+          [
+            "2026-07-22",
+            18.638
+          ],
+          [
+            "2026-07-23",
+            19.808
+          ],
+          [
+            "2026-07-24",
+            18.388
+          ],
+          [
+            "2026-07-27",
+            18.858
+          ],
+          [
+            "2026-07-28",
+            18.668
+          ],
+          [
+            "2026-07-29",
+            19.518
+          ],
+          [
+            "2026-07-30",
+            19.318
+          ],
+          [
+            "2026-07-31",
+            19.478
+          ],
+          [
+            "2026-08-03",
+            20.548
+          ],
+          [
+            "2026-08-04",
+            20.878
+          ],
+          [
+            "2026-08-05",
+            20.698
+          ],
+          [
+            "2026-08-06",
+            20.218
+          ],
+          [
+            "2026-08-07",
+            20.228
+          ],
+          [
+            "2026-08-10",
+            20.048
+          ],
+          [
+            "2026-08-11",
+            19.548
+          ],
+          [
+            "2026-08-12",
+            19.628
+          ],
+          [
+            "2026-08-13",
+            19.308
+          ],
+          [
+            "2026-08-14",
+            19.288
+          ],
+          [
+            "2026-08-17",
+            19.828
+          ],
+          [
+            "2026-08-18",
+            19.818
+          ],
+          [
+            "2026-08-19",
+            19.348
+          ],
+          [
+            "2026-08-20",
+            19.048
+          ],
+          [
+            "2026-08-21",
+            19.488
+          ],
+          [
+            "2026-08-24",
+            19.938
+          ],
+          [
+            "2026-08-25",
+            19.818
+          ],
+          [
+            "2026-08-26",
+            20.188
+          ],
+          [
+            "2026-08-27",
+            19.768
+          ],
+          [
+            "2026-08-28",
+            19.528
+          ],
+          [
+            "2026-08-31",
+            19.628
+          ],
+          [
+            "2026-09-01",
+            19.558
+          ],
+          [
+            "2026-09-02",
+            19.048
+          ],
+          [
+            "2026-09-03",
+            19.338
+          ],
+          [
+            "2026-09-04",
+            20.138
+          ],
+          [
+            "2026-09-07",
+            20.048
+          ],
+          [
+            "2026-09-08",
+            19.378
+          ],
+          [
+            "2026-09-09",
+            19.488
+          ],
+          [
+            "2026-09-10",
+            19.058
+          ],
+          [
+            "2026-09-11",
+            18.918
+          ],
+          [
+            "2026-09-14",
+            18.938
+          ],
+          [
+            "2026-09-15",
+            19.008
+          ],
+          [
+            "2026-09-16",
+            18.828
+          ],
+          [
+            "2026-09-17",
+            18.948
+          ],
+          [
+            "2026-09-18",
+            19.248
+          ],
+          [
+            "2026-09-21",
+            19.248
+          ],
+          [
+            "2026-09-22",
+            19.058
+          ],
+          [
+            "2026-09-23",
+            18.688
+          ],
+          [
+            "2026-09-24",
+            18.698
+          ],
+          [
+            "2026-09-28",
+            19.408
+          ],
+          [
+            "2026-09-29",
+            19.708
+          ],
+          [
+            "2026-09-30",
+            20.048
+          ],
+          [
+            "2026-10-08",
+            20.288
+          ],
+          [
+            "2026-10-09",
+            20.338
+          ],
+          [
+            "2026-10-12",
+            20.358
+          ],
+          [
+            "2026-10-13",
+            20.378
+          ],
+          [
+            "2026-10-14",
+            19.888
+          ],
+          [
+            "2026-10-15",
+            20.23
+          ],
+          [
+            "2026-10-16",
+            20.74
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:08.760Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN007E",
+        "ivDcf": 17.89,
+        "medps": 16.86,
+        "gfScore": 85,
+        "valuationRank": 6,
+        "dimensions": {
+          "financialStrength": 8,
+          "profitability": 6,
+          "growth": 9,
+          "gfValue": 5,
+          "momentum": 9
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.327Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:09.327Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600312.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600312/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "grid",
+      "secId": "0.002028",
+      "code": "002028",
+      "name": "思源电气",
+      "quote": {
+        "secId": "0.002028",
+        "code": "002028",
+        "name": "思源电气",
+        "price": 118.03,
+        "change": 1.45,
+        "changePct": 1.24,
+        "amount": 748780000,
+        "volume": 63418,
+        "turnoverRate": 1.04,
+        "marketCap": 92367000000,
+        "floatCap": 72090000000,
+        "pe": 27.81,
+        "pb": 5.61,
+        "high": 120.08,
+        "low": 116.65,
+        "open": 118.03,
+        "prevClose": 116.58,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:51.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.850Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.002028",
+        "code": "002028",
+        "name": "思源电气",
+        "price": 118.03,
+        "change": 1.45,
+        "changePct": 1.24,
+        "open": 118.03,
+        "high": 120.08,
+        "low": 116.65,
+        "prevClose": 116.58,
+        "volume": 63418,
+        "amount": 748780000,
+        "turnoverRate": 1.04,
+        "marketCap": 92367000000,
+        "floatCap": 72090000000,
+        "pb": 5.61,
+        "averagePrice": 118.07,
+        "amplitude": 2.94,
+        "mainNetInflow": null,
+        "volumeRatio": 0.62,
+        "totalShares": 782573282,
+        "floatShares": 610775161,
+        "peDynamic": 31.55222708856058,
+        "peTtm": 27.811662239414478,
+        "peStatic": 29.321529156466678,
+        "psTtm": 3.874883807532919,
+        "roe": 9.01,
+        "totalRevenue": 10795207710.32,
+        "revenueYoy": 27.049090285131,
+        "netProfit": 1463716011.88,
+        "netProfitYoy": 13.229544180282,
+        "grossMargin": 30.4579609268,
+        "netMargin": 14.3046887592,
+        "debtRatio": 49.2391948762,
+        "dividendYield": 0.5929769550114378,
+        "eps": 1.87,
+        "bvps": 21.025062066469,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.928Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:51.000Z",
+          "fetchedAt": "2026-10-18T03:17:08.850Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:08.928Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 118.03,
+        "ma20": 126.28549999999998,
+        "ma60": 147.6955,
+        "return20": -12.738429690965535,
+        "return60": -22.040951122853368,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            147.05
+          ],
+          [
+            "2026-07-20",
+            151.5
+          ],
+          [
+            "2026-07-21",
+            155.89
+          ],
+          [
+            "2026-07-22",
+            154.27
+          ],
+          [
+            "2026-07-23",
+            164.6
+          ],
+          [
+            "2026-07-24",
+            162.68
+          ],
+          [
+            "2026-07-27",
+            168.3
+          ],
+          [
+            "2026-07-28",
+            161.28
+          ],
+          [
+            "2026-07-29",
+            165.66
+          ],
+          [
+            "2026-07-30",
+            154.1
+          ],
+          [
+            "2026-07-31",
+            156.51
+          ],
+          [
+            "2026-08-03",
+            157.11
+          ],
+          [
+            "2026-08-04",
+            155.5
+          ],
+          [
+            "2026-08-05",
+            160.95
+          ],
+          [
+            "2026-08-06",
+            160.56
+          ],
+          [
+            "2026-08-07",
+            161.4
+          ],
+          [
+            "2026-08-10",
+            165.42
+          ],
+          [
+            "2026-08-11",
+            162.92
+          ],
+          [
+            "2026-08-12",
+            165.89
+          ],
+          [
+            "2026-08-13",
+            167.58
+          ],
+          [
+            "2026-08-14",
+            166.5
+          ],
+          [
+            "2026-08-17",
+            183.15
+          ],
+          [
+            "2026-08-18",
+            182.44
+          ],
+          [
+            "2026-08-19",
+            171
+          ],
+          [
+            "2026-08-20",
+            173.63
+          ],
+          [
+            "2026-08-21",
+            176.69
+          ],
+          [
+            "2026-08-24",
+            175.2
+          ],
+          [
+            "2026-08-25",
+            169.6
+          ],
+          [
+            "2026-08-26",
+            170.49
+          ],
+          [
+            "2026-08-27",
+            153.44
+          ],
+          [
+            "2026-08-28",
+            143.18
+          ],
+          [
+            "2026-08-31",
+            140.12
+          ],
+          [
+            "2026-09-01",
+            140.3
+          ],
+          [
+            "2026-09-02",
+            141.64
+          ],
+          [
+            "2026-09-03",
+            143.98
+          ],
+          [
+            "2026-09-04",
+            147.2
+          ],
+          [
+            "2026-09-07",
+            145
+          ],
+          [
+            "2026-09-08",
+            139.45
+          ],
+          [
+            "2026-09-09",
+            138.58
+          ],
+          [
+            "2026-09-10",
+            135.26
+          ],
+          [
+            "2026-09-11",
+            134.67
+          ],
+          [
+            "2026-09-14",
+            133.8
+          ],
+          [
+            "2026-09-15",
+            138.67
+          ],
+          [
+            "2026-09-16",
+            135.08
+          ],
+          [
+            "2026-09-17",
+            134.42
+          ],
+          [
+            "2026-09-18",
+            138
+          ],
+          [
+            "2026-09-21",
+            138.89
+          ],
+          [
+            "2026-09-22",
+            128.4
+          ],
+          [
+            "2026-09-23",
+            128.56
+          ],
+          [
+            "2026-09-24",
+            125.22
+          ],
+          [
+            "2026-09-28",
+            121.07
+          ],
+          [
+            "2026-09-29",
+            120.81
+          ],
+          [
+            "2026-09-30",
+            120.46
+          ],
+          [
+            "2026-10-08",
+            117.11
+          ],
+          [
+            "2026-10-09",
+            120.09
+          ],
+          [
+            "2026-10-12",
+            120.65
+          ],
+          [
+            "2026-10-13",
+            118.7
+          ],
+          [
+            "2026-10-14",
+            116.5
+          ],
+          [
+            "2026-10-15",
+            116.58
+          ],
+          [
+            "2026-10-16",
+            118.03
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:08.868Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN01B0",
+        "ivDcf": 132.05,
+        "medps": 119.28,
+        "gfScore": 96,
+        "valuationRank": 4,
+        "dimensions": {
+          "financialStrength": 8,
+          "profitability": 9,
+          "growth": 10,
+          "gfValue": 9,
+          "momentum": 7
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.441Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:09.441Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz002028.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:002028/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "tech",
+      "secId": "1.688012",
+      "code": "688012",
+      "name": "中微公司",
+      "quote": {
+        "secId": "1.688012",
+        "code": "688012",
+        "name": "中微公司",
+        "price": 295.22,
+        "change": -2.45,
+        "changePct": -0.82,
+        "amount": 4211340000,
+        "volume": 14186163,
+        "turnoverRate": 1.51,
+        "marketCap": 282774000000,
+        "floatCap": 278155000000,
+        "pe": 66.84,
+        "pb": 9.41,
+        "high": 304.68,
+        "low": 290.35,
+        "open": 301.46,
+        "prevClose": 297.67,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:15:00.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.057Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.688012",
+        "code": "688012",
+        "name": "中微公司",
+        "price": 295.22,
+        "change": -2.45,
+        "changePct": -0.82,
+        "open": 301.46,
+        "high": 304.68,
+        "low": 290.35,
+        "prevClose": 297.67,
+        "volume": 14186163,
+        "amount": 4211340000,
+        "turnoverRate": 1.51,
+        "marketCap": 282774000000,
+        "floatCap": 278155000000,
+        "pb": 9.41,
+        "averagePrice": 296.86,
+        "amplitude": 4.81,
+        "mainNetInflow": null,
+        "volumeRatio": 0.91,
+        "totalShares": 957842348,
+        "floatShares": 942197038,
+        "peDynamic": 50.045047783036914,
+        "peTtm": 66.83777767110746,
+        "peStatic": 133.92262239755823,
+        "psTtm": 20.033120987829342,
+        "roe": 11.56,
+        "totalRevenue": 6691287327.67,
+        "revenueYoy": 34.888634732298,
+        "netProfit": 2825194624.91,
+        "netProfitYoy": 300.216524117415,
+        "grossMargin": 39.7417373409,
+        "netMargin": 41.8039989763,
+        "debtRatio": 19.7333412944,
+        "dividendYield": 0.1185556534110155,
+        "eps": 4.33,
+        "bvps": 31.359810291923,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.125Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:15:00.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.057Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.125Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 295.22,
+        "ma20": 326.9375,
+        "ma60": 350.2134999999999,
+        "return20": -11.661031149944634,
+        "return60": -18.316639920314316,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            350.69
+          ],
+          [
+            "2026-07-20",
+            342.5
+          ],
+          [
+            "2026-07-21",
+            407.89
+          ],
+          [
+            "2026-07-22",
+            392.99
+          ],
+          [
+            "2026-07-23",
+            375.2
+          ],
+          [
+            "2026-07-24",
+            388.5
+          ],
+          [
+            "2026-07-27",
+            399.77
+          ],
+          [
+            "2026-07-28",
+            383
+          ],
+          [
+            "2026-07-29",
+            360
+          ],
+          [
+            "2026-07-30",
+            346.5
+          ],
+          [
+            "2026-07-31",
+            344
+          ],
+          [
+            "2026-08-03",
+            309.85
+          ],
+          [
+            "2026-08-04",
+            317.74
+          ],
+          [
+            "2026-08-05",
+            358
+          ],
+          [
+            "2026-08-06",
+            361.59
+          ],
+          [
+            "2026-08-07",
+            367.65
+          ],
+          [
+            "2026-08-10",
+            389.99
+          ],
+          [
+            "2026-08-11",
+            363.1
+          ],
+          [
+            "2026-08-12",
+            380.95
+          ],
+          [
+            "2026-08-13",
+            370.42
+          ],
+          [
+            "2026-08-14",
+            374.85
+          ],
+          [
+            "2026-08-17",
+            387.82
+          ],
+          [
+            "2026-08-18",
+            398.33
+          ],
+          [
+            "2026-08-19",
+            372
+          ],
+          [
+            "2026-08-20",
+            365.5
+          ],
+          [
+            "2026-08-21",
+            362.5
+          ],
+          [
+            "2026-08-24",
+            357.65
+          ],
+          [
+            "2026-08-25",
+            354
+          ],
+          [
+            "2026-08-26",
+            368.05
+          ],
+          [
+            "2026-08-27",
+            376.01
+          ],
+          [
+            "2026-08-28",
+            367
+          ],
+          [
+            "2026-08-31",
+            362
+          ],
+          [
+            "2026-09-01",
+            350.52
+          ],
+          [
+            "2026-09-02",
+            343.88
+          ],
+          [
+            "2026-09-03",
+            341
+          ],
+          [
+            "2026-09-04",
+            335.42
+          ],
+          [
+            "2026-09-07",
+            344
+          ],
+          [
+            "2026-09-08",
+            336.01
+          ],
+          [
+            "2026-09-09",
+            333
+          ],
+          [
+            "2026-09-10",
+            334.19
+          ],
+          [
+            "2026-09-11",
+            333.59
+          ],
+          [
+            "2026-09-14",
+            324.64
+          ],
+          [
+            "2026-09-15",
+            330.6
+          ],
+          [
+            "2026-09-16",
+            352.6
+          ],
+          [
+            "2026-09-17",
+            351.23
+          ],
+          [
+            "2026-09-18",
+            354.92
+          ],
+          [
+            "2026-09-21",
+            353.55
+          ],
+          [
+            "2026-09-22",
+            350.06
+          ],
+          [
+            "2026-09-23",
+            349.35
+          ],
+          [
+            "2026-09-24",
+            339.3
+          ],
+          [
+            "2026-09-28",
+            324.5
+          ],
+          [
+            "2026-09-29",
+            324.78
+          ],
+          [
+            "2026-09-30",
+            318.55
+          ],
+          [
+            "2026-10-08",
+            313.24
+          ],
+          [
+            "2026-10-09",
+            311
+          ],
+          [
+            "2026-10-12",
+            311.21
+          ],
+          [
+            "2026-10-13",
+            307.69
+          ],
+          [
+            "2026-10-14",
+            295.05
+          ],
+          [
+            "2026-10-15",
+            297.67
+          ],
+          [
+            "2026-10-16",
+            295.22
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:09.130Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN02X4",
+        "ivDcf": 249.12,
+        "medps": 224.04,
+        "gfScore": 86,
+        "valuationRank": 6,
+        "dimensions": {
+          "financialStrength": 10,
+          "profitability": 8,
+          "growth": 10,
+          "gfValue": 5,
+          "momentum": 3
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.671Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:09.671Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh688012.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:688012/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "tech",
+      "secId": "0.002371",
+      "code": "002371",
+      "name": "北方华创",
+      "quote": {
+        "secId": "0.002371",
+        "code": "002371",
+        "name": "北方华创",
+        "price": 593.63,
+        "change": -16.37,
+        "changePct": -2.68,
+        "amount": 5536740000,
+        "volume": 92215,
+        "turnoverRate": 1.27,
+        "marketCap": 432056000000.00006,
+        "floatCap": 431697999999.99994,
+        "pe": 76.01,
+        "pb": 10.66,
+        "high": 615,
+        "low": 588.49,
+        "open": 611.75,
+        "prevClose": 610,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:33.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.384Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.002371",
+        "code": "002371",
+        "name": "北方华创",
+        "price": 593.63,
+        "change": -16.37,
+        "changePct": -2.68,
+        "open": 611.75,
+        "high": 615,
+        "low": 588.49,
+        "prevClose": 610,
+        "volume": 92215,
+        "amount": 5536740000,
+        "turnoverRate": 1.27,
+        "marketCap": 432056000000.00006,
+        "floatCap": 431697999999.99994,
+        "pb": 10.66,
+        "averagePrice": 600.42,
+        "amplitude": 4.35,
+        "mainNetInflow": null,
+        "volumeRatio": 1.26,
+        "totalShares": 727820115,
+        "floatShares": 727216598,
+        "peDynamic": 64.10287078960428,
+        "peTtm": 76.0121969670828,
+        "peStatic": 78.24276481693119,
+        "psTtm": 9.961408435957637,
+        "roe": 8.58,
+        "totalRevenue": 20161416890.56,
+        "revenueYoy": 24.90387636855,
+        "netProfit": 3370020676.75,
+        "netProfitYoy": 5.051223129423,
+        "grossMargin": 40.0682862059,
+        "netMargin": 16.0134969639,
+        "debtRatio": 50.2588603079,
+        "dividendYield": 0.128362784899685,
+        "eps": 4.6486,
+        "bvps": 55.870840563688,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.449Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:33.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.384Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.449Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 593.63,
+        "ma20": 631.3219999999999,
+        "ma60": 682.7038333333333,
+        "return20": -7.047789051734932,
+        "return60": -15.528772269338042,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            677
+          ],
+          [
+            "2026-07-20",
+            676.91
+          ],
+          [
+            "2026-07-21",
+            744.6
+          ],
+          [
+            "2026-07-22",
+            764
+          ],
+          [
+            "2026-07-23",
+            740
+          ],
+          [
+            "2026-07-24",
+            757
+          ],
+          [
+            "2026-07-27",
+            770
+          ],
+          [
+            "2026-07-28",
+            715
+          ],
+          [
+            "2026-07-29",
+            706.39
+          ],
+          [
+            "2026-07-30",
+            668.07
+          ],
+          [
+            "2026-07-31",
+            687
+          ],
+          [
+            "2026-08-03",
+            641.3
+          ],
+          [
+            "2026-08-04",
+            687
+          ],
+          [
+            "2026-08-05",
+            734.2
+          ],
+          [
+            "2026-08-06",
+            742.5
+          ],
+          [
+            "2026-08-07",
+            751.99
+          ],
+          [
+            "2026-08-10",
+            760
+          ],
+          [
+            "2026-08-11",
+            746.1
+          ],
+          [
+            "2026-08-12",
+            760
+          ],
+          [
+            "2026-08-13",
+            738.6
+          ],
+          [
+            "2026-08-14",
+            738.66
+          ],
+          [
+            "2026-08-17",
+            765.97
+          ],
+          [
+            "2026-08-18",
+            777
+          ],
+          [
+            "2026-08-19",
+            712.95
+          ],
+          [
+            "2026-08-20",
+            712.55
+          ],
+          [
+            "2026-08-21",
+            714.43
+          ],
+          [
+            "2026-08-24",
+            707.9
+          ],
+          [
+            "2026-08-25",
+            700.4
+          ],
+          [
+            "2026-08-26",
+            700.7
+          ],
+          [
+            "2026-08-27",
+            718
+          ],
+          [
+            "2026-08-28",
+            697.51
+          ],
+          [
+            "2026-08-31",
+            699.79
+          ],
+          [
+            "2026-09-01",
+            667.7
+          ],
+          [
+            "2026-09-02",
+            667
+          ],
+          [
+            "2026-09-03",
+            655.84
+          ],
+          [
+            "2026-09-04",
+            638.17
+          ],
+          [
+            "2026-09-07",
+            660.65
+          ],
+          [
+            "2026-09-08",
+            647.87
+          ],
+          [
+            "2026-09-09",
+            646.4
+          ],
+          [
+            "2026-09-10",
+            638.64
+          ],
+          [
+            "2026-09-11",
+            634
+          ],
+          [
+            "2026-09-14",
+            626
+          ],
+          [
+            "2026-09-15",
+            638.16
+          ],
+          [
+            "2026-09-16",
+            662.89
+          ],
+          [
+            "2026-09-17",
+            665.5
+          ],
+          [
+            "2026-09-18",
+            686.51
+          ],
+          [
+            "2026-09-21",
+            676.61
+          ],
+          [
+            "2026-09-22",
+            672.92
+          ],
+          [
+            "2026-09-23",
+            668.15
+          ],
+          [
+            "2026-09-24",
+            653.06
+          ],
+          [
+            "2026-09-28",
+            633.93
+          ],
+          [
+            "2026-09-29",
+            628.96
+          ],
+          [
+            "2026-09-30",
+            615.97
+          ],
+          [
+            "2026-10-08",
+            600.32
+          ],
+          [
+            "2026-10-09",
+            594.04
+          ],
+          [
+            "2026-10-12",
+            587.98
+          ],
+          [
+            "2026-10-13",
+            591
+          ],
+          [
+            "2026-10-14",
+            586.81
+          ],
+          [
+            "2026-10-15",
+            610
+          ],
+          [
+            "2026-10-16",
+            593.63
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:09.458Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN01KI",
+        "ivDcf": 503.58,
+        "medps": 460.43,
+        "gfScore": 84,
+        "valuationRank": 6,
+        "dimensions": {
+          "financialStrength": 6,
+          "profitability": 8,
+          "growth": 10,
+          "gfValue": 5,
+          "momentum": 3
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.612Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:09.612Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz002371.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:002371/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "tech",
+      "secId": "1.688008",
+      "code": "688008",
+      "name": "澜起科技",
+      "quote": {
+        "secId": "1.688008",
+        "code": "688008",
+        "name": "澜起科技",
+        "price": 169.2,
+        "change": 6.2,
+        "changePct": 3.8,
+        "amount": 6073080000,
+        "volume": 35886794,
+        "turnoverRate": 3.13,
+        "marketCap": 206515000000,
+        "floatCap": 193694000000,
+        "pe": 67.18,
+        "pb": 9.7,
+        "high": 173.38,
+        "low": 165.66,
+        "open": 166.26,
+        "prevClose": 163,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:47.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.500Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.688008",
+        "code": "688008",
+        "name": "澜起科技",
+        "price": 169.2,
+        "change": 6.2,
+        "changePct": 3.8,
+        "open": 166.26,
+        "high": 173.38,
+        "low": 165.66,
+        "prevClose": 163,
+        "volume": 35886794,
+        "amount": 6073080000,
+        "turnoverRate": 3.13,
+        "marketCap": 206515000000,
+        "floatCap": 193694000000,
+        "pb": 9.7,
+        "averagePrice": 169.23,
+        "amplitude": 4.74,
+        "mainNetInflow": null,
+        "volumeRatio": 1.05,
+        "totalShares": 1220538021,
+        "floatShares": 1144764521,
+        "peDynamic": 51.69661426847169,
+        "peTtm": 67.18394856847186,
+        "peStatic": 92.3768894531054,
+        "psTtm": 33.53410209181241,
+        "roe": 10.72,
+        "totalRevenue": 3335497521.81,
+        "revenueYoy": 26.658539671105,
+        "netProfit": 1997374517.87,
+        "netProfitYoy": 72.325559587892,
+        "grossMargin": 65.3126948791,
+        "netMargin": 58.1951646634,
+        "debtRatio": 7.5088389812,
+        "dividendYield": 0.3486997635933807,
+        "eps": 1.69,
+        "bvps": 17.60446915084,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.568Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:47.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.500Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.568Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 169.2,
+        "ma20": 196.58749999999998,
+        "ma60": 202.47653333333335,
+        "return20": -13.377361388419606,
+        "return60": -19.713016740690136,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            183.214
+          ],
+          [
+            "2026-07-20",
+            189.554
+          ],
+          [
+            "2026-07-21",
+            219.214
+          ],
+          [
+            "2026-07-22",
+            222.614
+          ],
+          [
+            "2026-07-23",
+            225.114
+          ],
+          [
+            "2026-07-24",
+            233.274
+          ],
+          [
+            "2026-07-27",
+            227.064
+          ],
+          [
+            "2026-07-28",
+            205.654
+          ],
+          [
+            "2026-07-29",
+            207.5
+          ],
+          [
+            "2026-07-30",
+            196.78
+          ],
+          [
+            "2026-07-31",
+            204.9
+          ],
+          [
+            "2026-08-03",
+            189.94
+          ],
+          [
+            "2026-08-04",
+            203.25
+          ],
+          [
+            "2026-08-05",
+            212
+          ],
+          [
+            "2026-08-06",
+            208.36
+          ],
+          [
+            "2026-08-07",
+            215.52
+          ],
+          [
+            "2026-08-10",
+            206.92
+          ],
+          [
+            "2026-08-11",
+            206.7
+          ],
+          [
+            "2026-08-12",
+            215.43
+          ],
+          [
+            "2026-08-13",
+            210.22
+          ],
+          [
+            "2026-08-14",
+            211.91
+          ],
+          [
+            "2026-08-17",
+            224.37
+          ],
+          [
+            "2026-08-18",
+            218
+          ],
+          [
+            "2026-08-19",
+            200
+          ],
+          [
+            "2026-08-20",
+            199.11
+          ],
+          [
+            "2026-08-21",
+            200.55
+          ],
+          [
+            "2026-08-24",
+            191.83
+          ],
+          [
+            "2026-08-25",
+            194.42
+          ],
+          [
+            "2026-08-26",
+            201
+          ],
+          [
+            "2026-08-27",
+            221.22
+          ],
+          [
+            "2026-08-28",
+            213
+          ],
+          [
+            "2026-08-31",
+            204.95
+          ],
+          [
+            "2026-09-01",
+            198.35
+          ],
+          [
+            "2026-09-02",
+            193.1
+          ],
+          [
+            "2026-09-03",
+            190.01
+          ],
+          [
+            "2026-09-04",
+            187.7
+          ],
+          [
+            "2026-09-07",
+            197.82
+          ],
+          [
+            "2026-09-08",
+            195.65
+          ],
+          [
+            "2026-09-09",
+            195.3
+          ],
+          [
+            "2026-09-10",
+            195.33
+          ],
+          [
+            "2026-09-11",
+            191.96
+          ],
+          [
+            "2026-09-14",
+            184.65
+          ],
+          [
+            "2026-09-15",
+            187.83
+          ],
+          [
+            "2026-09-16",
+            199.89
+          ],
+          [
+            "2026-09-17",
+            194.33
+          ],
+          [
+            "2026-09-18",
+            202.53
+          ],
+          [
+            "2026-09-21",
+            210.1
+          ],
+          [
+            "2026-09-22",
+            221.83
+          ],
+          [
+            "2026-09-23",
+            223.37
+          ],
+          [
+            "2026-09-24",
+            214.5
+          ],
+          [
+            "2026-09-28",
+            208.6
+          ],
+          [
+            "2026-09-29",
+            212.6
+          ],
+          [
+            "2026-09-30",
+            202.31
+          ],
+          [
+            "2026-10-08",
+            197.01
+          ],
+          [
+            "2026-10-09",
+            197.6
+          ],
+          [
+            "2026-10-12",
+            191.84
+          ],
+          [
+            "2026-10-13",
+            184.8
+          ],
+          [
+            "2026-10-14",
+            173.8
+          ],
+          [
+            "2026-10-15",
+            163
+          ],
+          [
+            "2026-10-16",
+            169.2
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:09.581Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN02WY",
+        "ivDcf": 145.05,
+        "medps": 131.68,
+        "gfScore": 93,
+        "valuationRank": 6,
+        "dimensions": {
+          "financialStrength": 10,
+          "profitability": 9,
+          "growth": 10,
+          "gfValue": 5,
+          "momentum": 6
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.034Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:10.034Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh688008.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:688008/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "tech",
+      "secId": "0.300308",
+      "code": "300308",
+      "name": "中际旭创",
+      "quote": {
+        "secId": "0.300308",
+        "code": "300308",
+        "name": "中际旭创",
+        "price": 670,
+        "change": 13.06,
+        "changePct": 1.99,
+        "amount": 16364600000,
+        "volume": 244228,
+        "turnoverRate": 2.2,
+        "marketCap": 789199000000,
+        "floatCap": 743658000000,
+        "pe": 38.59,
+        "pb": 20.52,
+        "high": 679.9,
+        "low": 660.01,
+        "open": 676,
+        "prevClose": 656.94,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:18.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.673Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.300308",
+        "code": "300308",
+        "name": "中际旭创",
+        "price": 670,
+        "change": 13.06,
+        "changePct": 1.99,
+        "open": 676,
+        "high": 679.9,
+        "low": 660.01,
+        "prevClose": 656.94,
+        "volume": 244228,
+        "amount": 16364600000,
+        "turnoverRate": 2.2,
+        "marketCap": 789199000000,
+        "floatCap": 743658000000,
+        "pb": 20.52,
+        "averagePrice": 670.06,
+        "amplitude": 3.03,
+        "mainNetInflow": null,
+        "volumeRatio": 0.91,
+        "totalShares": 1177909641,
+        "floatShares": 1109937003,
+        "peDynamic": 28.905953627813272,
+        "peTtm": 38.585433134305816,
+        "peStatic": 73.09256390924388,
+        "psTtm": 12.098949183245356,
+        "roe": 37.62,
+        "totalRevenue": 41777861795.03,
+        "revenueYoy": 182.491381328657,
+        "netProfit": 13651149693.27,
+        "netProfitYoy": 241.696005716117,
+        "grossMargin": 46.2521843492,
+        "netMargin": 35.26611016,
+        "debtRatio": 36.0816002584,
+        "dividendYield": 0.3283582089552239,
+        "eps": 12.31,
+        "bvps": 35.740605779103,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.904Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:18.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.673Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.904Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 670,
+        "ma20": 826.823,
+        "ma60": 892.6353333333329,
+        "return20": -24.62645094081939,
+        "return60": -39.73768804989359,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            978.266
+          ],
+          [
+            "2026-07-20",
+            1002.806
+          ],
+          [
+            "2026-07-21",
+            1135.356
+          ],
+          [
+            "2026-07-22",
+            1059.606
+          ],
+          [
+            "2026-07-23",
+            1071.326
+          ],
+          [
+            "2026-07-24",
+            1045.316
+          ],
+          [
+            "2026-07-27",
+            1075.746
+          ],
+          [
+            "2026-07-28",
+            906.806
+          ],
+          [
+            "2026-07-29",
+            949.806
+          ],
+          [
+            "2026-07-30",
+            862.806
+          ],
+          [
+            "2026-07-31",
+            900.816
+          ],
+          [
+            "2026-08-03",
+            901.306
+          ],
+          [
+            "2026-08-04",
+            1020.796
+          ],
+          [
+            "2026-08-05",
+            946.546
+          ],
+          [
+            "2026-08-06",
+            953.806
+          ],
+          [
+            "2026-08-07",
+            918.676
+          ],
+          [
+            "2026-08-10",
+            863.386
+          ],
+          [
+            "2026-08-11",
+            885.766
+          ],
+          [
+            "2026-08-12",
+            919.806
+          ],
+          [
+            "2026-08-13",
+            919.846
+          ],
+          [
+            "2026-08-14",
+            941.806
+          ],
+          [
+            "2026-08-17",
+            999.836
+          ],
+          [
+            "2026-08-18",
+            986.906
+          ],
+          [
+            "2026-08-19",
+            894.406
+          ],
+          [
+            "2026-08-20",
+            903.006
+          ],
+          [
+            "2026-08-21",
+            941.806
+          ],
+          [
+            "2026-08-24",
+            869.026
+          ],
+          [
+            "2026-08-25",
+            844.806
+          ],
+          [
+            "2026-08-26",
+            849.706
+          ],
+          [
+            "2026-08-27",
+            864.926
+          ],
+          [
+            "2026-08-28",
+            857.156
+          ],
+          [
+            "2026-08-31",
+            850.706
+          ],
+          [
+            "2026-09-01",
+            858.106
+          ],
+          [
+            "2026-09-02",
+            821.206
+          ],
+          [
+            "2026-09-03",
+            811.806
+          ],
+          [
+            "2026-09-04",
+            812.806
+          ],
+          [
+            "2026-09-07",
+            897.266
+          ],
+          [
+            "2026-09-08",
+            901.176
+          ],
+          [
+            "2026-09-09",
+            907.706
+          ],
+          [
+            "2026-09-10",
+            888.906
+          ],
+          [
+            "2026-09-11",
+            924.806
+          ],
+          [
+            "2026-09-14",
+            871.806
+          ],
+          [
+            "2026-09-15",
+            862.816
+          ],
+          [
+            "2026-09-16",
+            906.606
+          ],
+          [
+            "2026-09-17",
+            894.806
+          ],
+          [
+            "2026-09-18",
+            925.236
+          ],
+          [
+            "2026-09-21",
+            939.806
+          ],
+          [
+            "2026-09-22",
+            926.526
+          ],
+          [
+            "2026-09-23",
+            921.306
+          ],
+          [
+            "2026-09-24",
+            894.666
+          ],
+          [
+            "2026-09-28",
+            813.806
+          ],
+          [
+            "2026-09-29",
+            811.816
+          ],
+          [
+            "2026-09-30",
+            807.246
+          ],
+          [
+            "2026-10-08",
+            781.806
+          ],
+          [
+            "2026-10-09",
+            774.096
+          ],
+          [
+            "2026-10-12",
+            724.47
+          ],
+          [
+            "2026-10-13",
+            735
+          ],
+          [
+            "2026-10-14",
+            692.9
+          ],
+          [
+            "2026-10-15",
+            656.94
+          ],
+          [
+            "2026-10-16",
+            670
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:09.765Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN026O",
+        "ivDcf": 719.77,
+        "medps": 518.9,
+        "gfScore": 92,
+        "valuationRank": 5,
+        "dimensions": {
+          "financialStrength": 9,
+          "profitability": 10,
+          "growth": 10,
+          "gfValue": 7,
+          "momentum": 3
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.947Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:09.947Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz300308.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:300308/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "global",
+      "secId": "0.000333",
+      "code": "000333",
+      "name": "美的集团",
+      "quote": {
+        "secId": "0.000333",
+        "code": "000333",
+        "name": "美的集团",
+        "price": 84.6,
+        "change": -0.11,
+        "changePct": -0.13,
+        "amount": 1957300000,
+        "volume": 230739,
+        "turnoverRate": 0.34,
+        "marketCap": 645512000000,
+        "floatCap": 582574000000,
+        "pe": 14.55,
+        "pb": 3.05,
+        "high": 85.8,
+        "low": 84.02,
+        "open": 84.5,
+        "prevClose": 84.71,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:30.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.728Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.000333",
+        "code": "000333",
+        "name": "美的集团",
+        "price": 84.6,
+        "change": -0.11,
+        "changePct": -0.13,
+        "open": 84.5,
+        "high": 85.8,
+        "low": 84.02,
+        "prevClose": 84.71,
+        "volume": 230739,
+        "amount": 1957300000,
+        "turnoverRate": 0.34,
+        "marketCap": 645512000000,
+        "floatCap": 582574000000,
+        "pb": 3.05,
+        "averagePrice": 84.83,
+        "amplitude": 2.1,
+        "mainNetInflow": null,
+        "volumeRatio": 0.77,
+        "totalShares": 7630163422,
+        "floatShares": 6886219935,
+        "peDynamic": 12.204323846329036,
+        "peTtm": 14.545845240762276,
+        "peStatic": 14.688951253636017,
+        "psTtm": 1.3815920803879786,
+        "roe": 11.33,
+        "totalRevenue": 261052379000,
+        "revenueYoy": 3.456122286503,
+        "netProfit": 26446037000,
+        "netProfitYoy": 1.661997971068,
+        "grossMargin": 25.2557645483,
+        "netMargin": 10.2225117134,
+        "debtRatio": 64.8900151015,
+        "dividendYield": 5.08274231678487,
+        "eps": 3.52,
+        "bvps": 27.816806307898,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.784Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:30.000Z",
+          "fetchedAt": "2026-10-18T03:17:09.728Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:09.784Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 84.6,
+        "ma20": 83.5275,
+        "ma60": 84.82500000000002,
+        "return20": -1.8561484918793614,
+        "return60": 3.4229828850855792,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            82.71
+          ],
+          [
+            "2026-07-20",
+            84.3
+          ],
+          [
+            "2026-07-21",
+            84.27
+          ],
+          [
+            "2026-07-22",
+            84.8
+          ],
+          [
+            "2026-07-23",
+            84.77
+          ],
+          [
+            "2026-07-24",
+            84.5
+          ],
+          [
+            "2026-07-27",
+            84.13
+          ],
+          [
+            "2026-07-28",
+            85.37
+          ],
+          [
+            "2026-07-29",
+            87.01
+          ],
+          [
+            "2026-07-30",
+            88.95
+          ],
+          [
+            "2026-07-31",
+            87.6
+          ],
+          [
+            "2026-08-03",
+            85.9
+          ],
+          [
+            "2026-08-04",
+            85.14
+          ],
+          [
+            "2026-08-05",
+            85.47
+          ],
+          [
+            "2026-08-06",
+            85.32
+          ],
+          [
+            "2026-08-07",
+            83.5
+          ],
+          [
+            "2026-08-10",
+            85.3
+          ],
+          [
+            "2026-08-11",
+            85.62
+          ],
+          [
+            "2026-08-12",
+            84.34
+          ],
+          [
+            "2026-08-13",
+            84.19
+          ],
+          [
+            "2026-08-14",
+            83.03
+          ],
+          [
+            "2026-08-17",
+            82.61
+          ],
+          [
+            "2026-08-18",
+            83.58
+          ],
+          [
+            "2026-08-19",
+            84.72
+          ],
+          [
+            "2026-08-20",
+            85.38
+          ],
+          [
+            "2026-08-21",
+            84.3
+          ],
+          [
+            "2026-08-24",
+            85.99
+          ],
+          [
+            "2026-08-25",
+            86.69
+          ],
+          [
+            "2026-08-26",
+            86.39
+          ],
+          [
+            "2026-08-27",
+            86.18
+          ],
+          [
+            "2026-08-28",
+            86.23
+          ],
+          [
+            "2026-08-31",
+            87.73
+          ],
+          [
+            "2026-09-01",
+            87.49
+          ],
+          [
+            "2026-09-02",
+            86.98
+          ],
+          [
+            "2026-09-03",
+            87.25
+          ],
+          [
+            "2026-09-04",
+            87.57
+          ],
+          [
+            "2026-09-07",
+            86.27
+          ],
+          [
+            "2026-09-08",
+            85.15
+          ],
+          [
+            "2026-09-09",
+            86.02
+          ],
+          [
+            "2026-09-10",
+            86.2
+          ],
+          [
+            "2026-09-11",
+            86.26
+          ],
+          [
+            "2026-09-14",
+            86.8
+          ],
+          [
+            "2026-09-15",
+            87.23
+          ],
+          [
+            "2026-09-16",
+            85
+          ],
+          [
+            "2026-09-17",
+            85.04
+          ],
+          [
+            "2026-09-18",
+            84.4
+          ],
+          [
+            "2026-09-21",
+            80.9
+          ],
+          [
+            "2026-09-22",
+            82.54
+          ],
+          [
+            "2026-09-23",
+            82.47
+          ],
+          [
+            "2026-09-24",
+            82.65
+          ],
+          [
+            "2026-09-28",
+            82
+          ],
+          [
+            "2026-09-29",
+            81.66
+          ],
+          [
+            "2026-09-30",
+            80.1
+          ],
+          [
+            "2026-10-08",
+            81.74
+          ],
+          [
+            "2026-10-09",
+            82.46
+          ],
+          [
+            "2026-10-12",
+            83.5
+          ],
+          [
+            "2026-10-13",
+            82.79
+          ],
+          [
+            "2026-10-14",
+            83.7
+          ],
+          [
+            "2026-10-15",
+            84.71
+          ],
+          [
+            "2026-10-16",
+            84.6
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:09.807Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN00Z7",
+        "ivDcf": 78.14,
+        "medps": 76.83,
+        "gfScore": 86,
+        "valuationRank": 5,
+        "dimensions": {
+          "financialStrength": 5,
+          "profitability": 9,
+          "growth": 10,
+          "gfValue": 6,
+          "momentum": 3
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.734Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:10.734Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz000333.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:000333/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "global",
+      "secId": "1.600690",
+      "code": "600690",
+      "name": "海尔智家",
+      "quote": {
+        "secId": "1.600690",
+        "code": "600690",
+        "name": "海尔智家",
+        "price": 20.33,
+        "change": 0.02,
+        "changePct": 0.1,
+        "amount": 665730000,
+        "volume": 327301,
+        "turnoverRate": 0.53,
+        "marketCap": 189039000000,
+        "floatCap": 125608999999.99998,
+        "pe": 10.6,
+        "pb": 1.58,
+        "high": 20.55,
+        "low": 20.15,
+        "open": 20.32,
+        "prevClose": 20.31,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:15:00.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.001Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600690",
+        "code": "600690",
+        "name": "海尔智家",
+        "price": 20.33,
+        "change": 0.02,
+        "changePct": 0.1,
+        "open": 20.32,
+        "high": 20.55,
+        "low": 20.15,
+        "prevClose": 20.31,
+        "volume": 327301,
+        "amount": 665730000,
+        "turnoverRate": 0.53,
+        "marketCap": 189039000000,
+        "floatCap": 125608999999.99998,
+        "pb": 1.58,
+        "averagePrice": 20.34,
+        "amplitude": 1.97,
+        "mainNetInflow": null,
+        "volumeRatio": 0.96,
+        "totalShares": 9298538164,
+        "floatShares": 6178486925,
+        "peDynamic": 9.162191172317488,
+        "peTtm": 10.59869882131179,
+        "peStatic": 9.66813025150964,
+        "psTtm": 0.6344276132717581,
+        "roe": 8.36,
+        "totalRevenue": 152115050237.63,
+        "revenueYoy": -2.798179640931,
+        "netProfit": 10316254946.26,
+        "netProfitYoy": -14.266944821157,
+        "grossMargin": 27.2293255339,
+        "netMargin": 7.1498600543,
+        "debtRatio": 58.5217800319,
+        "dividendYield": 5.709345794392524,
+        "eps": 1.12,
+        "bvps": 12.762111483283,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.103Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:15:00.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.001Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.103Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 20.33,
+        "ma20": 20.53,
+        "ma60": 21.002666666666663,
+        "return20": -3.967879074161562,
+        "return60": 0.4645186795809275,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            20.076
+          ],
+          [
+            "2026-07-20",
+            20.586
+          ],
+          [
+            "2026-07-21",
+            20.976
+          ],
+          [
+            "2026-07-22",
+            21.046
+          ],
+          [
+            "2026-07-23",
+            20.986
+          ],
+          [
+            "2026-07-24",
+            20.886
+          ],
+          [
+            "2026-07-27",
+            20.996
+          ],
+          [
+            "2026-07-28",
+            21.526
+          ],
+          [
+            "2026-07-29",
+            22.106
+          ],
+          [
+            "2026-07-30",
+            22.396
+          ],
+          [
+            "2026-07-31",
+            22.316
+          ],
+          [
+            "2026-08-03",
+            22.046
+          ],
+          [
+            "2026-08-04",
+            21.616
+          ],
+          [
+            "2026-08-05",
+            21.466
+          ],
+          [
+            "2026-08-06",
+            21.246
+          ],
+          [
+            "2026-08-07",
+            21.056
+          ],
+          [
+            "2026-08-10",
+            21.376
+          ],
+          [
+            "2026-08-11",
+            21.126
+          ],
+          [
+            "2026-08-12",
+            20.876
+          ],
+          [
+            "2026-08-13",
+            20.916
+          ],
+          [
+            "2026-08-14",
+            20.886
+          ],
+          [
+            "2026-08-17",
+            20.616
+          ],
+          [
+            "2026-08-18",
+            20.776
+          ],
+          [
+            "2026-08-19",
+            21.096
+          ],
+          [
+            "2026-08-20",
+            20.896
+          ],
+          [
+            "2026-08-21",
+            20.86
+          ],
+          [
+            "2026-08-24",
+            20.94
+          ],
+          [
+            "2026-08-25",
+            21.23
+          ],
+          [
+            "2026-08-26",
+            21.15
+          ],
+          [
+            "2026-08-27",
+            21.12
+          ],
+          [
+            "2026-08-28",
+            21.12
+          ],
+          [
+            "2026-08-31",
+            21.18
+          ],
+          [
+            "2026-09-01",
+            21.42
+          ],
+          [
+            "2026-09-02",
+            21.33
+          ],
+          [
+            "2026-09-03",
+            21.82
+          ],
+          [
+            "2026-09-04",
+            22
+          ],
+          [
+            "2026-09-07",
+            21.61
+          ],
+          [
+            "2026-09-08",
+            21.42
+          ],
+          [
+            "2026-09-09",
+            21.3
+          ],
+          [
+            "2026-09-10",
+            21.17
+          ],
+          [
+            "2026-09-11",
+            21.01
+          ],
+          [
+            "2026-09-14",
+            21.12
+          ],
+          [
+            "2026-09-15",
+            21.17
+          ],
+          [
+            "2026-09-16",
+            20.76
+          ],
+          [
+            "2026-09-17",
+            20.7
+          ],
+          [
+            "2026-09-18",
+            20.68
+          ],
+          [
+            "2026-09-21",
+            19.89
+          ],
+          [
+            "2026-09-22",
+            20.2
+          ],
+          [
+            "2026-09-23",
+            20.2
+          ],
+          [
+            "2026-09-24",
+            20.14
+          ],
+          [
+            "2026-09-28",
+            20.16
+          ],
+          [
+            "2026-09-29",
+            20.21
+          ],
+          [
+            "2026-09-30",
+            20.42
+          ],
+          [
+            "2026-10-08",
+            20.43
+          ],
+          [
+            "2026-10-09",
+            20.81
+          ],
+          [
+            "2026-10-12",
+            20.99
+          ],
+          [
+            "2026-10-13",
+            20.6
+          ],
+          [
+            "2026-10-14",
+            20.47
+          ],
+          [
+            "2026-10-15",
+            20.31
+          ],
+          [
+            "2026-10-16",
+            20.33
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:10.093Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN00FZ",
+        "ivDcf": 28.62,
+        "medps": 28.39,
+        "gfScore": 85,
+        "valuationRank": 4,
+        "dimensions": {
+          "financialStrength": 5,
+          "profitability": 7,
+          "growth": 8,
+          "gfValue": 8,
+          "momentum": 8
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2025-12-31",
+          "fetchedAt": "2026-10-18T03:17:10.348Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2025-12-31",
+        "fetchedAt": "2026-10-18T03:17:10.348Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600690.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600690/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "global",
+      "secId": "0.300750",
+      "code": "300750",
+      "name": "宁德时代",
+      "quote": {
+        "secId": "0.300750",
+        "code": "300750",
+        "name": "宁德时代",
+        "price": 277,
+        "change": -1.5,
+        "changePct": -0.54,
+        "amount": 8220750000,
+        "volume": 297424,
+        "turnoverRate": 0.7,
+        "marketCap": 1281748000000,
+        "floatCap": 1180191000000,
+        "pe": 15.08,
+        "pb": 3.44,
+        "high": 282,
+        "low": 273.29,
+        "open": 281.79,
+        "prevClose": 278.5,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:30.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.093Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.300750",
+        "code": "300750",
+        "name": "宁德时代",
+        "price": 277,
+        "change": -1.5,
+        "changePct": -0.54,
+        "open": 281.79,
+        "high": 282,
+        "low": 273.29,
+        "prevClose": 278.5,
+        "volume": 297424,
+        "amount": 8220750000,
+        "turnoverRate": 0.7,
+        "marketCap": 1281748000000,
+        "floatCap": 1180191000000,
+        "pb": 3.44,
+        "averagePrice": 276.4,
+        "amplitude": 3.13,
+        "mainNetInflow": null,
+        "volumeRatio": 0.7,
+        "totalShares": 4627249686,
+        "floatShares": 4260617083,
+        "peDynamic": 14.806255669242415,
+        "peTtm": 15.079362511675715,
+        "peStatic": 17.752427166043947,
+        "psTtm": 2.4567164836901823,
+        "roe": 12.08,
+        "totalRevenue": 276916580000,
+        "revenueYoy": 54.800369148545,
+        "netProfit": 43284002000,
+        "netProfitYoy": 41.983941749454,
+        "grossMargin": 23.9283938867,
+        "netMargin": 16.9836844006,
+        "debtRatio": 63.6524529171,
+        "dividendYield": 3.020938628158844,
+        "eps": 9.51,
+        "bvps": 81.993154443679,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.173Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:30.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.093Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.173Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 277,
+        "ma20": 298.47200000000004,
+        "ma60": 351.7753,
+        "return20": -18.06188250606401,
+        "return60": -24.06756615990219,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            358.598
+          ],
+          [
+            "2026-07-20",
+            375.028
+          ],
+          [
+            "2026-07-21",
+            380.798
+          ],
+          [
+            "2026-07-22",
+            370.858
+          ],
+          [
+            "2026-07-23",
+            384.588
+          ],
+          [
+            "2026-07-24",
+            381.608
+          ],
+          [
+            "2026-07-27",
+            398.598
+          ],
+          [
+            "2026-07-28",
+            389.458
+          ],
+          [
+            "2026-07-29",
+            395.438
+          ],
+          [
+            "2026-07-30",
+            400.478
+          ],
+          [
+            "2026-07-31",
+            393.898
+          ],
+          [
+            "2026-08-03",
+            392.998
+          ],
+          [
+            "2026-08-04",
+            393.698
+          ],
+          [
+            "2026-08-05",
+            403.798
+          ],
+          [
+            "2026-08-06",
+            386.598
+          ],
+          [
+            "2026-08-07",
+            386.668
+          ],
+          [
+            "2026-08-10",
+            393.87
+          ],
+          [
+            "2026-08-11",
+            390.4
+          ],
+          [
+            "2026-08-12",
+            393.93
+          ],
+          [
+            "2026-08-13",
+            396.3
+          ],
+          [
+            "2026-08-14",
+            393.93
+          ],
+          [
+            "2026-08-17",
+            399.98
+          ],
+          [
+            "2026-08-18",
+            396.26
+          ],
+          [
+            "2026-08-19",
+            389
+          ],
+          [
+            "2026-08-20",
+            385
+          ],
+          [
+            "2026-08-21",
+            391.15
+          ],
+          [
+            "2026-08-24",
+            387.89
+          ],
+          [
+            "2026-08-25",
+            376.73
+          ],
+          [
+            "2026-08-26",
+            379
+          ],
+          [
+            "2026-08-27",
+            373
+          ],
+          [
+            "2026-08-28",
+            368.5
+          ],
+          [
+            "2026-08-31",
+            363.55
+          ],
+          [
+            "2026-09-01",
+            358.1
+          ],
+          [
+            "2026-09-02",
+            348.29
+          ],
+          [
+            "2026-09-03",
+            349.5
+          ],
+          [
+            "2026-09-04",
+            351
+          ],
+          [
+            "2026-09-07",
+            348.2
+          ],
+          [
+            "2026-09-08",
+            335.49
+          ],
+          [
+            "2026-09-09",
+            336.84
+          ],
+          [
+            "2026-09-10",
+            338.06
+          ],
+          [
+            "2026-09-11",
+            330.51
+          ],
+          [
+            "2026-09-14",
+            337.11
+          ],
+          [
+            "2026-09-15",
+            316.36
+          ],
+          [
+            "2026-09-16",
+            305.48
+          ],
+          [
+            "2026-09-17",
+            304.3
+          ],
+          [
+            "2026-09-18",
+            301.95
+          ],
+          [
+            "2026-09-21",
+            297.1
+          ],
+          [
+            "2026-09-22",
+            304.63
+          ],
+          [
+            "2026-09-23",
+            301
+          ],
+          [
+            "2026-09-24",
+            293.5
+          ],
+          [
+            "2026-09-28",
+            291.99
+          ],
+          [
+            "2026-09-29",
+            286.8
+          ],
+          [
+            "2026-09-30",
+            291.11
+          ],
+          [
+            "2026-10-08",
+            286.75
+          ],
+          [
+            "2026-10-09",
+            297.75
+          ],
+          [
+            "2026-10-12",
+            298.38
+          ],
+          [
+            "2026-10-13",
+            289.1
+          ],
+          [
+            "2026-10-14",
+            280.12
+          ],
+          [
+            "2026-10-15",
+            278.5
+          ],
+          [
+            "2026-10-16",
+            277
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:10.167Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN02TG",
+        "ivDcf": 395.55,
+        "medps": 355.05,
+        "gfScore": 83,
+        "valuationRank": 3,
+        "dimensions": {
+          "financialStrength": 5,
+          "profitability": 8,
+          "growth": 10,
+          "gfValue": 4,
+          "momentum": 4
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.518Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:10.518Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz300750.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:300750/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "global",
+      "secId": "0.002594",
+      "code": "002594",
+      "name": "比亚迪",
+      "quote": {
+        "secId": "0.002594",
+        "code": "002594",
+        "name": "比亚迪",
+        "price": 82.72,
+        "change": 0.48,
+        "changePct": 0.58,
+        "amount": 1733330000,
+        "volume": 209686,
+        "turnoverRate": 0.6,
+        "marketCap": 754175000000,
+        "floatCap": 288450000000,
+        "pe": 25.62,
+        "pb": 3.14,
+        "high": 83.39,
+        "low": 81.85,
+        "open": 82.24,
+        "prevClose": 82.24,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:15.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.406Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.002594",
+        "code": "002594",
+        "name": "比亚迪",
+        "price": 82.72,
+        "change": 0.48,
+        "changePct": 0.58,
+        "open": 82.24,
+        "high": 83.39,
+        "low": 81.85,
+        "prevClose": 82.24,
+        "volume": 209686,
+        "amount": 1733330000,
+        "turnoverRate": 0.6,
+        "marketCap": 754175000000,
+        "floatCap": 288450000000,
+        "pb": 3.14,
+        "averagePrice": 82.66,
+        "amplitude": 1.87,
+        "mainNetInflow": null,
+        "volumeRatio": 0.72,
+        "totalShares": 9117197565,
+        "floatShares": 3487068722,
+        "peDynamic": 30.594321908045558,
+        "peTtm": 25.622668992828235,
+        "peStatic": 23.12071158969757,
+        "psTtm": 0.970000709878333,
+        "roe": 4.86,
+        "totalRevenue": 344815421000,
+        "revenueYoy": -7.128167265938,
+        "netProfit": 12325408000,
+        "netProfitYoy": -20.535238859941,
+        "grossMargin": 18.8473478975,
+        "netMargin": 3.5770033035,
+        "debtRatio": 70.9574969499,
+        "dividendYield": 0.4327852998065764,
+        "eps": 1.35,
+        "bvps": 26.320758965638,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.717Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:15.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.406Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.717Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 82.72,
+        "ma20": 83.87400000000001,
+        "ma60": 88.30516666666672,
+        "return20": -0.9578544061302652,
+        "return60": -11.795440489646204,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            93.112
+          ],
+          [
+            "2026-07-20",
+            93.562
+          ],
+          [
+            "2026-07-21",
+            93.942
+          ],
+          [
+            "2026-07-22",
+            91.212
+          ],
+          [
+            "2026-07-23",
+            92.292
+          ],
+          [
+            "2026-07-24",
+            91.532
+          ],
+          [
+            "2026-07-27",
+            92.042
+          ],
+          [
+            "2026-07-28",
+            92.992
+          ],
+          [
+            "2026-07-29",
+            94.492
+          ],
+          [
+            "2026-07-30",
+            95.842
+          ],
+          [
+            "2026-07-31",
+            95.77
+          ],
+          [
+            "2026-08-03",
+            94.45
+          ],
+          [
+            "2026-08-04",
+            91.15
+          ],
+          [
+            "2026-08-05",
+            90.82
+          ],
+          [
+            "2026-08-06",
+            89.45
+          ],
+          [
+            "2026-08-07",
+            90.04
+          ],
+          [
+            "2026-08-10",
+            91.15
+          ],
+          [
+            "2026-08-11",
+            90.12
+          ],
+          [
+            "2026-08-12",
+            90.41
+          ],
+          [
+            "2026-08-13",
+            89.71
+          ],
+          [
+            "2026-08-14",
+            88.9
+          ],
+          [
+            "2026-08-17",
+            89.88
+          ],
+          [
+            "2026-08-18",
+            89.53
+          ],
+          [
+            "2026-08-19",
+            88.66
+          ],
+          [
+            "2026-08-20",
+            90.48
+          ],
+          [
+            "2026-08-21",
+            90.47
+          ],
+          [
+            "2026-08-24",
+            90.66
+          ],
+          [
+            "2026-08-25",
+            91.36
+          ],
+          [
+            "2026-08-26",
+            92.09
+          ],
+          [
+            "2026-08-27",
+            91.49
+          ],
+          [
+            "2026-08-28",
+            92.32
+          ],
+          [
+            "2026-08-31",
+            88.2
+          ],
+          [
+            "2026-09-01",
+            88.71
+          ],
+          [
+            "2026-09-02",
+            86.8
+          ],
+          [
+            "2026-09-03",
+            87.31
+          ],
+          [
+            "2026-09-04",
+            87.4
+          ],
+          [
+            "2026-09-07",
+            86.51
+          ],
+          [
+            "2026-09-08",
+            86.57
+          ],
+          [
+            "2026-09-09",
+            85.88
+          ],
+          [
+            "2026-09-10",
+            83.52
+          ],
+          [
+            "2026-09-11",
+            84
+          ],
+          [
+            "2026-09-14",
+            85.43
+          ],
+          [
+            "2026-09-15",
+            84.3
+          ],
+          [
+            "2026-09-16",
+            83.96
+          ],
+          [
+            "2026-09-17",
+            84.97
+          ],
+          [
+            "2026-09-18",
+            84.3
+          ],
+          [
+            "2026-09-21",
+            85.22
+          ],
+          [
+            "2026-09-22",
+            86.58
+          ],
+          [
+            "2026-09-23",
+            85.85
+          ],
+          [
+            "2026-09-24",
+            84.34
+          ],
+          [
+            "2026-09-28",
+            83.35
+          ],
+          [
+            "2026-09-29",
+            82.02
+          ],
+          [
+            "2026-09-30",
+            83.31
+          ],
+          [
+            "2026-10-08",
+            81.72
+          ],
+          [
+            "2026-10-09",
+            84.95
+          ],
+          [
+            "2026-10-12",
+            84.6
+          ],
+          [
+            "2026-10-13",
+            82.18
+          ],
+          [
+            "2026-10-14",
+            81.44
+          ],
+          [
+            "2026-10-15",
+            82.24
+          ],
+          [
+            "2026-10-16",
+            82.72
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:10.473Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN01QO",
+        "ivDcf": 105.62,
+        "medps": 96.72,
+        "gfScore": 77,
+        "valuationRank": 4,
+        "dimensions": {
+          "financialStrength": 5,
+          "profitability": 7,
+          "growth": 10,
+          "gfValue": 10,
+          "momentum": 1
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.821Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:10.821Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz002594.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:002594/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "domestic",
+      "secId": "1.600519",
+      "code": "600519",
+      "name": "贵州茅台",
+      "quote": {
+        "secId": "1.600519",
+        "code": "600519",
+        "name": "贵州茅台",
+        "price": 1329,
+        "change": 16.03,
+        "changePct": 1.22,
+        "amount": 5075530000,
+        "volume": 38502,
+        "turnoverRate": 0.31,
+        "marketCap": 1661358000000.0002,
+        "floatCap": 1661358000000.0002,
+        "pe": 20.4,
+        "pb": 6.61,
+        "high": 1329.88,
+        "low": 1301.68,
+        "open": 1311.57,
+        "prevClose": 1312.97,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:47.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.575Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600519",
+        "code": "600519",
+        "name": "贵州茅台",
+        "price": 1329,
+        "change": 16.03,
+        "changePct": 1.22,
+        "open": 1311.57,
+        "high": 1329.88,
+        "low": 1301.68,
+        "prevClose": 1312.97,
+        "volume": 38502,
+        "amount": 5075530000,
+        "turnoverRate": 0.31,
+        "marketCap": 1661358000000.0002,
+        "floatCap": 1661358000000.0002,
+        "pb": 6.61,
+        "averagePrice": 1318.26,
+        "amplitude": 2.15,
+        "mainNetInflow": null,
+        "volumeRatio": 1.1,
+        "totalShares": 1250081601,
+        "floatShares": 1250081601,
+        "peDynamic": 18.659865474133614,
+        "peTtm": 20.40128572119778,
+        "peStatic": 20.181689088614643,
+        "psTtm": 9.590005559854566,
+        "roe": 16.75,
+        "totalRevenue": 92278072083.21,
+        "revenueYoy": 1.300099475569,
+        "netProfit": 44516880421.86,
+        "netProfitYoy": -1.951594855028,
+        "grossMargin": 89.5552128279,
+        "netMargin": 50.7515717487,
+        "debtRatio": 15.1931121807,
+        "dividendYield": 3.911303987960873,
+        "eps": 35.57,
+        "bvps": 200.989754763617,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.808Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:47.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.575Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.808Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 1329,
+        "ma20": 1267.5155,
+        "ma60": 1296.9086666666667,
+        "return20": 3.413662431038089,
+        "return60": 5.560806678369179,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            1253
+          ],
+          [
+            "2026-07-20",
+            1327.5
+          ],
+          [
+            "2026-07-21",
+            1308
+          ],
+          [
+            "2026-07-22",
+            1305
+          ],
+          [
+            "2026-07-23",
+            1292.01
+          ],
+          [
+            "2026-07-24",
+            1297.41
+          ],
+          [
+            "2026-07-27",
+            1289.5
+          ],
+          [
+            "2026-07-28",
+            1320
+          ],
+          [
+            "2026-07-29",
+            1321
+          ],
+          [
+            "2026-07-30",
+            1361.76
+          ],
+          [
+            "2026-07-31",
+            1350.6
+          ],
+          [
+            "2026-08-03",
+            1358.98
+          ],
+          [
+            "2026-08-04",
+            1328.36
+          ],
+          [
+            "2026-08-05",
+            1306.45
+          ],
+          [
+            "2026-08-06",
+            1308.55
+          ],
+          [
+            "2026-08-07",
+            1309.22
+          ],
+          [
+            "2026-08-10",
+            1348.86
+          ],
+          [
+            "2026-08-11",
+            1346.5
+          ],
+          [
+            "2026-08-12",
+            1343
+          ],
+          [
+            "2026-08-13",
+            1355.29
+          ],
+          [
+            "2026-08-14",
+            1341.99
+          ],
+          [
+            "2026-08-17",
+            1293.09
+          ],
+          [
+            "2026-08-18",
+            1297.99
+          ],
+          [
+            "2026-08-19",
+            1307.88
+          ],
+          [
+            "2026-08-20",
+            1291.5
+          ],
+          [
+            "2026-08-21",
+            1272.83
+          ],
+          [
+            "2026-08-24",
+            1304.66
+          ],
+          [
+            "2026-08-25",
+            1304
+          ],
+          [
+            "2026-08-26",
+            1302.8
+          ],
+          [
+            "2026-08-27",
+            1292.3
+          ],
+          [
+            "2026-08-28",
+            1297.4
+          ],
+          [
+            "2026-08-31",
+            1299.52
+          ],
+          [
+            "2026-09-01",
+            1299.56
+          ],
+          [
+            "2026-09-02",
+            1297.5
+          ],
+          [
+            "2026-09-03",
+            1298.88
+          ],
+          [
+            "2026-09-04",
+            1330
+          ],
+          [
+            "2026-09-07",
+            1316.01
+          ],
+          [
+            "2026-09-08",
+            1309.3
+          ],
+          [
+            "2026-09-09",
+            1290.88
+          ],
+          [
+            "2026-09-10",
+            1285.13
+          ],
+          [
+            "2026-09-11",
+            1275.16
+          ],
+          [
+            "2026-09-14",
+            1277.96
+          ],
+          [
+            "2026-09-15",
+            1272.75
+          ],
+          [
+            "2026-09-16",
+            1258
+          ],
+          [
+            "2026-09-17",
+            1266.98
+          ],
+          [
+            "2026-09-18",
+            1257.12
+          ],
+          [
+            "2026-09-21",
+            1252.57
+          ],
+          [
+            "2026-09-22",
+            1253.8
+          ],
+          [
+            "2026-09-23",
+            1251.24
+          ],
+          [
+            "2026-09-24",
+            1237
+          ],
+          [
+            "2026-09-28",
+            1243.88
+          ],
+          [
+            "2026-09-29",
+            1235.58
+          ],
+          [
+            "2026-09-30",
+            1258.62
+          ],
+          [
+            "2026-10-08",
+            1255.79
+          ],
+          [
+            "2026-10-09",
+            1263
+          ],
+          [
+            "2026-10-12",
+            1288
+          ],
+          [
+            "2026-10-13",
+            1274.89
+          ],
+          [
+            "2026-10-14",
+            1286
+          ],
+          [
+            "2026-10-15",
+            1312.97
+          ],
+          [
+            "2026-10-16",
+            1329
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:10.668Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN00BS",
+        "ivDcf": 1618.89,
+        "medps": 1613.77,
+        "gfScore": 95,
+        "valuationRank": 4,
+        "dimensions": {
+          "financialStrength": 9,
+          "profitability": 10,
+          "growth": 10,
+          "gfValue": 10,
+          "momentum": 4
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.836Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:10.836Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600519.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600519/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "domestic",
+      "secId": "1.600276",
+      "code": "600276",
+      "name": "恒瑞医药",
+      "quote": {
+        "secId": "1.600276",
+        "code": "600276",
+        "name": "恒瑞医药",
+        "price": 46.63,
+        "change": 0.03,
+        "changePct": 0.06,
+        "amount": 3209030000,
+        "volume": 687361,
+        "turnoverRate": 1.08,
+        "marketCap": 309493000000,
+        "floatCap": 297453000000,
+        "pe": 40.06,
+        "pb": 4.8,
+        "high": 47.58,
+        "low": 45.51,
+        "open": 46.25,
+        "prevClose": 46.6,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:44.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.795Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600276",
+        "code": "600276",
+        "name": "恒瑞医药",
+        "price": 46.63,
+        "change": 0.03,
+        "changePct": 0.06,
+        "open": 46.25,
+        "high": 47.58,
+        "low": 45.51,
+        "prevClose": 46.6,
+        "volume": 687361,
+        "amount": 3209030000,
+        "turnoverRate": 1.08,
+        "marketCap": 309493000000,
+        "floatCap": 297453000000,
+        "pb": 4.8,
+        "averagePrice": 46.69,
+        "amplitude": 4.44,
+        "mainNetInflow": null,
+        "volumeRatio": 1.37,
+        "totalShares": 6637199874,
+        "floatShares": 6379002274,
+        "peDynamic": 34.65426023387872,
+        "peTtm": 40.05662229017946,
+        "peStatic": 40.13627286362528,
+        "psTtm": 9.880440362344082,
+        "roe": 8.04,
+        "totalRevenue": 15455583728.11,
+        "revenueYoy": -1.939002260778,
+        "netProfit": 4465439428.1,
+        "netProfitYoy": 0.344554541292,
+        "grossMargin": 86.3263460861,
+        "netMargin": 28.8910629222,
+        "debtRatio": 8.1717203064,
+        "dividendYield": 0.4289084280506112,
+        "eps": 0.68,
+        "bvps": 9.712895713484,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.862Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:44.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.795Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.862Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 46.63,
+        "ma20": 45.162,
+        "ma60": 48.93816666666665,
+        "return20": 8.618681574656417,
+        "return60": -16.717270941239505,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            53.19
+          ],
+          [
+            "2026-07-20",
+            55.57
+          ],
+          [
+            "2026-07-21",
+            54.93
+          ],
+          [
+            "2026-07-22",
+            55.39
+          ],
+          [
+            "2026-07-23",
+            54.91
+          ],
+          [
+            "2026-07-24",
+            53.45
+          ],
+          [
+            "2026-07-27",
+            53.6
+          ],
+          [
+            "2026-07-28",
+            53.29
+          ],
+          [
+            "2026-07-29",
+            53.89
+          ],
+          [
+            "2026-07-30",
+            54.65
+          ],
+          [
+            "2026-07-31",
+            54.08
+          ],
+          [
+            "2026-08-03",
+            53
+          ],
+          [
+            "2026-08-04",
+            53.42
+          ],
+          [
+            "2026-08-05",
+            53.54
+          ],
+          [
+            "2026-08-06",
+            52.11
+          ],
+          [
+            "2026-08-07",
+            54.62
+          ],
+          [
+            "2026-08-10",
+            54.18
+          ],
+          [
+            "2026-08-11",
+            54.97
+          ],
+          [
+            "2026-08-12",
+            54.36
+          ],
+          [
+            "2026-08-13",
+            53.76
+          ],
+          [
+            "2026-08-14",
+            52.62
+          ],
+          [
+            "2026-08-17",
+            52.87
+          ],
+          [
+            "2026-08-18",
+            52.37
+          ],
+          [
+            "2026-08-19",
+            52.66
+          ],
+          [
+            "2026-08-20",
+            49.5
+          ],
+          [
+            "2026-08-21",
+            47.74
+          ],
+          [
+            "2026-08-24",
+            46.76
+          ],
+          [
+            "2026-08-25",
+            46.49
+          ],
+          [
+            "2026-08-26",
+            46.74
+          ],
+          [
+            "2026-08-27",
+            47.61
+          ],
+          [
+            "2026-08-28",
+            47.32
+          ],
+          [
+            "2026-08-31",
+            46.07
+          ],
+          [
+            "2026-09-01",
+            46.23
+          ],
+          [
+            "2026-09-02",
+            45.57
+          ],
+          [
+            "2026-09-03",
+            45.96
+          ],
+          [
+            "2026-09-04",
+            46.02
+          ],
+          [
+            "2026-09-07",
+            46.26
+          ],
+          [
+            "2026-09-08",
+            45.71
+          ],
+          [
+            "2026-09-09",
+            44.71
+          ],
+          [
+            "2026-09-10",
+            42.93
+          ],
+          [
+            "2026-09-11",
+            42.67
+          ],
+          [
+            "2026-09-14",
+            43.15
+          ],
+          [
+            "2026-09-15",
+            43.13
+          ],
+          [
+            "2026-09-16",
+            43.52
+          ],
+          [
+            "2026-09-17",
+            43.23
+          ],
+          [
+            "2026-09-18",
+            43.91
+          ],
+          [
+            "2026-09-21",
+            46.04
+          ],
+          [
+            "2026-09-22",
+            45.72
+          ],
+          [
+            "2026-09-23",
+            45.58
+          ],
+          [
+            "2026-09-24",
+            44.86
+          ],
+          [
+            "2026-09-28",
+            44.47
+          ],
+          [
+            "2026-09-29",
+            45.62
+          ],
+          [
+            "2026-09-30",
+            47.2
+          ],
+          [
+            "2026-10-08",
+            47.01
+          ],
+          [
+            "2026-10-09",
+            46.85
+          ],
+          [
+            "2026-10-12",
+            46.05
+          ],
+          [
+            "2026-10-13",
+            45.51
+          ],
+          [
+            "2026-10-14",
+            45.49
+          ],
+          [
+            "2026-10-15",
+            46.6
+          ],
+          [
+            "2026-10-16",
+            46.63
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:10.861Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN006I",
+        "ivDcf": 58.51,
+        "medps": 55.61,
+        "gfScore": 80,
+        "valuationRank": 4,
+        "dimensions": {
+          "financialStrength": 10,
+          "profitability": 8,
+          "growth": 9,
+          "gfValue": 10,
+          "momentum": 1
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:11.089Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:11.089Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600276.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600276/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "domestic",
+      "secId": "0.300760",
+      "code": "300760",
+      "name": "迈瑞医疗",
+      "quote": {
+        "secId": "0.300760",
+        "code": "300760",
+        "name": "迈瑞医疗",
+        "price": 167.3,
+        "change": 0.3,
+        "changePct": 0.18,
+        "amount": 1362860000,
+        "volume": 80929,
+        "turnoverRate": 0.67,
+        "marketCap": 202734000000,
+        "floatCap": 202544000000,
+        "pe": 25.78,
+        "pb": 5.21,
+        "high": 170.08,
+        "low": 165.78,
+        "open": 166.5,
+        "prevClose": 167,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:45.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.879Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "0.300760",
+        "code": "300760",
+        "name": "迈瑞医疗",
+        "price": 167.3,
+        "change": 0.3,
+        "changePct": 0.18,
+        "open": 166.5,
+        "high": 170.08,
+        "low": 165.78,
+        "prevClose": 167,
+        "volume": 80929,
+        "amount": 1362860000,
+        "turnoverRate": 0.67,
+        "marketCap": 202734000000,
+        "floatCap": 202544000000,
+        "pb": 5.21,
+        "averagePrice": 168.4,
+        "amplitude": 2.57,
+        "mainNetInflow": null,
+        "volumeRatio": 1.04,
+        "totalShares": 1211799431,
+        "floatShares": 1210662145,
+        "peDynamic": 21.1322492671039,
+        "peTtm": 25.78066547195327,
+        "peStatic": 24.918829467161856,
+        "psTtm": 5.913004140578655,
+        "roe": 12.01,
+        "totalRevenue": 17746969604,
+        "revenueYoy": 5.996329922364,
+        "netProfit": 4796791800,
+        "netProfitYoy": -5.365709111143,
+        "grossMargin": 60.8335255872,
+        "netMargin": 28.4381288333,
+        "debtRatio": 25.472568909,
+        "dividendYield": 2.5343693962940823,
+        "eps": 3.9584,
+        "bvps": 33.450062336786,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.967Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:45.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.879Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.967Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 167.3,
+        "ma20": 160.3145,
+        "ma60": 157.53183333333334,
+        "return20": 0.9656004828002551,
+        "return60": 12.296952611088763,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            148.1
+          ],
+          [
+            "2026-07-20",
+            153.17
+          ],
+          [
+            "2026-07-21",
+            150.92
+          ],
+          [
+            "2026-07-22",
+            150.94
+          ],
+          [
+            "2026-07-23",
+            149.47
+          ],
+          [
+            "2026-07-24",
+            145.05
+          ],
+          [
+            "2026-07-27",
+            147.23
+          ],
+          [
+            "2026-07-28",
+            149.21
+          ],
+          [
+            "2026-07-29",
+            153.55
+          ],
+          [
+            "2026-07-30",
+            160.29
+          ],
+          [
+            "2026-07-31",
+            157.55
+          ],
+          [
+            "2026-08-03",
+            155.56
+          ],
+          [
+            "2026-08-04",
+            152.94
+          ],
+          [
+            "2026-08-05",
+            152.97
+          ],
+          [
+            "2026-08-06",
+            148.42
+          ],
+          [
+            "2026-08-07",
+            150.08
+          ],
+          [
+            "2026-08-10",
+            154.25
+          ],
+          [
+            "2026-08-11",
+            152.16
+          ],
+          [
+            "2026-08-12",
+            152.27
+          ],
+          [
+            "2026-08-13",
+            152.06
+          ],
+          [
+            "2026-08-14",
+            149.14
+          ],
+          [
+            "2026-08-17",
+            148.38
+          ],
+          [
+            "2026-08-18",
+            149.22
+          ],
+          [
+            "2026-08-19",
+            149.3
+          ],
+          [
+            "2026-08-20",
+            156.74
+          ],
+          [
+            "2026-08-21",
+            153.12
+          ],
+          [
+            "2026-08-24",
+            157.35
+          ],
+          [
+            "2026-08-25",
+            160.79
+          ],
+          [
+            "2026-08-26",
+            159.72
+          ],
+          [
+            "2026-08-27",
+            160.7
+          ],
+          [
+            "2026-08-28",
+            162.97
+          ],
+          [
+            "2026-08-31",
+            164.02
+          ],
+          [
+            "2026-09-01",
+            167.75
+          ],
+          [
+            "2026-09-02",
+            166.59
+          ],
+          [
+            "2026-09-03",
+            166.34
+          ],
+          [
+            "2026-09-04",
+            168.58
+          ],
+          [
+            "2026-09-07",
+            167.87
+          ],
+          [
+            "2026-09-08",
+            169.95
+          ],
+          [
+            "2026-09-09",
+            165.2
+          ],
+          [
+            "2026-09-10",
+            165.7
+          ],
+          [
+            "2026-09-11",
+            162.73
+          ],
+          [
+            "2026-09-14",
+            160.1
+          ],
+          [
+            "2026-09-15",
+            160.3
+          ],
+          [
+            "2026-09-16",
+            158.03
+          ],
+          [
+            "2026-09-17",
+            156.8
+          ],
+          [
+            "2026-09-18",
+            156.87
+          ],
+          [
+            "2026-09-21",
+            158.05
+          ],
+          [
+            "2026-09-22",
+            156.68
+          ],
+          [
+            "2026-09-23",
+            155.46
+          ],
+          [
+            "2026-09-24",
+            153.86
+          ],
+          [
+            "2026-09-28",
+            158.29
+          ],
+          [
+            "2026-09-29",
+            159.01
+          ],
+          [
+            "2026-09-30",
+            161.32
+          ],
+          [
+            "2026-10-08",
+            157.6
+          ],
+          [
+            "2026-10-09",
+            161.4
+          ],
+          [
+            "2026-10-12",
+            166
+          ],
+          [
+            "2026-10-13",
+            164.94
+          ],
+          [
+            "2026-10-14",
+            164.55
+          ],
+          [
+            "2026-10-15",
+            167
+          ],
+          [
+            "2026-10-16",
+            167.3
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:10.965Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN02UC",
+        "ivDcf": 239.51,
+        "medps": 232.61,
+        "gfScore": 86,
+        "valuationRank": 3,
+        "dimensions": {
+          "financialStrength": 10,
+          "profitability": 9,
+          "growth": 9,
+          "gfValue": 4,
+          "momentum": 4
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:11.149Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:11.149Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sz300760.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SZSE:300760/summary"
+      },
+      "errors": []
+    },
+    {
+      "direction": "domestic",
+      "secId": "1.600085",
+      "code": "600085",
+      "name": "同仁堂",
+      "quote": {
+        "secId": "1.600085",
+        "code": "600085",
+        "name": "同仁堂",
+        "price": 24.36,
+        "change": -0.4,
+        "changePct": -1.62,
+        "amount": 249740000,
+        "volume": 102024,
+        "turnoverRate": 0.74,
+        "marketCap": 33408999999.999996,
+        "floatCap": 33408999999.999996,
+        "pe": 34.44,
+        "pb": 2.45,
+        "high": 24.79,
+        "low": 24.07,
+        "open": 24.79,
+        "prevClose": 24.76,
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:55.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.890Z",
+          "cacheState": "stale"
+        }
+      },
+      "metrics": {
+        "secId": "1.600085",
+        "code": "600085",
+        "name": "同仁堂",
+        "price": 24.36,
+        "change": -0.4,
+        "changePct": -1.62,
+        "open": 24.79,
+        "high": 24.79,
+        "low": 24.07,
+        "prevClose": 24.76,
+        "volume": 102024,
+        "amount": 249740000,
+        "turnoverRate": 0.74,
+        "marketCap": 33408999999.999996,
+        "floatCap": 33408999999.999996,
+        "pb": 2.45,
+        "averagePrice": 24.48,
+        "amplitude": 2.91,
+        "mainNetInflow": null,
+        "volumeRatio": 1.25,
+        "totalShares": 1371470262,
+        "floatShares": 1371470262,
+        "peDynamic": 23.002879722780374,
+        "peTtm": 34.43988345672625,
+        "peStatic": 28.089558015728045,
+        "psTtm": 2.1056509735557123,
+        "roe": 5.22,
+        "totalRevenue": 8379065189.49,
+        "revenueYoy": -14.227120500842,
+        "netProfit": 726191685.62,
+        "netProfitYoy": -23.194865642133,
+        "grossMargin": 42.3703761357,
+        "netMargin": 11.162790579,
+        "debtRatio": 29.345093176,
+        "dividendYield": 2.052545155993432,
+        "eps": 0.529,
+        "bvps": 9.933317946394,
+        "listingDate": null,
+        "industry": null,
+        "meta": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.984Z",
+          "cacheState": "fresh"
+        },
+        "reportDate": "2026-06-30",
+        "reportName": "2026中报"
+      },
+      "sources": {
+        "quote": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16T08:14:55.000Z",
+          "fetchedAt": "2026-10-18T03:17:10.890Z",
+          "cacheState": "stale"
+        },
+        "metrics": {
+          "providerId": "eastmoney-financials",
+          "sourceName": "东方财富财报",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:10.984Z",
+          "cacheState": "fresh"
+        }
+      },
+      "technical": {
+        "date": "2026-10-16",
+        "barCount": 800,
+        "lastAdjustedClose": 24.36,
+        "ma20": 23.767000000000003,
+        "ma60": 24.485166666666668,
+        "return20": 2.784810126582271,
+        "return60": -9.543260304493128,
+        "recentCloses": [
+          [
+            "2026-07-17",
+            26.04
+          ],
+          [
+            "2026-07-20",
+            26.36
+          ],
+          [
+            "2026-07-21",
+            25.9
+          ],
+          [
+            "2026-07-22",
+            25.99
+          ],
+          [
+            "2026-07-23",
+            25.82
+          ],
+          [
+            "2026-07-24",
+            25.06
+          ],
+          [
+            "2026-07-27",
+            25.43
+          ],
+          [
+            "2026-07-28",
+            25.49
+          ],
+          [
+            "2026-07-29",
+            25.88
+          ],
+          [
+            "2026-07-30",
+            26.28
+          ],
+          [
+            "2026-07-31",
+            26.32
+          ],
+          [
+            "2026-08-03",
+            26.11
+          ],
+          [
+            "2026-08-04",
+            25.77
+          ],
+          [
+            "2026-08-05",
+            25.08
+          ],
+          [
+            "2026-08-06",
+            24.83
+          ],
+          [
+            "2026-08-07",
+            25.04
+          ],
+          [
+            "2026-08-10",
+            25.14
+          ],
+          [
+            "2026-08-11",
+            24.89
+          ],
+          [
+            "2026-08-12",
+            24.88
+          ],
+          [
+            "2026-08-13",
+            24.84
+          ],
+          [
+            "2026-08-14",
+            24.48
+          ],
+          [
+            "2026-08-17",
+            24.44
+          ],
+          [
+            "2026-08-18",
+            24.17
+          ],
+          [
+            "2026-08-19",
+            24.06
+          ],
+          [
+            "2026-08-20",
+            24.44
+          ],
+          [
+            "2026-08-21",
+            23.77
+          ],
+          [
+            "2026-08-24",
+            23.78
+          ],
+          [
+            "2026-08-25",
+            24.25
+          ],
+          [
+            "2026-08-26",
+            24.45
+          ],
+          [
+            "2026-08-27",
+            24.35
+          ],
+          [
+            "2026-08-28",
+            24.48
+          ],
+          [
+            "2026-08-31",
+            23.89
+          ],
+          [
+            "2026-09-01",
+            24.01
+          ],
+          [
+            "2026-09-02",
+            23.84
+          ],
+          [
+            "2026-09-03",
+            23.86
+          ],
+          [
+            "2026-09-04",
+            24.14
+          ],
+          [
+            "2026-09-07",
+            24.17
+          ],
+          [
+            "2026-09-08",
+            24.35
+          ],
+          [
+            "2026-09-09",
+            23.99
+          ],
+          [
+            "2026-09-10",
+            23.7
+          ],
+          [
+            "2026-09-11",
+            23.4
+          ],
+          [
+            "2026-09-14",
+            23.57
+          ],
+          [
+            "2026-09-15",
+            23.32
+          ],
+          [
+            "2026-09-16",
+            23.16
+          ],
+          [
+            "2026-09-17",
+            23.22
+          ],
+          [
+            "2026-09-18",
+            23.22
+          ],
+          [
+            "2026-09-21",
+            23.66
+          ],
+          [
+            "2026-09-22",
+            23.66
+          ],
+          [
+            "2026-09-23",
+            23.61
+          ],
+          [
+            "2026-09-24",
+            23.34
+          ],
+          [
+            "2026-09-28",
+            23.33
+          ],
+          [
+            "2026-09-29",
+            23.3
+          ],
+          [
+            "2026-09-30",
+            23.74
+          ],
+          [
+            "2026-10-08",
+            23.93
+          ],
+          [
+            "2026-10-09",
+            24.28
+          ],
+          [
+            "2026-10-12",
+            24.43
+          ],
+          [
+            "2026-10-13",
+            24.39
+          ],
+          [
+            "2026-10-14",
+            24.66
+          ],
+          [
+            "2026-10-15",
+            24.76
+          ],
+          [
+            "2026-10-16",
+            24.36
+          ]
+        ],
+        "meta": {
+          "providerId": "tencent-fallback",
+          "sourceName": "腾讯行情（备源）",
+          "sourceTimestamp": "2026-10-16",
+          "fetchedAt": "2026-10-18T03:17:11.016Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuation": {
+        "stockId": "CN001U",
+        "ivDcf": 33.32,
+        "medps": 31.71,
+        "gfScore": 81,
+        "valuationRank": 4,
+        "dimensions": {
+          "financialStrength": 7,
+          "profitability": 9,
+          "growth": 9,
+          "gfValue": 8,
+          "momentum": 1
+        },
+        "meta": {
+          "providerId": "gurufocus-cn-prototype",
+          "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+          "sourceTimestamp": "2026-06-30",
+          "fetchedAt": "2026-10-18T03:17:11.156Z",
+          "cacheState": "fresh"
+        }
+      },
+      "valuationMeta": {
+        "providerId": "gurufocus-cn-prototype",
+        "sourceName": "价值大师网（个人研究接口，未获再分发授权）",
+        "sourceTimestamp": "2026-06-30",
+        "fetchedAt": "2026-10-18T03:17:11.156Z",
+        "cacheState": "fresh"
+      },
+      "sourceLinks": {
+        "quote": "https://quote.eastmoney.com/sh600085.html",
+        "gurufocus": "https://www.gurufocus.cn/stock/SHSE:600085/summary"
+      },
+      "errors": []
+    }
+  ]
+}
