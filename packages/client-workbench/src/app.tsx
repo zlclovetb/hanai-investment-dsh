@@ -66,11 +66,15 @@ const NAV: ReadonlyArray<{ page: TopPage; path: string; icon: string; label: str
 
 export interface HanaiWorkbenchProps {
   client: HanaiClient
+  /** Return to the stock DSH conversation surface. */
+  onClose?: (() => void) | undefined
+  /** Initial internal page; used by tests and embeds, never reflected into the browser URL. */
+  initialPath?: string | undefined
 }
 
-export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
+export function HanaiWorkbench({ client, onClose, initialPath }: HanaiWorkbenchProps) {
   const [bootstrap, setBootstrap] = useState<BootstrapData | null>(null)
-  const [route, setRoute] = useState<AppRoute>(() => routeFromHash(window.location.hash))
+  const [route, setRoute] = useState<AppRoute>(() => routeFromHash(initialPath ?? ''))
   const [searchOpen, setSearchOpen] = useState(false)
   const [launchRequest, setLaunchRequest] = useState<JudgementLaunchRequest | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,11 +99,8 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
     }
   }, [client])
 
-  const navigate = useCallback((path: string, replace = false) => {
-    const hash = `#${path}`
-    if (replace) window.history.replaceState(null, '', hash)
-    else if (window.location.hash !== hash) window.history.pushState(null, '', hash)
-    setRoute(routeFromHash(hash))
+  const navigate = useCallback((path: string) => {
+    setRoute(routeFromHash(`#${path}`))
     setSearchOpen(false)
   }, [])
 
@@ -111,16 +112,6 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
   useEffect(() => {
     document.title = `${routeTitle(route)} — ${BRAND_NAME}`
   }, [route])
-  useEffect(() => {
-    if (window.location.hash === '' || window.location.hash === '#') navigate('/dashboard', true)
-    const syncRoute = () => setRoute(routeFromHash(window.location.hash))
-    window.addEventListener('hashchange', syncRoute)
-    window.addEventListener('popstate', syncRoute)
-    return () => {
-      window.removeEventListener('hashchange', syncRoute)
-      window.removeEventListener('popstate', syncRoute)
-    }
-  }, [navigate])
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -144,9 +135,14 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
   }, [])
   const clearLaunchRequest = useCallback(() => setLaunchRequest(null), [])
 
-  if (loading) return <Splash title="正在启动 Hanai Worth" detail="连接本地价值研究工作台…" />
+  if (loading) return <Splash title="正在启动 Hanai Worth" detail="连接本地价值研究工作台…" action={onClose === undefined ? undefined : <button onClick={onClose}>关闭并返回</button>} />
   if (fatal !== null || bootstrap === null) {
-    return <Splash title="Hanai Worth 暂时无法启动" detail={fatal ?? '未知错误'} action={<button onClick={() => void reload()}>重新连接</button>} />
+    return <Splash title="Hanai Worth 暂时无法启动" detail={fatal ?? '未知错误'} action={(
+      <div className={styles['splashActions']}>
+        <button onClick={() => void reload()}>重新连接</button>
+        {onClose !== undefined && <button onClick={onClose}>关闭并返回</button>}
+      </div>
+    )} />
   }
 
   const openStock = (stock: Pick<SecurityMaster, 'secId'>) => navigate(`/stock/${encodeURIComponent(stock.secId)}`)
@@ -198,6 +194,18 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
                   .catch(error => notify(messageOf(error), 'error'))
               }}
             />
+            {onClose !== undefined && (
+              <button
+                type="button"
+                className={styles['closeApp']}
+                onClick={onClose}
+                title="关闭值见并返回 DeepSeek"
+                aria-label="关闭值见并返回 DeepSeek"
+              >
+                <span aria-hidden="true">×</span>
+                <b>关闭</b>
+              </button>
+            )}
           </div>
         </header>
 
