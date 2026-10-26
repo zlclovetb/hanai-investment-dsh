@@ -167,6 +167,11 @@ const bootstrap: BootstrapData = {
     expertChatCount: 1,
     latestMarketSuccess: fresh.fetchedAt,
     latestValuationSuccess: fresh.fetchedAt,
+    marketSources: [fresh],
+    valuationSources: [fresh],
+    securitySource: null,
+    latestSecuritySuccess: null,
+    sourceAttempts: [],
     storage: { totalBytes: 4096, cacheBytes: 2048, marketCacheBytes: 1024, valuationCacheBytes: 1024, judgementsBytes: 512, expertChatsBytes: 256 },
     version: '0.1.0',
   },
@@ -1043,6 +1048,31 @@ describe('HanaiWorkbench old-client parity', () => {
     expect(descriptionRule).not.toMatch(/line-clamp|max-height|text-overflow|overflow:\s*hidden/)
   })
 
+  it('loads actual multi-source diagnostics and refreshes history without requesting market data', async () => {
+    const diagnostics = { ...bootstrap.diagnostics,
+      marketSources: [fresh, { ...fresh, providerId: 'tencent-fallback', sourceName: '腾讯行情（备源）', cacheState: 'stale' as const }],
+      valuationSources: [valuationFresh], securitySource: '新浪', securityCount: 5576,
+      latestSecuritySuccess: fresh.fetchedAt,
+      sourceAttempts: [{ source: 'eastmoney-push2', sourceName: '东方财富', scope: 'security' as const,
+        lastAttemptAt: fresh.fetchedAt, lastSuccessAt: null, lastError: '连接被关闭', failures: 0, openUntil: null }],
+    }
+    const client = makeClient({ 'diagnostics.get': () => diagnostics })
+    renderAt('/settings', client)
+    await screen.findByText('行情快照 · 多源')
+    expect(screen.getByText('证券主数据 · 新浪')).not.toBeNull()
+    expect(screen.getByText(/5,576 只/)).not.toBeNull()
+    expect(screen.getByText(/腾讯行情（备源） · 旧快照/)).not.toBeNull()
+    expect(screen.queryByText('行情 · 东方财富')).toBeNull()
+    const sources = screen.getByText('行情快照 · 多源').closest('article')!
+    expect(sources.querySelector('[class*="statusOk"]')).toBeNull()
+    fireEvent.click(screen.getByText('来源详情'))
+    expect(screen.getByText(/失败原因：连接被关闭/)).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '更新诊断' }))
+    await waitFor(() => expect(callsOf(client, 'diagnostics.get')).toHaveLength(2))
+    expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
+    expect(callsOf(client, 'security.sync')).toHaveLength(0)
+  })
+
   it('keeps every settings and diagnostic control in the compact hierarchy', async () => {
     const { client } = renderAt('/settings')
     await screen.findByRole('heading', { name: '设置与诊断' })
@@ -1227,6 +1257,7 @@ function makeClient(overrides: Record<string, CallOverride> = {}): HanaiClient {
     if (override !== undefined) return override(request, signal)
     switch (endpoint) {
       case 'bootstrap': return bootstrap
+      case 'diagnostics.get': return bootstrap.diagnostics
       case 'dashboard.get': return dashboard
       case 'sector.stocks': return { stocks: [watchQuote], meta: fresh }
       case 'watch.quotes': return { quotes: [watchQuote, watchQuoteMissing], meta: stale }

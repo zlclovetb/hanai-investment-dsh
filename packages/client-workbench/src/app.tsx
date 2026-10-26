@@ -10,6 +10,7 @@ import type { ModelProviderGroup } from '@deepseek-ai/dsh-api-session-controller
 import type {
   BootstrapData,
   DashboardData,
+  Diagnostics,
   ExpertChat,
   Judgement,
   JudgementDetail,
@@ -42,6 +43,7 @@ import { type KlineMaMode } from './kline-ma.ts'
 import { isMarketOpen, useRefreshCooldown } from './market-hours.ts'
 import { MarkdownView } from './markdown.tsx'
 import { describeDataStatus } from './data-status.ts'
+import { DataSources } from './data-sources.tsx'
 import { classForChange, dateTime, money, number, percent, quantity, ratio } from './format.ts'
 import styles from './styles.module.css'
 
@@ -1608,6 +1610,12 @@ function PersonasPage({ masters }: { masters: MasterPersona[] }) {
 }
 
 function SettingsPage({ client, bootstrap, onTheme, onReload, notify }: { client: HanaiClient; bootstrap: BootstrapData; onTheme: (theme: ThemeId) => void; onReload: () => Promise<void>; notify: Notify }) {
+  const [diagnostics, setDiagnostics] = useState<Diagnostics>(bootstrap.diagnostics)
+  useEffect(() => setDiagnostics(bootstrap.diagnostics), [bootstrap.diagnostics])
+  const refreshDiagnostics = useCallback(async () => {
+    setDiagnostics(await client.call('diagnostics.get', {}))
+  }, [client])
+  useEffect(() => { void refreshDiagnostics().catch(error => notify(messageOf(error), 'error')) }, [refreshDiagnostics, notify])
   const [credential, setCredential] = useState<{ configured: boolean; writable: boolean; source?: string } | null>(null)
   const [key, setKey] = useState('')
   const [models, setModels] = useState<ModelProviderGroup[]>([])
@@ -1681,11 +1689,9 @@ function SettingsPage({ client, bootstrap, onTheme, onReload, notify }: { client
         {client.isLoopback ? <><label className={styles['field']}><span>写入新的 API Key</span><input type="password" autoComplete="off" value={key} onChange={event => setKey(event.target.value)} placeholder="sk-••••••••••••" disabled={credential?.writable === false} /></label><div className={styles['settingsActions']}><button className={styles['buttonPrimary']} disabled={busy || key.trim() === '' || credential?.writable === false} onClick={() => { setBusy(true); void client.setDeepSeekKey(key).then(async () => { setKey(''); notify('API Key 已安全保存'); await load() }).catch(error => notify(messageOf(error), 'error')).finally(() => setBusy(false)) }}>安全保存</button><button className={styles['button']} disabled={!credential?.configured || credential.writable === false} onClick={() => void client.unsetDeepSeekKey().then(async () => { notify('已移除托管凭据'); await load() }).catch(error => notify(messageOf(error), 'error'))}>移除</button></div></> : <p className={styles['hintBox']}>为保护主机凭据，请在运行 DSH 的本机地址设置 API Key。</p>}
       </article>
 
-      <article className={`${styles['card']} ${styles['settingsCard']} ${styles['settingsData']}`}><PanelHead title="数据源" hint="本地缓存与最近一次可用状态" />
-        <div className={styles['sourceList']}><SourceRow title="行情 · 东方财富" detail={`近实时快照 · 最近成功 ${dateTime(bootstrap.diagnostics.latestMarketSuccess)}`} available={bootstrap.diagnostics.latestMarketSuccess !== null} />
-          <SourceRow title="估值 · 价值大师网" detail={`日级缓存 · 最近成功 ${dateTime(bootstrap.diagnostics.latestValuationSuccess)} · 仅限个人研究使用`} available={bootstrap.diagnostics.latestValuationSuccess !== null} /></div>
-        <div className={styles['sourceSummary']}><span>证券主数据</span><b>{bootstrap.diagnostics.securityCount.toLocaleString()} 只</b></div>
-        <div className={styles['settingsActions']}><button className={styles['button']} disabled={busy} onClick={() => { setBusy(true); void client.call('security.sync', { force: true }).then(async result => { notify(`已同步 ${result.count.toLocaleString()} 条证券`); await onReload() }).catch(error => notify(messageOf(error), 'error')).finally(() => setBusy(false)) }}>{busy ? '同步中…' : '立即同步主数据'}</button></div>
+      <article className={`${styles['card']} ${styles['settingsCard']} ${styles['settingsData']}`}><PanelHead title="数据源" hint="自动切换 · 实际来源与最近调用记录" />
+        <DataSources diagnostics={diagnostics} />
+        <div className={styles['settingsActions']}><button className={styles['button']} disabled={busy} onClick={() => void refreshDiagnostics().catch(error => notify(messageOf(error), 'error'))}>更新诊断</button><button className={styles['button']} disabled={busy} onClick={() => { setBusy(true); void client.call('security.sync', { force: true }).then(async result => { notify(`已同步 ${result.count.toLocaleString()} 条证券`); await onReload() }).catch(error => notify(messageOf(error), 'error')).finally(() => { setBusy(false); void refreshDiagnostics().catch(error => notify(messageOf(error), 'error')) }) }}>{busy ? '同步中…' : '立即同步主数据'}</button></div>
       </article>
 
       <article className={`${styles['card']} ${styles['settingsCard']} ${styles['settingsStorage']}`}><PanelHead title="本地存储" hint="数据与缓存均隔离在 Hanai Worth 专用目录" />
@@ -1833,10 +1839,6 @@ function ValuationLoading({ variant }: { variant: 'summary' | 'chart' }) {
 
 function KeyValue({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return <div className={styles['keyValue']}><span>{label}</span><b className={mono ? styles['mono'] : undefined}>{value}</b></div>
-}
-
-function SourceRow({ title, detail, available }: { title: string; detail: string; available: boolean }) {
-  return <div className={styles['sourceRow']}><span className={`${styles['statusDot']} ${available ? styles['statusOk'] : styles['statusUnknown']}`} /><div><b>{title}</b><small>{detail}</small></div></div>
 }
 
 function SettingsMetric({ label, value }: { label: string; value: string }) {

@@ -3,6 +3,7 @@ import type {
   KLinePeriod,
   ProviderMeta,
   SearchResult,
+  SourceDiagnostic,
   SecurityMaster,
   StockDetail,
   StockKLineData,
@@ -108,10 +109,30 @@ export class MarketDataService {
   /** 包住单个数据源调用：熔断期间直接跳过，异常计入该源失败次数。 */
   private async callSource<T>(source: SourceId, task: () => Promise<T>): Promise<T | null> {
     try {
-      return await this.circuit.run(source, task)
+      return await this.circuit.run(source, async () => {
+        const value = await task()
+        if (value !== null && typeof value === 'object' && 'meta' in value) {
+          const meta = value.meta as ProviderMeta | null
+          if (meta?.cacheState === 'unavailable') throw new Error('本次调用未返回可用数据')
+        }
+        return value
+      })
     } catch {
       return null
     }
+  }
+
+  getSourceDiagnostics(): SourceDiagnostic[] {
+    const sources = [
+      ['tencent', '腾讯', 'market'], ['sina', '新浪', 'market'],
+      ['eastmoney-push2his', '东方财富（行情 / K线调用链）', 'market'],
+      ['gurufocus', '价值大师网', 'valuation'],
+      ['sina', '新浪', 'security'], ['eastmoney-push2', '东方财富', 'security'],
+    ] as const
+    return sources.map(([source, sourceName, scope]) => ({
+      source, sourceName, scope,
+      ...(scope === 'security' ? this.securitiesCircuit : this.circuit).snapshot(source),
+    }))
   }
 
   async getDashboard(): Promise<DashboardData> {
@@ -245,7 +266,7 @@ export class MarketDataService {
 
   async getValuation(secId: string, security?: SecurityMaster | null): Promise<StockValuationData> {
     const identity = security ?? inferredSecurity(secId)
-    const valuation = await optional(this.gurufocus.getValuation(identity.exchange, identity.code))
+    const valuation = await this.callSource('gurufocus', () => this.gurufocus.getValuation(identity.exchange, identity.code))
     return {
       valuation,
       meta: valuation?.meta ?? null,
@@ -253,6 +274,7 @@ export class MarketDataService {
   }
 
   async getQuotes(secIds: readonly string[]): Promise<{ quotes: StockQuote[]; meta: ProviderMeta }> {
+    if (secIds.length === 0) return { quotes: [], meta: this.unavailableMeta() }
     // 东财熔断时跳过主源，直接按顺序切到腾讯。
     const primary = await this.callSource('eastmoney-push2his', () => this.eastmoney.getQuotes(secIds))
     const available = new Map((primary?.quotes ?? []).map(quote => [quote.secId, quote]))

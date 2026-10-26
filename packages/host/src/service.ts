@@ -24,6 +24,7 @@ import type {
   KLinePeriod,
   ProviderMeta,
   SearchResult,
+  SourceDiagnostic,
   StockDetail,
   StockKLineData,
   StockQuoteMetricsData,
@@ -38,6 +39,7 @@ import { HanaiDatabase } from '../../domain/src/database.ts'
 import type { HanaiPaths } from '../../domain/src/paths.ts'
 import { ReportStore, ReportValidationError } from '../../domain/src/reports.ts'
 import { ExpertChatStore } from '../../domain/src/expert-chats.ts'
+import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domain/src/securities.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const VALUATION_SUCCESS_SETTING = 'valuation.latestSuccess'
@@ -55,6 +57,7 @@ export interface MarketFacade {
   ): Promise<StockValuationData>
   getQuotes(secIds: readonly string[]): Promise<{ quotes: StockQuote[]; meta: ProviderMeta }>
   clearMarketCache(): number
+  getSourceDiagnostics(): SourceDiagnostic[]
   syncSecurities(database: HanaiDatabase, force?: boolean): Promise<{ count: number; updatedAt: string | null }>
   searchSecurities(database: HanaiDatabase, query: string): Promise<SearchResult[]>
 }
@@ -222,6 +225,7 @@ export class HanaiService {
           result.overview.meta,
           result.industry.meta,
           result.concept.meta,
+          ...Object.values(result.rankSources ?? {}),
         ])
         return result
       }
@@ -234,11 +238,7 @@ export class HanaiService {
       }
       case 'security.sync': {
         const input = request as HanaiRequest<'security.sync'>
-        const result = await this.market.syncSecurities(this.database, input.force)
-        if (result.count > 0 && result.updatedAt !== null) {
-          this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.updatedAt)
-        }
-        return result
+        return this.market.syncSecurities(this.database, input.force)
       }
       case 'security.search': {
         const input = request as HanaiRequest<'security.search'>
@@ -349,10 +349,7 @@ export class HanaiService {
   private async bootstrap(): Promise<BootstrapData> {
     if (this.database.securityCount() === 0) {
       try {
-        const result = await this.market.syncSecurities(this.database, false)
-        if (result.count > 0 && result.updatedAt !== null) {
-          this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.updatedAt)
-        }
+        await this.market.syncSecurities(this.database, false)
       } catch {
         // First-run market access may be offline; the workbench still boots and exposes manual retry.
       }
@@ -417,6 +414,11 @@ export class HanaiService {
       expertChatCount: this.database.expertChatCount(),
       latestMarketSuccess: this.database.getSetting('market.latestSuccess'),
       latestValuationSuccess: this.database.getSetting('valuation.latestSuccess'),
+      marketSources: this.providerSources(MARKET_SUCCESS_SETTING),
+      valuationSources: this.providerSources(VALUATION_SUCCESS_SETTING),
+      securitySource: this.database.getSetting(SECURITY_SOURCE_SETTING),
+      latestSecuritySuccess: this.database.getSetting(SECURITY_SYNCED_AT_SETTING),
+      sourceAttempts: this.market.getSourceDiagnostics(),
       storage: {
         totalBytes: total.bytes,
         cacheBytes: cache.bytes,
@@ -462,6 +464,18 @@ export class HanaiService {
   }
 
   private recordProviderSuccess(setting: string, values: ReadonlyArray<ProviderMeta | null>): void {
+    const sources = values.filter((value): value is ProviderMeta => value !== null && Number.isFinite(Date.parse(value.fetchedAt)))
+    const previous = this.providerSources(setting)
+    const newestAt = (metas: ProviderMeta[]) => Math.max(...metas.map(meta => Date.parse(meta.fetchedAt)))
+    if (sources.length === 0 || newestAt(sources) >= newestAt(previous)) {
+      const unique = new Map<string, ProviderMeta>()
+      for (const meta of sources) {
+        const key = `${meta.providerId}:${meta.cacheState}`
+        const existing = unique.get(key)
+        if (existing === undefined || Date.parse(meta.fetchedAt) >= Date.parse(existing.fetchedAt)) unique.set(key, meta)
+      }
+      this.database.setSetting(`${setting}.sources`, JSON.stringify([...unique.values()]))
+    }
     const newest = values
       .filter((value): value is ProviderMeta => value !== null
         && value.cacheState !== 'unavailable'
@@ -470,6 +484,20 @@ export class HanaiService {
       .filter(value => Number.isFinite(Date.parse(value)))
       .sort((left, right) => Date.parse(right) - Date.parse(left))[0]
     if (newest !== undefined) this.recordSuccessTimestamp(setting, newest)
+  }
+
+  private providerSources(setting: string): ProviderMeta[] {
+    try {
+      const values: unknown = JSON.parse(this.database.getSetting(`${setting}.sources`) ?? '[]')
+      if (!Array.isArray(values)) return []
+      return values.filter((value): value is ProviderMeta => value !== null && typeof value === 'object'
+        && typeof value.providerId === 'string' && typeof value.sourceName === 'string'
+        && typeof value.fetchedAt === 'string' && Number.isFinite(Date.parse(value.fetchedAt))
+        && (value.sourceTimestamp === null || typeof value.sourceTimestamp === 'string')
+        && ['fresh', 'cached', 'stale', 'unavailable'].includes(value.cacheState))
+    } catch {
+      return []
+    }
   }
 
   private recordSuccessTimestamp(setting: string, timestamp: string): void {

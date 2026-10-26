@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FakeClock } from '../helpers.ts'
 import {
   SOURCE_PRIORITY,
@@ -10,7 +10,35 @@ import {
 const NOW = Date.parse('2026-10-23T10:00:00+08:00')
 const fail = (): Promise<never> => Promise.reject(new Error('upstream down'))
 
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
+afterEach(() => vi.useRealTimers())
+
 describe('SourceCircuit', () => {
+  it('exposes actual attempt history without probing and retains failures until a successful retry', async () => {
+    const clock = new FakeClock(NOW)
+    const circuit = new SourceCircuit({ clock, failureThreshold: 1 })
+    expect(circuit.snapshot('sina')).toMatchObject({ lastAttemptAt: null, lastError: null, openUntil: null })
+    await expect(circuit.run('sina', fail)).rejects.toThrow('upstream down')
+    const failed = circuit.snapshot('sina')
+    expect(failed).toMatchObject({ lastAttemptAt: new Date(NOW).toISOString(), lastSuccessAt: null,
+      lastError: 'upstream down', openUntil: new Date(NOW + 300_000).toISOString() })
+    const probe = vi.fn(async () => 'ok')
+    await expect(circuit.run('sina', probe)).rejects.toThrow('已熔断')
+    expect(probe).not.toHaveBeenCalled()
+    expect(circuit.snapshot('sina')).toEqual(failed)
+    clock.advance(300_000)
+    expect(circuit.snapshot('sina')).toMatchObject({ lastError: 'upstream down', openUntil: null })
+    await circuit.run('sina', probe)
+    expect(circuit.snapshot('sina')).toMatchObject({ lastError: null, failures: 0, openUntil: null,
+      lastSuccessAt: new Date(NOW + 300_000).toISOString() })
+  })
+
+  it('records a null result as failure rather than a successful response', async () => {
+    const circuit = new SourceCircuit({ clock: new FakeClock(NOW) })
+    await circuit.run('gurufocus', async () => null)
+    expect(circuit.snapshot('gurufocus')).toMatchObject({ lastSuccessAt: null, failures: 1, lastError: '未返回可用数据' })
+  })
+
   it('skips a source after three consecutive failures and retries after cooldown', async () => {
     const clock = new FakeClock(NOW)
     const circuit = new SourceCircuit({ clock, failureThreshold: 3, cooldownMs: 60_000 })

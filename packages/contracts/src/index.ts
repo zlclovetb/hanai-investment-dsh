@@ -361,6 +361,17 @@ export interface DashboardData {
   rankSources?: Record<'gainers' | 'losers' | 'amount' | 'turnover', ProviderMeta>
 }
 
+export interface SourceDiagnostic {
+  source: string
+  sourceName: string
+  scope: 'market' | 'security' | 'valuation'
+  lastAttemptAt: string | null
+  lastSuccessAt: string | null
+  lastError: string | null
+  failures: number
+  openUntil: string | null
+}
+
 export interface Diagnostics {
   dataRoot: string
   databasePath: string
@@ -371,6 +382,11 @@ export interface Diagnostics {
   expertChatCount: number
   latestMarketSuccess: string | null
   latestValuationSuccess: string | null
+  marketSources: ProviderMeta[]
+  valuationSources: ProviderMeta[]
+  securitySource: string | null
+  latestSecuritySuccess: string | null
+  sourceAttempts: SourceDiagnostic[]
   storage: {
     totalBytes: number
     cacheBytes: number

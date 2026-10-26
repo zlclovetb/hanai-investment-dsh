@@ -27,6 +27,16 @@ function sinaHttp(mode: 'complete' | 'truncated' | 'duplicate' | 'invalid' | 'no
 }
 
 describe('security master fallback', () => {
+  it('does not probe or record successful source calls when reading diagnostics or requesting no securities', async () => {
+    const http = sinaHttp('complete')
+    const service = new MarketDataService({ http, clock: new FakeClock(NOW) })
+    const before = service.getSourceDiagnostics()
+    expect(before.every(source => source.lastAttemptAt === null)).toBe(true)
+    expect((await service.getQuotes([])).quotes).toEqual([])
+    expect(service.getSourceDiagnostics()).toEqual(before)
+    expect(http.requests).toHaveLength(0)
+  })
+
   it('paginates the full Sina list including Beijing, ST and suspended securities without requiring prices', async () => {
     const http = sinaHttp('complete')
     const clock = new FakeClock(NOW)

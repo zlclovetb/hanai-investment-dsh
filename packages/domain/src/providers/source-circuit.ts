@@ -40,11 +40,19 @@ export interface SourceAttempt<T> {
   run: () => Promise<T | null>
 }
 
+interface SourceState {
+  failures: number
+  openUntil: number
+  lastAttemptAt: number
+  lastSuccessAt: number | null
+  lastError: string | null
+}
+
 export class SourceCircuit {
   private readonly failureThreshold: number
   private readonly cooldownMs: number
   private readonly clock: Clock
-  private readonly states = new Map<SourceId, { failures: number; openUntil: number }>()
+  private readonly states = new Map<SourceId, SourceState>()
 
   constructor(options: SourceCircuitOptions = {}) {
     this.failureThreshold = options.failureThreshold ?? 3
@@ -57,6 +65,17 @@ export class SourceCircuit {
     return state !== undefined && state.openUntil > this.clock.now()
   }
 
+  snapshot(source: SourceId) {
+    const state = this.states.get(source)
+    return {
+      lastAttemptAt: state === undefined ? null : new Date(state.lastAttemptAt).toISOString(),
+      lastSuccessAt: state?.lastSuccessAt == null ? null : new Date(state.lastSuccessAt).toISOString(),
+      lastError: state?.lastError ?? null,
+      failures: state?.failures ?? 0,
+      openUntil: state !== undefined && state.openUntil > this.clock.now() ? new Date(state.openUntil).toISOString() : null,
+    }
+  }
+
   /** 调用单个数据源；熔断期间直接抛错，由调用方的兜底链切到下一个源。 */
   async run<T>(source: SourceId, task: () => Promise<T>): Promise<T> {
     const state = this.states.get(source)
@@ -65,10 +84,13 @@ export class SourceCircuit {
     }
     try {
       const value = await task()
-      this.states.delete(source)
+      if (value === null) this.recordFailure(source, new Error('未返回可用数据'))
+      else this.states.set(source, {
+        failures: 0, openUntil: 0, lastAttemptAt: this.clock.now(), lastSuccessAt: this.clock.now(), lastError: null,
+      })
       return value
     } catch (error) {
-      this.recordFailure(source)
+      this.recordFailure(source, error)
       throw error
     }
   }
@@ -78,15 +100,11 @@ export class SourceCircuit {
     for (const attempt of attempts) {
       if (this.isOpen(attempt.source)) continue
       try {
-        const value = await attempt.run()
+        const value = await this.run(attempt.source, attempt.run)
         if (value !== null) {
-          this.states.delete(attempt.source)
           return value
         }
-        this.recordFailure(attempt.source)
-      } catch {
-        this.recordFailure(attempt.source)
-      }
+      } catch { /* run 已记录失败；继续备源。 */ }
     }
     return null
   }
@@ -100,8 +118,10 @@ export class SourceCircuit {
     return sources.filter(source => !this.isOpen(source)).sort((left, right) => rank(left) - rank(right))
   }
 
-  private recordFailure(source: SourceId): void {
-    const state = this.states.get(source) ?? { failures: 0, openUntil: 0 }
+  private recordFailure(source: SourceId, error: unknown): void {
+    const state = this.states.get(source) ?? { failures: 0, openUntil: 0, lastAttemptAt: 0, lastSuccessAt: null, lastError: null }
+    state.lastAttemptAt = this.clock.now()
+    state.lastError = error instanceof Error ? error.message : String(error)
     state.failures += 1
     if (state.failures >= this.failureThreshold) {
       state.openUntil = this.clock.now() + this.cooldownMs

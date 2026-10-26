@@ -96,6 +96,7 @@ function fixture(minChars = 100) {
     getValuation: async () => ({ valuation: null, meta: null }),
     getQuotes: async () => ({ quotes: [], meta }),
     clearMarketCache: () => 0,
+    getSourceDiagnostics: () => [],
     syncSecurities: async () => ({ count: 0, updatedAt: null }),
     searchSecurities: async () => [],
   }
@@ -584,11 +585,35 @@ describe('HanaiService report lifecycle', () => {
     const diagnostics = await service.call('diagnostics.get', {}, new AbortController().signal)
     expect(diagnostics.latestMarketSuccess).toBe('2026-08-15T01:02:00.000Z')
     expect(diagnostics.latestValuationSuccess).toBe('2026-08-15T01:03:00.000Z')
+    expect(diagnostics.marketSources).toEqual([marketMeta])
+    expect(diagnostics.valuationSources).toEqual([valuationMeta])
     database.close()
   })
 })
 
 describe('HanaiService parity endpoints and diagnostics', () => {
+  it('keeps security provenance separate from market success and exposes diagnostics without fetching prices', async () => {
+    const { database, market, service } = fixture()
+    try {
+      database.setSetting('market.latestSuccess', '2026-10-26T01:00:00.000Z')
+      market.syncSecurities = async () => {
+        database.setSetting('security.master.syncedAt', '2026-10-26T02:00:00.000Z')
+        database.setSetting('security.master.source', '新浪')
+        return { count: 5576, updatedAt: '2026-10-26T02:00:00.000Z' }
+      }
+      const history = [{ source: 'sina', sourceName: '新浪', scope: 'security' as const, lastAttemptAt: null,
+        lastSuccessAt: null, lastError: null, failures: 0, openUntil: null }]
+      market.getSourceDiagnostics = () => history
+      const quotes = vi.spyOn(market, 'getQuotes')
+      await service.call('security.sync', { force: true }, new AbortController().signal)
+      await service.call('bootstrap', {}, new AbortController().signal)
+      const diagnostics = await service.call('diagnostics.get', {}, new AbortController().signal)
+      expect(diagnostics).toMatchObject({ latestMarketSuccess: '2026-10-26T01:00:00.000Z', marketSources: [],
+        securitySource: '新浪', latestSecuritySuccess: '2026-10-26T02:00:00.000Z', sourceAttempts: history })
+      expect(quotes).not.toHaveBeenCalled()
+    } finally { database.close() }
+  })
+
   it('reads unique watch securities locally even when market providers are unavailable', async () => {
     const { database, market, service } = fixture()
     try {
