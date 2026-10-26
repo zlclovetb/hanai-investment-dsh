@@ -1611,9 +1611,20 @@ function PersonasPage({ masters }: { masters: MasterPersona[] }) {
 
 function SettingsPage({ client, bootstrap, onTheme, onReload, notify }: { client: HanaiClient; bootstrap: BootstrapData; onTheme: (theme: ThemeId) => void; onReload: () => Promise<void>; notify: Notify }) {
   const [diagnostics, setDiagnostics] = useState<Diagnostics>(bootstrap.diagnostics)
-  useEffect(() => setDiagnostics(bootstrap.diagnostics), [bootstrap.diagnostics])
+  const [securitySyncNow, setSecuritySyncNow] = useState(Date.now)
+  const securitySyncCooldown = Math.max(0, Math.ceil(((Date.parse(diagnostics.securitySyncAvailableAt ?? '') || 0) - securitySyncNow) / 1000))
+  useEffect(() => {
+    setDiagnostics(bootstrap.diagnostics)
+    setSecuritySyncNow(Date.now())
+  }, [bootstrap.diagnostics])
+  useEffect(() => {
+    if (securitySyncCooldown <= 0) return
+    const timer = window.setInterval(() => setSecuritySyncNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [securitySyncCooldown > 0])
   const refreshDiagnostics = useCallback(async () => {
     setDiagnostics(await client.call('diagnostics.get', {}))
+    setSecuritySyncNow(Date.now())
   }, [client])
   useEffect(() => { void refreshDiagnostics().catch(error => notify(messageOf(error), 'error')) }, [refreshDiagnostics, notify])
   const [credential, setCredential] = useState<{ configured: boolean; writable: boolean; source?: string } | null>(null)
@@ -1625,6 +1636,21 @@ function SettingsPage({ client, bootstrap, onTheme, onReload, notify }: { client
   const [modelError, setModelError] = useState<string | null>(null)
   const [checking, setChecking] = useState(true)
   const [busy, setBusy] = useState(false)
+  const syncSecurities = async () => {
+    if (busy || securitySyncCooldown > 0) return
+    setBusy(true)
+    setSecuritySyncNow(Date.now())
+    setDiagnostics(previous => ({ ...previous, securitySyncAvailableAt: new Date(Date.now() + 60_000).toISOString() }))
+    try {
+      const result = await client.call('security.sync', { force: true })
+      notify(`已同步 ${result.count.toLocaleString()} 条证券`)
+      await onReload()
+    } catch (error) { notify(messageOf(error), 'error') }
+    finally {
+      setBusy(false)
+      await refreshDiagnostics().catch(error => notify(messageOf(error), 'error'))
+    }
+  }
   const load = useCallback(async () => {
     setChecking(true)
     const [credentialResult, modelResult, defaultModelResult] = await Promise.allSettled([
@@ -1691,7 +1717,7 @@ function SettingsPage({ client, bootstrap, onTheme, onReload, notify }: { client
 
       <article className={`${styles['card']} ${styles['settingsCard']} ${styles['settingsData']}`}><PanelHead title="数据源" hint="自动切换 · 实际来源与最近调用记录" />
         <DataSources diagnostics={diagnostics} />
-        <div className={styles['settingsActions']}><button className={styles['button']} disabled={busy} onClick={() => void refreshDiagnostics().catch(error => notify(messageOf(error), 'error'))}>更新诊断</button><button className={styles['button']} disabled={busy} onClick={() => { setBusy(true); void client.call('security.sync', { force: true }).then(async result => { notify(`已同步 ${result.count.toLocaleString()} 条证券`); await onReload() }).catch(error => notify(messageOf(error), 'error')).finally(() => { setBusy(false); void refreshDiagnostics().catch(error => notify(messageOf(error), 'error')) }) }}>{busy ? '同步中…' : '立即同步主数据'}</button></div>
+        <div className={styles['settingsActions']}><button className={styles['button']} disabled={busy} onClick={() => void refreshDiagnostics().catch(error => notify(messageOf(error), 'error'))}>更新诊断</button><button className={styles['button']} disabled={busy || securitySyncCooldown > 0} onClick={() => void syncSecurities()}>{busy ? '同步中…' : securitySyncCooldown > 0 ? `主数据同步冷却 ${securitySyncCooldown}s` : '立即同步主数据'}</button></div>
       </article>
 
       <article className={`${styles['card']} ${styles['settingsCard']} ${styles['settingsStorage']}`}><PanelHead title="本地存储" hint="数据与缓存均隔离在 Hanai Worth 专用目录" />

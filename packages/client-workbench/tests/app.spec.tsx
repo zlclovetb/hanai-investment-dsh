@@ -171,6 +171,7 @@ const bootstrap: BootstrapData = {
     valuationSources: [fresh],
     securitySource: null,
     latestSecuritySuccess: null,
+    securitySyncAvailableAt: null,
     sourceAttempts: [],
     storage: { totalBytes: 4096, cacheBytes: 2048, marketCacheBytes: 1024, valuationCacheBytes: 1024, judgementsBytes: 512, expertChatsBytes: 256 },
     version: '0.1.0',
@@ -1046,6 +1047,39 @@ describe('HanaiWorkbench old-client parity', () => {
     expect(descriptionRule).toContain('white-space: pre-wrap;')
     expect(descriptionRule).toContain('overflow-wrap: anywhere;')
     expect(descriptionRule).not.toMatch(/line-clamp|max-height|text-overflow|overflow:\s*hidden/)
+  })
+
+  it.each(['success', 'failure'] as const)('keeps the manual security cooldown after %s and page reload, then restores the button', async outcome => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-26T10:00:00+08:00'))
+    let deadline: string | null = null
+    const currentDiagnostics = () => ({ ...bootstrap.diagnostics, securitySyncAvailableAt: deadline })
+    const client = makeClient({
+      bootstrap: () => ({ ...bootstrap, diagnostics: currentDiagnostics() }),
+      'diagnostics.get': currentDiagnostics,
+      'security.sync': () => {
+        deadline = new Date(Date.now() + 60_000).toISOString()
+        if (outcome === 'failure') throw new Error('主数据暂不可用')
+        return { count: 5576, updatedAt: new Date().toISOString() }
+      },
+    })
+    try {
+      await act(async () => { renderAt('/settings', client) })
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: '立即同步主数据' })) })
+      const cooling = screen.getByRole('button', { name: '主数据同步冷却 60s' })
+      expect(cooling.hasAttribute('disabled')).toBe(true)
+      fireEvent.click(cooling)
+      expect(callsOf(client, 'security.sync')).toHaveLength(1)
+      cleanup()
+      await act(async () => { renderAt('/settings', client) })
+      expect(screen.getByRole('button', { name: '主数据同步冷却 60s' }).hasAttribute('disabled')).toBe(true)
+      await act(async () => { await vi.advanceTimersByTimeAsync(59_999) })
+      expect(screen.getByRole('button', { name: '主数据同步冷却 1s' }).hasAttribute('disabled')).toBe(true)
+      await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+      expect(screen.getByRole('button', { name: '立即同步主数据' }).hasAttribute('disabled')).toBe(false)
+      expect(callsOf(client, 'security.sync')).toHaveLength(1)
+      expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
+    } finally { cleanup(); vi.useRealTimers() }
   })
 
   it('loads actual multi-source diagnostics and refreshes history without requesting market data', async () => {

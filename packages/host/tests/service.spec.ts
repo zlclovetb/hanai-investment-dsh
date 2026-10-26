@@ -592,6 +592,66 @@ describe('HanaiService report lifecycle', () => {
 })
 
 describe('HanaiService parity endpoints and diagnostics', () => {
+  it('enforces the shared manual security cooldown until the exact 60-second boundary', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-26T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    try {
+      const sync = vi.spyOn(market, 'syncSecurities').mockResolvedValue({ count: 5576, updatedAt: null })
+      const signal = new AbortController().signal
+      await service.call('security.sync', { force: true }, signal)
+      expect((await service.call('diagnostics.get', {}, signal)).securitySyncAvailableAt).toBe('2026-10-26T02:01:00.000Z')
+      await expect(service.call('security.sync', {}, signal)).rejects.toThrow('60 秒后重试')
+      vi.advanceTimersByTime(59_999)
+      await expect(service.call('security.sync', { force: true }, signal)).rejects.toThrow('1 秒后重试')
+      expect(sync).toHaveBeenCalledTimes(1)
+      vi.advanceTimersByTime(1)
+      await service.call('security.sync', { force: true }, signal)
+      expect(sync).toHaveBeenCalledTimes(2)
+    } finally { database.close(); vi.useRealTimers() }
+  })
+
+  it('retains cooldown after failure and service recreation while leaving automatic bootstrap sync independent', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-26T10:00:00+08:00'))
+    const setup = fixture()
+    try {
+      const sync = vi.spyOn(setup.market, 'syncSecurities').mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue({ count: 0, updatedAt: null })
+      const signal = new AbortController().signal
+      await expect(setup.service.call('security.sync', { force: true }, signal)).rejects.toThrow('offline')
+      const restarted = new HanaiService({ ...setup, version: 'test' })
+      await expect(restarted.call('security.sync', { force: true }, signal)).rejects.toThrow('冷却中')
+      await restarted.call('bootstrap', {}, signal)
+      expect(sync).toHaveBeenCalledTimes(2)
+      expect(sync.mock.calls[1]?.[1]).toBe(false)
+      vi.advanceTimersByTime(60_000)
+      await setup.service.call('security.sync', { force: true }, signal)
+      expect(sync).toHaveBeenCalledTimes(3)
+    } finally { setup.database.close(); vi.useRealTimers() }
+  })
+
+  it('blocks overlapping manual syncs even when a running request outlasts its cooldown', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-26T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    let finish!: (value: { count: number; updatedAt: string | null }) => void
+    const pending = new Promise<{ count: number; updatedAt: string | null }>(resolve => { finish = resolve })
+    const sync = vi.spyOn(market, 'syncSecurities').mockReturnValue(pending)
+    const signal = new AbortController().signal
+    const active = service.call('security.sync', { force: true }, signal)
+    try {
+      vi.advanceTimersByTime(61_000)
+      await expect(service.call('security.sync', { force: true }, signal)).rejects.toThrow('正在同步')
+      expect(sync).toHaveBeenCalledTimes(1)
+    } finally {
+      finish({ count: 5576, updatedAt: null })
+      await active
+      database.close()
+      vi.useRealTimers()
+    }
+  })
+
   it('keeps security provenance separate from market success and exposes diagnostics without fetching prices', async () => {
     const { database, market, service } = fixture()
     try {

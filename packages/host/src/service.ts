@@ -43,6 +43,8 @@ import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domai
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const VALUATION_SUCCESS_SETTING = 'valuation.latestSuccess'
+const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableAt'
+const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
   getDashboard(refresh?: boolean): Promise<DashboardData>
@@ -100,6 +102,7 @@ export class HanaiService {
   private readonly version: string
   private readonly openDirectory: (directory: string) => Promise<void>
   private readonly reportJobs = new Map<string, Promise<void>>()
+  private securitySyncInProgress = false
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
@@ -238,7 +241,17 @@ export class HanaiService {
       }
       case 'security.sync': {
         const input = request as HanaiRequest<'security.sync'>
-        return this.market.syncSecurities(this.database, input.force)
+        if (this.securitySyncInProgress) throw new Error('主数据正在同步，请等待完成')
+        const availableAt = Date.parse(this.database.getSetting(SECURITY_SYNC_AVAILABLE_AT_SETTING) ?? '')
+        const remaining = Math.ceil((availableAt - Date.now()) / 1000)
+        if (remaining > 0) throw new Error(`主数据手动同步冷却中，请 ${remaining} 秒后重试`)
+        this.database.setSetting(SECURITY_SYNC_AVAILABLE_AT_SETTING, new Date(Date.now() + SECURITY_SYNC_COOLDOWN_MS).toISOString())
+        this.securitySyncInProgress = true
+        try {
+          return await this.market.syncSecurities(this.database, input.force)
+        } finally {
+          this.securitySyncInProgress = false
+        }
       }
       case 'security.search': {
         const input = request as HanaiRequest<'security.search'>
@@ -418,6 +431,7 @@ export class HanaiService {
       valuationSources: this.providerSources(VALUATION_SUCCESS_SETTING),
       securitySource: this.database.getSetting(SECURITY_SOURCE_SETTING),
       latestSecuritySuccess: this.database.getSetting(SECURITY_SYNCED_AT_SETTING),
+      securitySyncAvailableAt: this.database.getSetting(SECURITY_SYNC_AVAILABLE_AT_SETTING),
       sourceAttempts: this.market.getSourceDiagnostics(),
       storage: {
         totalBytes: total.bytes,

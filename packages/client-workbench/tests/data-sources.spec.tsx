@@ -8,7 +8,7 @@ const NOW = Date.parse('2026-10-26T10:00:00+08:00')
 const diagnostics: Diagnostics = {
   dataRoot: '', databasePath: '', dshHomeOwnedByHost: true, securityCount: 0, masterCount: 0,
   judgementCount: 0, expertChatCount: 0, latestMarketSuccess: new Date(NOW).toISOString(), latestValuationSuccess: null,
-  marketSources: [], valuationSources: [], securitySource: null, latestSecuritySuccess: null,
+  marketSources: [], valuationSources: [], securitySource: null, latestSecuritySuccess: null, securitySyncAvailableAt: null,
   sourceAttempts: [{ source: 'sina', sourceName: '新浪', scope: 'security', lastAttemptAt: new Date(NOW).toISOString(),
     lastSuccessAt: null, lastError: '列表不完整', failures: 0, openUntil: new Date(NOW + 300_000).toISOString() }],
   storage: { totalBytes: 0, cacheBytes: 0, marketCacheBytes: 0, valuationCacheBytes: 0, judgementsBytes: 0, expertChatsBytes: 0 }, version: 'test',

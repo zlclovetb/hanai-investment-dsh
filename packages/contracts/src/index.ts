@@ -386,6 +386,7 @@ export interface Diagnostics {
   valuationSources: ProviderMeta[]
   securitySource: string | null
   latestSecuritySuccess: string | null
+  securitySyncAvailableAt: string | null
   sourceAttempts: SourceDiagnostic[]
   storage: {
     totalBytes: number
