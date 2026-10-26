@@ -1,8 +1,7 @@
-import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-
+import { spawnSyncShell } from './win-spawn.ts'
 import { stripPnpmRunSeparator } from './pnpm-run-args.ts'
 import {
   assertComposedLayers,
@@ -25,7 +24,7 @@ for (let index = 0; index < args.length; index += 1) {
   else if (argument !== undefined) profile = argument
 }
 if (!/^[A-Za-z0-9._-]+$/.test(profile)) throw new Error('非法 profile 名称')
-const version = spawnSync(dshBin, ['--version'], { encoding: 'utf8' })
+const version = spawnSyncShell(dshBin, ['--version'], { encoding: 'utf8' })
 if (version.error !== undefined) throw version.error
 if (version.status !== 0) throw new Error(version.stderr || '无法读取 dsh CLI 版本')
 assertDshVersion(version.stdout)
@@ -33,7 +32,7 @@ const dshHome = process.env.DSH_HOME?.trim() || join(homedir(), '.dsh')
 const manifestPath = manifestPathFor(dshHome, profile)
 if (!existsSync(manifestPath)) throw new Error(`profile ${profile} 不存在：${manifestPath}`)
 assertProfileContract(readManifest(manifestPath), profile)
-const result = spawnSync(dshBin, ['--profile', profile, '--dump-default-config'], {
+const result = spawnSyncShell(dshBin, ['--profile', profile, '--dump-default-config'], {
   encoding: 'utf8',
   maxBuffer: 20 * 1024 * 1024,
 })

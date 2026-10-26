@@ -1,8 +1,7 @@
-import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
-
+import { spawnSyncShell } from './win-spawn.ts'
 import { stripPnpmRunSeparator } from './pnpm-run-args.ts'
 import {
   assertComposedLayers,
@@ -101,14 +100,14 @@ function requiredValue(args: string[], index: number, flag: string): string {
 }
 
 function commandOutput(command: string, args: string[]): string {
-  const result = spawnSync(command, args, { encoding: 'utf8' })
+  const result = spawnSyncShell(command, args, { encoding: 'utf8' })
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} 失败：${result.stderr.trim()}`)
   return `${result.stdout}\n${result.stderr}`.trim()
 }
 
 function run(command: string, args: string[]): void {
-  const result = spawnSync(command, args, { stdio: 'inherit' })
+  const result = spawnSyncShell(command, args, { stdio: 'inherit' })
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} 失败（exit ${String(result.status)}）`)
 }

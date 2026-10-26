@@ -9,7 +9,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { delimiter, dirname, join, relative, resolve } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type * as DshBoot from '@deepseek-ai/dsh-app-boot'
 
@@ -191,8 +191,11 @@ export async function assertRuntimeIdentity(profileDir: string, dshBin = 'dsh'):
       profileTools === agentLoopTools,
       `DSH runtime identity 分裂：profile 使用 ${profileTools}，agent-loop 使用 ${agentLoopTools}`,
     )
+    // Windows 上 profile 与 dsh 安装可能分属不同盘符，relative 跨盘会返回
+    // 目标绝对路径；绝对路径同样说明 dsh-tools 不在 profile 目录内。
+    const toolsRelative = relative(profileDir, profileTools)
     invariant(
-      relative(profileDir, profileTools).startsWith('..'),
+      toolsRelative.startsWith('..') || isAbsolute(toolsRelative),
       `dsh-tools 错误地从 profile 内解析：${profileTools}`,
     )
   } finally {
@@ -204,7 +207,12 @@ export async function assertRuntimeIdentity(profileDir: string, dshBin = 'dsh'):
 export function resolveDshInstallAnchor(dshBin: string): string {
   const candidates = dshBin.includes('/') || dshBin.includes('\\')
     ? [resolve(dshBin)]
-    : (process.env.PATH ?? '').split(delimiter).map(directory => resolve(directory, dshBin))
+    : (process.env.PATH ?? '').split(delimiter).flatMap(directory => [
+        resolve(directory, dshBin),
+        // Windows npm 全局布局的可执行体是 .cmd/.ps1 shim。
+        resolve(directory, `${dshBin}.cmd`),
+        resolve(directory, `${dshBin}.ps1`),
+      ])
   const executable = candidates.find(candidate => existsSync(candidate) && statSync(candidate).isFile())
   invariant(executable !== undefined, `无法定位 dsh CLI：${dshBin}`)
   let directory = dirname(realpathSync(executable))
@@ -215,6 +223,16 @@ export function resolveDshInstallAnchor(dshBin: string): string {
       if (manifest.name === '@deepseek-ai/dsh') {
         assertDshVersion(String(manifest.version))
         return manifestPath
+      }
+    }
+    // npm 全局布局：bin shim 与实际包分居两处，包在 bin 目录的
+    // node_modules/@deepseek-ai/dsh 下，向上逐层探测。
+    const siblingPath = join(directory, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
+    if (existsSync(siblingPath)) {
+      const manifest = readManifest(siblingPath)
+      if (manifest.name === '@deepseek-ai/dsh') {
+        assertDshVersion(String(manifest.version))
+        return siblingPath
       }
     }
     const parent = dirname(directory)
