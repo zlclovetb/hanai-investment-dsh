@@ -865,6 +865,8 @@ describe('HanaiWorkbench old-client parity', () => {
 
   it('refreshes the active daily, weekly, and monthly K line every 15 seconds', async () => {
     vi.useFakeTimers()
+    // 行情轮询仅开市时段执行，固定到 2026-10-23 周五 北京 10:00。
+    vi.setSystemTime(new Date('2026-10-23T02:00:00Z'))
     const calls = { daily: 0, weekly: 0, monthly: 0 }
     const client = makeClient({
       'security.kline': request => {
@@ -1158,11 +1160,63 @@ describe('HanaiWorkbench old-client parity', () => {
     expect(within(dialog).getByRole('button', { name: /沃伦 · 巴菲特/, pressed: true })).not.toBeNull()
     expect(window.location.hash).toBe('#/judgements')
   })
+
+  it('keeps polling the dashboard (sector heatmap source) while the market is open', async () => {
+    vi.useFakeTimers()
+    // 2026-10-23 周五 北京 10:00，开市时段；自动轮询不得被冷却逻辑挡住。
+    vi.setSystemTime(new Date('2026-10-23T02:00:00Z'))
+    const client = makeClient()
+    renderAt('/dashboard', client)
+    await act(async () => {})
+    expect(callsOf(client, 'dashboard.get').length).toBe(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(65_000) })
+    expect(callsOf(client, 'dashboard.get').length).toBeGreaterThan(1)
+    vi.useRealTimers()
+  })
+
+  it('stops auto-polling the dashboard outside market hours', async () => {
+    vi.useFakeTimers()
+    // 2026-10-24 周六 北京 10:00，闭市。
+    vi.setSystemTime(new Date('2026-10-24T02:00:00Z'))
+    const client = makeClient()
+    renderAt('/dashboard', client)
+    await act(async () => {})
+    expect(callsOf(client, 'dashboard.get').length).toBe(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(65_000) })
+    expect(callsOf(client, 'dashboard.get').length).toBe(1)
+    vi.useRealTimers()
+  })
+
+  it('applies a 60-second cooldown to manual refresh without blocking polling', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-23T02:00:00Z'))
+    const client = makeClient()
+    renderAt('/dashboard', client)
+    await act(async () => {})
+    const refreshButton = () => screen.getByRole('button', { name: '手动刷新今日市场' }) as HTMLButtonElement
+    expect(refreshButton().disabled).toBe(false)
+    fireEvent.click(refreshButton())
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    expect(callsOf(client, 'dashboard.get').length).toBe(2)
+    expect(refreshButton().disabled).toBe(true)
+    expect(refreshButton().textContent).toContain('60s')
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+    expect(refreshButton().textContent).toContain('30s')
+    await act(async () => { await vi.advanceTimersByTimeAsync(31_000) })
+    expect(refreshButton().disabled).toBe(false)
+    expect(refreshButton().textContent).toContain('刷新')
+    vi.useRealTimers()
+  })
 })
 
 function renderAt(path: string, client = makeClient()): { client: HanaiClient } & ReturnType<typeof render> {
   window.history.replaceState(null, '', `#${path}`)
   return { client, ...render(<HanaiWorkbench client={client} />) }
+}
+
+function callsOf(client: HanaiClient, endpoint: string) {
+  const mock = (client as unknown as { call: { mock: { calls: unknown[][] } } }).call.mock
+  return mock.calls.filter(([name]) => name === endpoint)
 }
 
 type CallOverride = (request: unknown, signal?: AbortSignal) => unknown | Promise<unknown>

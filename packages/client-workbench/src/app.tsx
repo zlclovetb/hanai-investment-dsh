@@ -39,6 +39,7 @@ import {
 } from './chart-options.ts'
 import { EChart } from './echarts.tsx'
 import { type KlineMaMode } from './kline-ma.ts'
+import { isMarketOpen, useRefreshCooldown } from './market-hours.ts'
 import { MarkdownView } from './markdown.tsx'
 import { describeDataStatus } from './data-status.ts'
 import { classForChange, dateTime, money, number, percent, quantity, ratio } from './format.ts'
@@ -291,6 +292,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const [drill, setDrill] = useState<{ code: string; name: string; stocks: StockQuote[] | null; meta: ProviderMeta | null } | null>(null)
   const drillGeneration = useRef(0)
   const drillController = useRef<AbortController | null>(null)
+  const { cooldown, canRefresh, startCooldown } = useRefreshCooldown(60)
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true)
     try {
@@ -308,7 +310,11 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
 
   useEffect(() => {
     void load()
-    const timer = window.setInterval(() => void load(), 30_000)
+    // 闭市后停自动轮询；interval 常驻注册、回调内判断，跨过开盘边界自然恢复。
+    const timer = window.setInterval(() => {
+      if (!isMarketOpen()) return
+      void load()
+    }, 30_000)
     return () => window.clearInterval(timer)
   }, [load])
   useEffect(() => () => {
@@ -375,7 +381,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     <PageHeader
       title="今日市场"
       meta={<><DataStateBadge meta={data.overview.meta} marketStatus={data.overview.marketStatus} refreshFailed={refreshError !== null} /><DataSourceText meta={data.overview.meta} /></>}
-      action={<button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing} onClick={() => void load(true)}>{refreshing ? '刷新中' : '刷新'}</button>}
+      action={<button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing || !canRefresh} onClick={() => { startCooldown(); void load(true) }} aria-label="手动刷新今日市场">{refreshing ? '刷新中' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}
     />
     {refreshError !== null && <div className={styles['errorCard']}><b>行情获取失败：</b>{refreshError}<span>请检查网络后点击刷新；其他面板保留最近成功的数据。</span></div>}
 
@@ -482,6 +488,7 @@ function WatchPage({ client, groups, onGroups, onStock, notify }: { client: Hana
   const [addResults, setAddResults] = useState<SearchResult[]>([])
   const [addTarget, setAddTarget] = useState<SearchResult | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ quote: WatchQuote; sourceGroupId: string } | null>(null)
+  const { cooldown, canRefresh, startCooldown } = useRefreshCooldown(60)
   const activeGroupId = useRef(groupId)
   const quoteGeneration = useRef(0)
   const quoteController = useRef<AbortController | null>(null)
@@ -621,7 +628,11 @@ function WatchPage({ client, groups, onGroups, onStock, notify }: { client: Hana
     setMoveTarget(null)
     void loadQuotes(groupId, 'initial')
     void loadValuations(groupId)
-    const timer = window.setInterval(() => void loadQuotes(groupId), 15_000)
+    // 闭市后停行情轮询；interval 常驻注册、回调内判断。
+    const timer = window.setInterval(() => {
+      if (!isMarketOpen()) return
+      void loadQuotes(groupId)
+    }, 15_000)
     return () => {
       window.clearInterval(timer)
       quoteGeneration.current += 1
@@ -704,7 +715,7 @@ function WatchPage({ client, groups, onGroups, onStock, notify }: { client: Hana
     <PageHeader
       title="自选与发现"
       meta={<>{initialLoading ? <span className={`${styles['dataState']} ${styles['dataState_loading']}`}>加载中</span> : <DataStateBadge meta={quoteMeta} refreshFailed={refreshFailed} />}<span>当前分组 · 行情更新于 {shortTime(quoteMeta?.fetchedAt ?? null)} · 估值按日缓存</span></>}
-      action={<button className={styles['button']} disabled={refreshing || groupId === ''} onClick={() => void refreshCurrentGroup()} aria-label="刷新当前自选分组"><span className={`${styles['refreshIcon']} ${refreshing ? styles['refreshIconSpinning'] : ''}`} aria-hidden="true">↻</span>{refreshing ? '刷新中…' : '刷新'}</button>}
+      action={<button className={styles['button']} disabled={refreshing || !canRefresh || groupId === ''} onClick={() => { startCooldown(); void refreshCurrentGroup() }} aria-label="刷新当前自选分组"><span className={`${styles['refreshIcon']} ${refreshing ? styles['refreshIconSpinning'] : ''}`} aria-hidden="true">↻</span>{refreshing ? '刷新中…' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}
     />
     <div className={styles['watchToolbar']}>
       <div className={styles['groupTabs']}>
@@ -1042,7 +1053,11 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
         inFlight = false
       }
     }
-    const timer = window.setInterval(() => void refreshQuote(), 15_000)
+    // 闭市后停行情轮询；interval 常驻注册、回调内判断。
+    const timer = window.setInterval(() => {
+      if (!isMarketOpen()) return
+      void refreshQuote()
+    }, 15_000)
     return () => { active = false; requestController?.abort(); window.clearInterval(timer) }
   }, [client, detailReady, notify, secId])
   useEffect(() => {
@@ -1084,7 +1099,11 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
     }
     void refreshSurface()
     if (chart !== 'trend') return () => { active = false; controller.abort() }
-    const timer = window.setInterval(() => void refreshSurface(), 15_000)
+    // 闭市后停行情轮询；interval 常驻注册、回调内判断。
+    const timer = window.setInterval(() => {
+      if (!isMarketOpen()) return
+      void refreshSurface()
+    }, 15_000)
     return () => { active = false; controller.abort(); window.clearInterval(timer) }
   }, [chart, client, detailReady, notify, secId])
   useEffect(() => {
@@ -1125,7 +1144,11 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
     // A previously loaded period may have gone stale while another chart was
     // selected, so refresh it immediately when the user switches back.
     void refreshKline()
-    const timer = window.setInterval(() => void refreshKline(), 15_000)
+    // 闭市后停行情轮询；interval 常驻注册、回调内判断。
+    const timer = window.setInterval(() => {
+      if (!isMarketOpen()) return
+      void refreshKline()
+    }, 15_000)
     return () => {
       active = false
       requestController?.abort()
