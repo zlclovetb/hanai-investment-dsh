@@ -326,7 +326,19 @@
 .indexChange { display: flex; gap: 8px; margin-top: 8px; color: currentColor; font: 11px ui-monospace, monospace; }
 .indexAmount { margin-top: 8px; color: var(--faint); font-size: 10px; }
 
+.indexCardClickable { cursor: pointer; }
+.indexCardClickable:hover { border-color: var(--border-strong); background: var(--panel-soft); }
+.indexCardActive { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-soft) inset; }
+
 .breadthCard { margin-bottom: 12px; }
+/* 指数分时与下方「板块热力」左对齐，市场宽度与「榜单」右对齐：列宽、间距保持一致。 */
+.overviewSplit { display: grid; grid-template-columns: minmax(0, 1.72fr) minmax(330px, 1fr); gap: 14px; margin-bottom: 12px; }
+.overviewSplit .breadthCard { display: flex; flex-direction: column; margin-bottom: 0; }
+.breadthFinance { display: grid; gap: 5px; margin-top: auto; padding: 10px 16px 13px; border-top: 1px solid var(--border); color: var(--faint); font-size: 10px; }
+.breadthFinanceItem { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
+.breadthFinanceItem b { color: var(--text); font: 650 13px ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.breadthFinanceItem small { min-width: 0; margin-left: auto; color: var(--faint); font-size: 9px; white-space: nowrap; }
+.breadthFinanceItem em { font-style: normal; font-weight: 600; }
 .breadthBar { display: flex; height: 12px; gap: 2px; margin: 14px 16px 10px; overflow: hidden; border-radius: 999px; background: var(--bg-soft); }
 .breadthBar i { display: block; height: 100%; }
 .breadthLimitUp { background: #c43142; }
@@ -893,6 +905,13 @@
   .personaCard { min-height: 0; }
 }
 
+/* The shell is laid out for a 940px minimum; below that a fixed width would be
+   clipped by the viewport. Let narrow windows follow the frame instead. */
+@media (max-width: 939px) {
+  .app { min-width: 0; }
+  .indexGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 980px) {
   .stockDetailGrid { grid-template-columns: 1fr; }
   .settingsGrid {
@@ -914,4 +933,5 @@
   .expertChatHistory { max-height: 240px; }
   .expertChatSurface { height: 620px; }
   .expertChatExpertGrid { grid-template-columns: 1fr; }
+  .overviewSplit { grid-template-columns: minmax(0, 1fr); }
 }
