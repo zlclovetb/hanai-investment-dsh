@@ -237,6 +237,8 @@ DSH 默认自动打开浏览器；需要自己打开时可加 `--no-open`，随�
 
 通用 DSH Web 使用 `dsh web`，Hanai 使用上述独立 Profile。两者可以使用不同端口同时运行。详见 [ADR-0003](docs/adr/0003-isolated-dsh-profile.md)。
 
+本仓库作为 fork 使用：分支划分、Windows 安装修复与 upstream 合并步骤见 [DSH Profile 部署与 upstream 合并指南](docs/dsh-profile-deployment.md)。
+
 ### 浏览器认证是什么
 
 DSH 0.2 的浏览器认证控制本地工作台的访问权限，保护其文件、工具与 Agent 接口。它与调用模型时使用的 DeepSeek API Key 分开管理，无需另建登录账号。

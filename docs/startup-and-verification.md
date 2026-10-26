@@ -165,6 +165,18 @@ pnpm run profile:verify
 
 当前仓库已经兼容 pnpm 11 传入的参数分隔符。请先重新执行 `pnpm run build`，确认使用的是最新 `lib/install-profile.js`，再运行安装命令。
 
+### Windows 上 `profile:install` 报 `spawnSync dsh ENOENT`
+
+Windows 的 npm 全局 CLI 是 `.cmd` shim，Node 的 `spawnSync` 不经 shell 无法执行。仓库已通过 `scripts/win-spawn.ts` 的 `spawnSyncShell` 封装修复；若仍复现，先 `pnpm run build` 确认 `lib/` 产物为最新（`profile:install` 只在 `pnpm install` 生命周期重建，改动 `scripts/` 后必须手动 build），再重试。
+
+### Windows 上报“无法从 dsh 定位 @deepseek-ai/dsh 安装目录”
+
+npm 全局布局中 shim 与实际包分居两处（`node_global\dsh.cmd` 与 `node_global\node_modules\@deepseek-ai\dsh`）。`scripts/profile-contract.ts` 的 `resolveDshInstallAnchor` 已支持该布局并探测兄弟 `node_modules`；同样需要先 `pnpm run build` 刷新 `lib/` 产物。
+
+### Windows 上报“dsh-tools 错误地从 profile 内解析”
+
+Profile（通常在 C 盘）与 DSH 安装目录（可能在其它盘符）分属不同盘时，`path.relative` 返回绝对路径。校验已追加 `isAbsolute` 分支，属于合法跨盘布局，重新 build 后即通过。
+
 ### 页面能打开但 Agent 无法运行
 
 在“设置与诊断”检查 Key 状态和默认模型；Key 由 DSH Credentials 持有，不应写进 `.env`、Hanai SQLite、报告或截图。
