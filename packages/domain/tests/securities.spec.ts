@@ -1,11 +1,12 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StockQuote } from '../../contracts/src/index.ts'
 import { HanaiDatabase } from '../src/database.ts'
 import { SecuritiesService, type SecurityDataProvider } from '../src/securities.ts'
 import type { EastmoneySecurityRow } from '../src/providers/eastmoney.ts'
+import { MarketDataService } from '../src/providers/index.ts'
 import { FakeClock } from './helpers.ts'
 
 const roots: string[] = []
@@ -72,6 +73,27 @@ function database(): HanaiDatabase {
 }
 
 describe('SecuritiesService', () => {
+  it('installs the fallback snapshot through the market facade and retains it when every source fails', async () => {
+    const db = database()
+    try {
+      const market = new MarketDataService({ clock: new FakeClock(Date.parse('2026-10-26T10:00:00+08:00')) })
+      const sina = vi.spyOn(market.sina, 'getAllSecurities').mockResolvedValue(securityRows())
+      vi.spyOn(market.eastmoney, 'getAllSecurities').mockResolvedValue([])
+      const synced = await market.syncSecurities(db, true)
+      expect(synced.count).toBe(1000)
+      expect(db.getSetting('security.master.source')).toBe('新浪')
+      expect(db.getSecurity('0.000001')).toMatchObject({ name: '平安银行', exchange: 'SZ' })
+      await market.syncSecurities(db, false)
+      expect(sina).toHaveBeenCalledTimes(1)
+      sina.mockRejectedValue(new Error('offline'))
+      expect(await market.syncSecurities(db, true)).toEqual(synced)
+      expect(db.getSetting('security.master.source')).toBe('新浪')
+      expect(db.getSecurity('0.000001')?.name).toBe('平安银行')
+    } finally {
+      db.close()
+    }
+  })
+
   it('atomically installs a complete snapshot and searches code/name/pinyin with quote enrichment', async () => {
     const db = database()
     const provider = new FakeSecurityProvider()

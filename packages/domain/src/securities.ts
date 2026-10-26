@@ -5,6 +5,7 @@ import { systemClock, type Clock } from './http.ts'
 import type { EastmoneySecurityRow } from './providers/eastmoney.ts'
 
 export const SECURITY_SYNCED_AT_SETTING = 'security.master.syncedAt'
+export const SECURITY_SOURCE_SETTING = 'security.master.source'
 const DEFAULT_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 export interface SecurityDataProvider {

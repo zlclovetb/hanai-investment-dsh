@@ -13,8 +13,8 @@ import type {
 } from '../../../contracts/src/index.ts'
 import type { HanaiDatabase } from '../database.ts'
 import { isoNow, NodeFetchHttpClient, systemClock, type Clock, type HttpClient } from '../http.ts'
-import { SecuritiesService } from '../securities.ts'
-import { EastmoneyProvider, type EastmoneyProviderOptions } from './eastmoney.ts'
+import { SecuritiesService, SECURITY_SOURCE_SETTING } from '../securities.ts'
+import { EastmoneyProvider, type EastmoneyProviderOptions, type EastmoneySecurityRow } from './eastmoney.ts'
 import {
   FileValuationCache,
   GuruFocusProvider,
@@ -77,11 +77,14 @@ export class MarketDataService {
   readonly financials: EastmoneyFinancialProvider
   private readonly clock: Clock
   private readonly circuit: SourceCircuit
+  private readonly securitiesCircuit: SourceCircuit
 
   constructor(options: MarketDataServiceOptions = {}) {
     const http = options.http ?? new NodeFetchHttpClient()
     this.clock = options.clock ?? systemClock
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
+    // 行情成功不能重置主数据列表的失败次数。
+    this.securitiesCircuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
     this.tencent = new TencentProvider(http, this.clock, options.timeoutMs ?? 10_000)
     this.sina = new SinaProvider(http, this.clock, options.timeoutMs ?? 10_000)
     this.financials = new EastmoneyFinancialProvider(http, this.clock, options.timeoutMs ?? 10_000)
@@ -280,11 +283,41 @@ export class MarketDataService {
     return this.eastmoney.clearQuoteCache() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache()
   }
 
-  syncSecurities(
+  async syncSecurities(
     database: HanaiDatabase,
     force = false,
   ): Promise<{ count: number; updatedAt: string | null }> {
-    return new SecuritiesService(database, this.eastmoney, { clock: this.clock }).sync(force)
+    let sourceName: string | null = null
+    const result = await new SecuritiesService(database, {
+      getAllSecurities: async () => {
+        const snapshot = await this.getSecuritySnapshot()
+        sourceName = snapshot?.sourceName ?? null
+        return snapshot?.rows ?? []
+      },
+      getQuotes: secIds => this.getQuotes(secIds),
+    }, { clock: this.clock }).sync(force)
+    if (sourceName !== null) database.setSetting(SECURITY_SOURCE_SETTING, sourceName)
+    return result
+  }
+
+  async getAllSecurities(): Promise<EastmoneySecurityRow[]> {
+    return (await this.getSecuritySnapshot())?.rows ?? []
+  }
+
+  private getSecuritySnapshot(): Promise<{ rows: EastmoneySecurityRow[]; sourceName: string } | null> {
+    const attempts = [
+      { source: 'sina' as const, name: '新浪', run: () => this.sina.getAllSecurities() },
+      { source: 'eastmoney-push2' as const, name: '东方财富', run: () => this.eastmoney.getAllSecurities() },
+    ]
+    return this.securitiesCircuit.first(attempts.map(attempt => ({
+      source: attempt.source,
+      run: async () => {
+        const rows = await attempt.run()
+        const valid = rows.filter(row => /^[01]$/.test(String(row.market)) && /^\d{6}$/.test(row.code) && row.name.trim() !== '')
+        if (new Set(valid.map(row => `${row.market}.${row.code}`)).size < 1000) throw new Error('主数据不足 1000 条有效证券')
+        return { rows: valid, sourceName: attempt.name }
+      },
+    })))
   }
 
   searchSecurities(database: HanaiDatabase, query: string): Promise<SearchResult[]> {
