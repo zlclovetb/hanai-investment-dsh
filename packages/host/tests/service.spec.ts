@@ -12,7 +12,8 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SessionSeq, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { DefaultModelSelection, ProviderMeta, StockDetail } from '../../contracts/src/index.ts'
+import type { DashboardData, DefaultModelSelection, ProviderMeta, StockDetail } from '../../contracts/src/index.ts'
+import { MARKET_HISTORY_PANELS, marketHistoryPanel } from '../../contracts/src/market-history.ts'
 import { HanaiDatabase } from '../../domain/src/database.ts'
 import { ensureHanaiLayout, resolveHanaiPaths } from '../../domain/src/paths.ts'
 import { ReportStore } from '../../domain/src/reports.ts'
@@ -124,6 +125,96 @@ async function eventually(assertion: () => void): Promise<void> {
 }
 
 describe('HanaiService report lifecycle', () => {
+  it('never rebinds undated boards, ranks or sector caches to a different market day', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const quoteMeta: ProviderMeta = { providerId: 'tencent', sourceName: '腾讯', sourceTimestamp: '2026-10-26T15:00:00+08:00', fetchedAt: new Date().toISOString(), cacheState: 'stale' }
+    const boardMeta: ProviderMeta = { providerId: 'sina', sourceName: '新浪', sourceTimestamp: null, fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const data: DashboardData = {
+      overview: { indices: [{ code: '000001', name: '上证', price: 100, change: 0, changePct: 0, amount: 10, upCount: null, downCount: null, flatCount: null }],
+        breadth: { up: null, down: null, flat: null, limitUp: null, limitDown: null, totalAmount: null }, meta: quoteMeta, marketStatus: 'trading' },
+      industry: { type: 'industry', sectors: [], meta: boardMeta }, concept: { type: 'concept', sectors: [], meta: boardMeta },
+      ranks: { gainers: [], losers: [], amount: [], turnover: [] },
+      rankSources: { gainers: boardMeta, losers: boardMeta, amount: boardMeta, turnover: boardMeta },
+    }
+    vi.spyOn(market, 'getDashboard').mockImplementation(async () => data)
+    vi.spyOn(market, 'getSectorStocks').mockResolvedValue({ stocks: [], meta: boardMeta })
+    const signal = new AbortController().signal
+    try {
+      await service.call('dashboard.get', {}, signal)
+      await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
+      expect((await service.call('market.history.get', { date: '2026-10-26' }, signal))?.panels).toEqual(['overview'])
+      expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toBeNull()
+      quoteMeta.sourceTimestamp = '2026-10-27T09:25:00+08:00'
+      quoteMeta.cacheState = 'fresh'
+      boardMeta.cacheState = 'cached'
+      for (const fetchedAt of ['2026-10-26T23:59:59+08:00', '2026-10-27T09:24:59+08:00']) {
+        boardMeta.fetchedAt = fetchedAt
+        await service.call('dashboard.get', {}, signal)
+        await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
+        expect((await service.call('market.history.get', { date: '2026-10-27' }, signal))?.panels).toEqual(['overview'])
+      }
+      boardMeta.cacheState = 'fresh'
+      boardMeta.fetchedAt = new Date().toISOString()
+      await service.call('dashboard.get', {}, signal)
+      await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
+      const saved = await service.call('market.history.get', { date: '2026-10-27' }, signal)
+      expect(saved?.panels).toEqual(expect.arrayContaining(['industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'sector:SINA:new_blhy']))
+      quoteMeta.cacheState = 'unavailable'
+      data.overview.indices = []
+      vi.advanceTimersByTime(60_000)
+      boardMeta.fetchedAt = new Date().toISOString()
+      await service.call('dashboard.get', {}, signal)
+      await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
+      expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toEqual(saved)
+    } finally { database.close(); vi.useRealTimers() }
+  })
+
+  it('archives all market panels on ordinary reads, preserving source dates, independent breadth and sector drills', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-26T16:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'fake', sourceName: '测试', sourceTimestamp: '2026-10-26T15:00:00+08:00', fetchedAt: new Date().toISOString(), cacheState: 'stale' }
+    const summaryMeta = { ...meta, sourceTimestamp: null, cacheState: 'fresh' as const }
+    const data: DashboardData = {
+      overview: { indices: [{ code: '000001', name: '上证指数', price: 3500, change: 0, changePct: 0, amount: 100, upCount: null, downCount: null, flatCount: null }],
+        breadth: { up: null, down: null, flat: null, limitUp: null, limitDown: null, totalAmount: 100 }, meta, marketStatus: 'closed' },
+      industry: { type: 'industry', sectors: [], meta: summaryMeta }, concept: { type: 'concept', sectors: [], meta: summaryMeta },
+      ranks: { gainers: [], losers: [], amount: [], turnover: [] },
+      rankSources: { gainers: summaryMeta, losers: summaryMeta, amount: summaryMeta, turnover: summaryMeta },
+    }
+    const width = { up: 100, down: 200, flat: 3, limitUp: 4, limitDown: 5, qdate: '2026-10-26', meta }
+    const dashboardRead = vi.spyOn(market, 'getDashboard').mockResolvedValue(data)
+    const breadthRead = vi.spyOn(market, 'getMarketBreadth').mockResolvedValue(width)
+    const sectorRead = vi.spyOn(market, 'getSectorStocks').mockResolvedValue({ stocks: [], meta: summaryMeta })
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.breadth', {}, signal)
+      await service.call('dashboard.get', { refresh: false }, signal)
+      await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
+      const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
+      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS, 'sector:SINA:new_blhy']))
+      expect(marketHistoryPanel(snapshot, 'overview')).toMatchObject({ indices: [{ ...data.overview.indices[0], meta }], meta })
+      expect(marketHistoryPanel(snapshot, 'breadth')).toEqual(width)
+      expect(marketHistoryPanel(snapshot, 'industry')).toEqual(data.industry)
+      expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toBeNull()
+      await service.call('cache.clear', { scope: 'market' }, signal)
+      expect(await service.call('market.history.list', {}, signal)).toMatchObject({ snapshots: [{ date: '2026-10-26' }] })
+      expect(await service.call('market.history.get', { date: '2026-10-26' }, signal)).toEqual(snapshot)
+      expect(dashboardRead).toHaveBeenCalledTimes(1)
+      expect(breadthRead).toHaveBeenCalledTimes(1)
+      expect(sectorRead).toHaveBeenCalledTimes(1)
+      vi.advanceTimersByTime(60_000)
+      const failed = { ...meta, cacheState: 'unavailable' as const, fetchedAt: new Date().toISOString() }
+      dashboardRead.mockResolvedValue({ ...data, overview: { ...data.overview, indices: [], meta: failed },
+        industry: { ...data.industry, meta: failed }, concept: { ...data.concept, meta: failed },
+        rankSources: { gainers: failed, losers: failed, amount: failed, turnover: failed } })
+      await service.call('dashboard.get', { refresh: true }, signal)
+      expect(await service.call('market.history.get', { date: '2026-10-26' }, signal)).toEqual(snapshot)
+    } finally { database.close(); vi.useRealTimers() }
+  })
+
   it('serves independent breadth without running the dashboard and preserves both source records', async () => {
     const { database, market, service } = fixture()
     const quoteMeta: ProviderMeta = { providerId: 'tencent', sourceName: '腾讯行情', sourceTimestamp: null,

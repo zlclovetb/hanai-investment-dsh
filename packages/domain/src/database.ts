@@ -223,6 +223,16 @@ export class HanaiDatabase {
         error_message TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_expert_chats_updated ON expert_chats(updated_at DESC);
+      CREATE TABLE IF NOT EXISTS market_panel_snapshots (
+        date TEXT NOT NULL,
+        panel_key TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        captured_at TEXT NOT NULL,
+        observed_at TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        meta TEXT NOT NULL,
+        PRIMARY KEY(date, panel_key)
+      );
     `)
     const version = this.sqlite.prepare('SELECT MAX(version) AS value FROM schema_migrations').get() as
       | { value: number | null }
@@ -234,6 +244,9 @@ export class HanaiDatabase {
     if ((version?.value ?? 0) < 2) {
       this.sqlite.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES(2, ?)')
         .run(new Date().toISOString())
+    }
+    if ((version?.value ?? 0) < 3) {
+      this.sqlite.prepare('INSERT INTO schema_migrations(version, applied_at) VALUES(3, ?)').run(new Date().toISOString())
     }
     this.ensureDefaultWatchGroup()
   }

@@ -41,6 +41,8 @@ import type { HanaiPaths } from '../../domain/src/paths.ts'
 import { ReportStore, ReportValidationError } from '../../domain/src/reports.ts'
 import { ExpertChatStore } from '../../domain/src/expert-chats.ts'
 import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domain/src/securities.ts'
+import { MarketHistoryStore } from '../../domain/src/market-history.ts'
+import { beijingMarketDate, marketDateFromMeta } from '../../contracts/src/market-history.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const BREADTH_SUCCESS_SETTING = 'market.breadth.latestSuccess'
@@ -106,10 +108,13 @@ export class HanaiService {
   private readonly openDirectory: (directory: string) => Promise<void>
   private readonly reportJobs = new Map<string, Promise<void>>()
   private securitySyncInProgress = false
+  private readonly marketHistory: MarketHistoryStore
+  private marketDateContext: { date: string; observedOn: string } | null = null
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
     this.database = options.database
+    this.marketHistory = new MarketHistoryStore(options.database.sqlite)
     this.reports = options.reports
     this.expertChats = options.expertChats
     this.sessions = options.sessions
@@ -233,19 +238,23 @@ export class HanaiService {
           result.concept.meta,
           ...Object.values(result.rankSources ?? {}),
         ])
+        this.archiveMarketDashboard(result)
         return result
       }
       case 'market.breadth': {
         const result = await this.market.getMarketBreadth()
         this.recordProviderSuccess(BREADTH_SUCCESS_SETTING, [result?.meta ?? null])
         if (result !== null && result.meta.cacheState !== 'unavailable') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
+        if (result !== null) this.archiveMarketPanel('breadth', result, result.meta, result.qdate)
         return result
       }
+      case 'market.history.list': return { snapshots: this.marketHistory.list() }
+      case 'market.history.get': return this.marketHistory.get((request as HanaiRequest<'market.history.get'>).date)
       case 'sector.stocks': {
-        const result = await this.market.getSectorStocks(
-          (request as HanaiRequest<'sector.stocks'>).sectorCode,
-        )
+        const { sectorCode } = request as HanaiRequest<'sector.stocks'>
+        const result = await this.market.getSectorStocks(sectorCode)
         this.recordProviderSuccess(MARKET_SUCCESS_SETTING, [result.meta])
+        this.archiveMarketPanel(`sector:${sectorCode}`, result, result.meta)
         return result
       }
       case 'security.sync': {
@@ -484,6 +493,36 @@ export class HanaiService {
     this.recordProviderSuccess(VALUATION_SUCCESS_SETTING, [
       detail.valuation === null ? null : detail.sources.valuation,
     ])
+  }
+
+  private archiveMarketPanel(key: string, data: unknown, meta: ProviderMeta, date?: string): void {
+    if (meta.cacheState === 'unavailable') return
+    if (meta.sourceTimestamp === null) {
+      const context = this.marketDateContext
+      // Undated caches retain their original archive; never bind them to a later index date.
+      if (meta.cacheState !== 'fresh' || context?.observedOn !== beijingMarketDate()
+        || context.date !== beijingMarketDate(Date.parse(meta.fetchedAt)) || context.date !== context.observedOn) return
+      date = context.date
+    }
+    this.marketHistory.save(key, data, meta, date)
+  }
+
+  private archiveMarketDashboard(data: DashboardData): void {
+    const date = data.overview.meta.sourceTimestamp === null ? null : marketDateFromMeta(data.overview.meta)
+    if (date !== null && data.overview.indices.length > 0 && data.overview.meta.cacheState !== 'unavailable') {
+      this.marketDateContext = { date, observedOn: beijingMarketDate() }
+      this.archiveMarketPanel('overview', data.overview, data.overview.meta, date)
+    } else {
+      this.marketDateContext = null
+    }
+    for (const kind of ['industry', 'concept'] as const) {
+      const panel = data[kind]
+      this.archiveMarketPanel(kind, panel, panel.meta)
+    }
+    for (const kind of ['gainers', 'losers', 'amount', 'turnover'] as const) {
+      const meta = data.rankSources?.[kind] ?? data.overview.meta
+      this.archiveMarketPanel(`rank.${kind}`, { entries: data.ranks[kind], meta }, meta)
+    }
   }
 
   private recordProviderSuccess(setting: string, values: ReadonlyArray<ProviderMeta | null>): void {

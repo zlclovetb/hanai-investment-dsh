@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { parseHanaiRequest } from '../src/rpc.ts'
 
 describe('Hanai RPC request validation', () => {
+  it('accepts local market history reads only with real calendar dates', () => {
+    expect(parseHanaiRequest('market.history.list', {})).toEqual({})
+    expect(parseHanaiRequest('market.history.get', { date: '2024-02-29' })).toEqual({ date: '2024-02-29' })
+    for (const date of ['2026-02-29', '2026-02-30', '2026-13-01', '../2026-10-26', '20261026']) {
+      expect(() => parseHanaiRequest('market.history.get', { date })).toThrow()
+    }
+    expect(() => parseHanaiRequest('market.history.list', { url: 'https://example.com' })).toThrow()
+    expect(() => parseHanaiRequest('market.history.get', { date: '2026-10-26', refresh: true })).toThrow()
+  })
   it('accepts an independent breadth request and rejects arbitrary parameters', () => {
     expect(parseHanaiRequest('market.breadth', {})).toEqual({})
     expect(() => parseHanaiRequest('market.breadth', { url: 'https://example.com' })).toThrow()

@@ -1,4 +1,5 @@
 /** JSON-safe contracts shared by the Hanai Host and browser client. */
+import type { MarketHistorySnapshot, MarketHistorySummary } from './market-history.ts'
 
 /** Conventional application appearance. Theme changes must not alter layout or product semantics. */
 export type ThemeId = 'light' | 'dark'
@@ -14,6 +15,7 @@ export interface ProviderMeta {
 }
 
 export interface IndexQuote {
+  meta?: ProviderMeta
   code: string
   name: string
   price: number | null
@@ -453,6 +455,8 @@ export interface HanaiEndpointMap {
   'bootstrap': { request: Record<string, never>; response: BootstrapData }
   'dashboard.get': { request: { refresh?: boolean }; response: DashboardData }
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
+  'market.history.list': { request: Record<string, never>; response: { snapshots: MarketHistorySummary[] } }
+  'market.history.get': { request: { date: string }; response: MarketHistorySnapshot | null }
   'sector.stocks': { request: { sectorCode: string }; response: { stocks: StockQuote[]; meta: ProviderMeta } }
   'security.sync': { request: { force?: boolean }; response: { count: number; updatedAt: string | null } }
   'security.search': { request: { query: string }; response: SearchResult[] }
