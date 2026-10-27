@@ -168,21 +168,21 @@ export class MarketDataService {
   }
 
   private async getSectorBoard(type: 'industry' | 'concept') {
-    const primary = await this.callSource('eastmoney-push2his', () => this.eastmoney.getSectorBoard(type))
+    const primary = await this.callSource('sina', () => this.sina.getSectorBoard(type))
     if (primary !== null && primary.sectors.some(sector => sector.amount !== null && sector.amount > 0)) return primary
-    return await this.callSource('sina', () => this.sina.getSectorBoard(type)) ?? primary
+    return await this.callSource('eastmoney-push2his', () => this.eastmoney.getSectorBoard(type)) ?? primary
   }
 
   private async getRankList(kind: 'gainers' | 'losers' | 'amount' | 'turnover') {
-    const primary = await this.callSource('eastmoney-push2his', () => this.eastmoney.getRankList(kind))
+    const primary = await this.callSource('sina', () => this.sina.getRankList(kind))
     if (primary !== null && primary.entries.length > 0) return primary
-    return await this.callSource('sina', () => this.sina.getRankList(kind)) ?? primary
+    return await this.callSource('eastmoney-push2his', () => this.eastmoney.getRankList(kind)) ?? primary
   }
 
   async getSectorStocks(sectorCode: string): Promise<{ stocks: StockQuote[]; meta: ProviderMeta }> {
     if (sectorCode.startsWith('SINA:')) {
       return await this.callSource('sina', () => this.sina.getSectorStocks(sectorCode))
-        ?? { stocks: [], meta: this.unavailableMeta('sina-fallback', '新浪行情（备源）') }
+        ?? { stocks: [], meta: this.unavailableMeta('sina', '新浪行情') }
     }
     return await this.callSource('eastmoney-push2his', () => this.eastmoney.getSectorStocks(sectorCode))
       ?? { stocks: [], meta: this.unavailableMeta() }
@@ -225,8 +225,8 @@ export class MarketDataService {
       this.callSource('eastmoney-push2his', () => this.eastmoney.getStockMetrics(secId)),
     ])
     const quote = quotes?.quotes.find(item => item.secId === secId) ?? null
-    if (primaryMetrics === null && quote !== null && quote.meta?.providerId !== 'tencent-fallback') {
-      await this.tencent.getQuotes([secId])
+    if (primaryMetrics === null && quote !== null && quote.meta?.providerId !== 'tencent') {
+      await this.callSource('tencent', () => this.tencent.getQuotes([secId]))
     }
     const base = primaryMetrics ?? (quote === null ? null : this.tencent.getQuoteMetrics(secId))
     const metrics = await this.financials.getStockMetrics(secId, quote, base)
@@ -241,9 +241,8 @@ export class MarketDataService {
   }
 
   async getTrend(secId: string): Promise<StockTrendData> {
-    // 东财不可用时按熔断顺序切到腾讯分时。
-    const result = await this.callSource('eastmoney-push2his', () => this.eastmoney.getTrend(secId))
-      ?? await this.callSource('tencent', () => this.tencent.getTrend(secId))
+    const result = await this.callSource('tencent', () => this.tencent.getTrend(secId))
+      ?? await this.callSource('eastmoney-push2his', () => this.eastmoney.getTrend(secId))
     return {
       trend: result?.points ?? [],
       trendPrevClose: result?.prevClose ?? null,
@@ -253,9 +252,9 @@ export class MarketDataService {
 
   async getKline(secId: string, period: KLinePeriod, before?: string): Promise<StockKLineData> {
     const klt = period === 'daily' ? '101' : period === 'weekly' ? '102' : '103'
-    // 东财不可用时按熔断顺序切到腾讯 K 线。
-    const result = await this.callSource('eastmoney-push2his', () => this.eastmoney.getKline(secId, klt, before))
-      ?? await this.callSource('tencent', () => this.tencent.getKline(secId, klt, before))
+    const result = await this.callSource('tencent', () => before === undefined && klt !== '101'
+      ? this.tencent.getFullKline(secId, klt) : this.tencent.getKline(secId, klt, before))
+      ?? await this.callSource('eastmoney-push2his', () => this.eastmoney.getKline(secId, klt, before))
     return {
       period,
       bars: result?.bars ?? [],
@@ -275,15 +274,14 @@ export class MarketDataService {
 
   async getQuotes(secIds: readonly string[]): Promise<{ quotes: StockQuote[]; meta: ProviderMeta }> {
     if (secIds.length === 0) return { quotes: [], meta: this.unavailableMeta() }
-    // 东财熔断时跳过主源，直接按顺序切到腾讯。
-    const primary = await this.callSource('eastmoney-push2his', () => this.eastmoney.getQuotes(secIds))
+    const primary = await this.callSource('tencent', () => this.tencent.getQuotes(secIds))
     const available = new Map((primary?.quotes ?? []).map(quote => [quote.secId, quote]))
     const missing = secIds.filter(id => available.get(id)?.price == null || primary?.meta.providerId.includes('memory-cache'))
     if (missing.length === 0 && primary !== null) return primary
-    const fallback = await this.callSource('tencent', () => this.tencent.getQuotes(missing))
-      ?? { quotes: [], meta: this.unavailableMeta('tencent-fallback', '腾讯行情（备源）') }
+    const fallback = await this.callSource('eastmoney-push2his', () => this.eastmoney.getQuotes(missing))
+      ?? { quotes: [], meta: this.unavailableMeta() }
     if (fallback.quotes.length === 0) return primary ?? { quotes: [], meta: this.unavailableMeta() }
-    for (const quote of fallback.quotes) available.set(quote.secId, quote)
+    for (const quote of fallback.quotes) available.set(quote.secId, { ...quote, meta: quote.meta ?? fallback.meta })
     const quotes = secIds.flatMap(id => available.has(id) ? [available.get(id)!] : [])
     if (quotes.every(quote => quote.meta?.providerId === fallback.meta.providerId)) return { quotes, meta: fallback.meta }
     return {
@@ -291,7 +289,7 @@ export class MarketDataService {
       meta: {
         ...fallback.meta,
         providerId: 'eastmoney-tencent-mixed',
-        sourceName: '东方财富 / 腾讯行情（备源）',
+        sourceName: '腾讯行情 / 东方财富兜底',
         cacheState: primary?.meta.cacheState === 'fresh' && fallback.meta.cacheState === 'fresh' ? 'fresh' : 'stale',
       },
     }

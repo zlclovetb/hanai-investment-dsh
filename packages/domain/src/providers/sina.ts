@@ -24,7 +24,7 @@ export class SinaProvider {
 
   private meta(): ProviderMeta {
     // These endpoints expose no trade date. fetchedAt must never be presented as the quote timestamp.
-    return { providerId: 'sina-fallback', sourceName: '新浪行情（备源）', sourceTimestamp: null, fetchedAt: isoNow(this.clock), cacheState: 'fresh' }
+    return { providerId: 'sina', sourceName: '新浪行情', sourceTimestamp: null, fetchedAt: isoNow(this.clock), cacheState: 'fresh' }
   }
 
   getSectorBoard(type: 'industry' | 'concept'): Promise<SectorBoard | null> {

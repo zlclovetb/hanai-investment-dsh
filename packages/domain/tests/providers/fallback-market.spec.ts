@@ -33,7 +33,7 @@ describe('live-captured market fallback contracts', () => {
     expect(dashboard.industry.sectors[0]).toMatchObject({ code: 'SINA:new_blhy', name: '玻璃行业', amount: 9_066_360_698, leaderName: '菲利华' })
     for (const kind of ['gainers', 'losers', 'amount', 'turnover'] as const) {
       expect(dashboard.ranks[kind]).toHaveLength(20)
-      expect(dashboard.rankSources?.[kind].providerId).toBe('sina-fallback')
+      expect(dashboard.rankSources?.[kind].providerId).toBe('sina')
       expect(dashboard.ranks[kind].some(entry => /^\*?ST/i.test(entry.name))).toBe(false)
       const values = dashboard.ranks[kind].map(entry => kind === 'amount' ? entry.amount! : kind === 'turnover' ? entry.turnoverRate! : entry.changePct!)
       expect(values).toEqual([...values].sort((a, b) => kind === 'losers' ? a - b : b - a))
