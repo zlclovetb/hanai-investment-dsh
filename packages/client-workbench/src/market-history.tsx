@@ -4,6 +4,7 @@ import { beijingMarketDate, isMarketDate, marketHistoryPanel, MARKET_HISTORY_PAN
 import type { HanaiClient } from './api.ts'
 import { dateTime } from './format.ts'
 import styles from './styles.module.css'
+import { DOMESTIC_INDICES } from '../../contracts/src/market-indices.ts'
 
 /** Uses the same weekday policy as polling; this is not an exchange holiday calendar. */
 export function isClosingSnapshotCurrent(snapshot: MarketHistorySnapshot, now = new Date()): boolean {
@@ -24,11 +25,13 @@ export function isClosingSnapshotCurrent(snapshot: MarketHistorySnapshot, now = 
       && sourceAt >= Date.parse(`${date}T15:00:00+08:00`) && sourceAt <= fetchedAt
   }
   for (const key of MARKET_HISTORY_PANELS) {
+    if (key === 'global.indices') continue
     const record = snapshot.records[key]
     if (record === undefined || marketHistoryPanel(snapshot, key) === null || !current(record.meta)) return false
   }
   const overview = marketHistoryPanel(snapshot, 'overview')!
-  return overview.indices.length > 0 && overview.indices.every(index => current(index.meta ?? overview.meta))
+  return DOMESTIC_INDICES.every(item => overview.indices.some(index => index.code === item.code))
+    && overview.indices.every(index => current(index.meta ?? overview.meta))
 }
 
 export function snapshotDashboard(snapshot: MarketHistorySnapshot | null): DashboardData | null {

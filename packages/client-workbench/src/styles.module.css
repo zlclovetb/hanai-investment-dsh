@@ -296,8 +296,14 @@
 .errorCard { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 10px 13px; border: 1px solid rgba(240, 74, 85, .24); border-radius: 7px; color: var(--up); font-size: 11px; background: var(--up-soft); }
 .errorCard span { color: var(--muted); }
 
-.indexGrid { display: grid; grid-template-columns: repeat(6, minmax(132px, 1fr)); gap: 12px; margin-bottom: 12px; }
-.indexCard { min-height: 102px; padding: 13px 15px; border-top: 2px solid var(--border-strong); }
+.indexPanel { margin-bottom: 12px; }
+.indexPanel .panelHead > div:first-child { min-width: 0; flex-wrap: wrap; }
+.indexPanel .panelHead > div:first-child > span { overflow-wrap: anywhere; }
+.indexPanel .panelHead > button { flex-shrink: 0; }
+.indexGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; padding: 12px 16px; }
+.indexGridMore { padding-top: 0; }
+.indexCard { min-height: 76px; padding: 8px 10px; border-top: 2px solid var(--border-strong); }
+.indexCard .indexPrice { font-size: 18px; }
 .indexCard.up,
 .indexCard.limitUp { border-top-color: rgba(240, 74, 85, .5); }
 .indexCard.down,
