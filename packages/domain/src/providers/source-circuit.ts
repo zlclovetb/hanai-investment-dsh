@@ -11,6 +11,7 @@ export const SOURCE_PRIORITY = [
   'tencent',
   'sina',
   'legu',
+  'ths-news',
   'eastmoney-push2his',
   'eastmoney-push2',
   'eastmoney-push2ex',

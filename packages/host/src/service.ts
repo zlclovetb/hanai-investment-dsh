@@ -44,15 +44,19 @@ import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domai
 import { MarketHistoryStore } from '../../domain/src/market-history.ts'
 import { beijingMarketDate, marketDateFromMeta } from '../../contracts/src/market-history.ts'
 import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
+import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const BREADTH_SUCCESS_SETTING = 'market.breadth.latestSuccess'
 const GLOBAL_SUCCESS_SETTING = 'market.indices.latestSuccess'
+const ACTIVITY_SUCCESS_SETTING = 'market.activity.latestSuccess'
 const VALUATION_SUCCESS_SETTING = 'valuation.latestSuccess'
 const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableAt'
 const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
+  getMarketIntraday(): Promise<MarketIntradayData | null>
+  getMarketSignals(): Promise<MarketSignalsData | null>
   getGlobalIndices(): Promise<GlobalIndicesData>
   getDashboard(refresh?: boolean): Promise<DashboardData>
   getMarketBreadth(): Promise<MarketBreadthData | null>
@@ -252,6 +256,19 @@ export class HanaiService {
         return result
       }
       case 'market.history.list': return { snapshots: this.marketHistory.list() }
+      case 'market.intraday': {
+        const result = await this.market.getMarketIntraday()
+        if (result !== null) {
+          this.recordProviderSuccess(ACTIVITY_SUCCESS_SETTING, [result.meta])
+          this.archiveMarketPanel('intraday', result, result.meta, result.date)
+        }
+        return result
+      }
+      case 'market.signals': {
+        const result = await this.market.getMarketSignals()
+        if (result !== null) this.archiveMarketPanel('signals', result, result.meta, result.date)
+        return result
+      }
       case 'market.indices': {
         const result = await this.market.getGlobalIndices()
         this.recordProviderSuccess(GLOBAL_SUCCESS_SETTING, result.indices.map(item => item.meta))
@@ -456,7 +473,7 @@ export class HanaiService {
       expertChatCount: this.database.expertChatCount(),
       latestMarketSuccess: this.database.getSetting('market.latestSuccess'),
       latestValuationSuccess: this.database.getSetting('valuation.latestSuccess'),
-      marketSources: [...this.providerSources(MARKET_SUCCESS_SETTING), ...this.providerSources(BREADTH_SUCCESS_SETTING), ...this.providerSources(GLOBAL_SUCCESS_SETTING)],
+      marketSources: [...this.providerSources(MARKET_SUCCESS_SETTING), ...this.providerSources(BREADTH_SUCCESS_SETTING), ...this.providerSources(GLOBAL_SUCCESS_SETTING), ...this.providerSources(ACTIVITY_SUCCESS_SETTING)],
       valuationSources: this.providerSources(VALUATION_SUCCESS_SETTING),
       securitySource: this.database.getSetting(SECURITY_SOURCE_SETTING),
       latestSecuritySuccess: this.database.getSetting(SECURITY_SYNCED_AT_SETTING),

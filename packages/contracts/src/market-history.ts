@@ -1,9 +1,12 @@
 import type { MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, SectorBoard, StockQuote } from './index.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
+import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
 
-export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices'] as const
+export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals'] as const
 
 export interface MarketPanelPayloads {
+  intraday: MarketIntradayData
+  signals: MarketSignalsData
   'global.indices': GlobalIndicesData
   overview: MarketOverview
   breadth: MarketBreadthData
@@ -65,6 +68,16 @@ export function isMarketProviderMeta(value: unknown): value is ProviderMeta {
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
+  if (key === 'intraday' || key === 'signals') {
+    if (typeof value.date !== 'string' || !isMarketDate(value.date) || !isMarketProviderMeta(value.meta)) return false
+    if (key === 'intraday') return numberOrNull(value.prevClose) && Array.isArray(value.points) && value.points.length > 0
+      && value.points.every(point => object(point) && typeof point.time === 'string' && /^(09|10|11|13|14|15):[0-5]\d$/.test(point.time)
+        && typeof point.price === 'number' && Number.isFinite(point.price) && point.price > 0 && numberOrNull(point.avgPrice)
+        && typeof point.volume === 'number' && Number.isFinite(point.volume) && point.volume >= 0)
+    return (value.method === undefined || value.method === 'ths-sector-events-v2') && Array.isArray(value.signals) && value.signals.every(signal => object(signal)
+      && typeof signal.time === 'string' && /^\d{2}:\d{2}$/.test(signal.time) && typeof signal.name === 'string'
+      && typeof signal.code === 'string' && typeof signal.title === 'string' && ['up', 'down'].includes(String(signal.direction)))
+  }
   if (key === 'global.indices') return namedRows(value.indices, ['price', 'change', 'changePct', 'amount']) && isMarketProviderMeta(value.meta)
     && (value.indices as Array<Record<string, unknown>>).every(row => isMarketProviderMeta(row.meta)
       && (row.marketDate === null || (typeof row.marketDate === 'string' && isMarketDate(row.marketDate))))

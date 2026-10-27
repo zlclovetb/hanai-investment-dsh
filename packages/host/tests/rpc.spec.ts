@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { parseHanaiRequest } from '../src/rpc.ts'
 
 describe('Hanai RPC request validation', () => {
+  it('limits market activity to fixed public index and news requests', () => {
+    for (const endpoint of ['market.intraday', 'market.signals'] as const) {
+      expect(parseHanaiRequest(endpoint, {})).toEqual({})
+      expect(() => parseHanaiRequest(endpoint, { date: '2026-10-26' })).toThrow()
+      expect(() => parseHanaiRequest(endpoint, { url: 'https://example.com' })).toThrow()
+    }
+  })
   it('accepts only a fixed global index batch, never arbitrary symbols or URLs', () => {
     expect(parseHanaiRequest('market.indices', {})).toEqual({})
     expect(() => parseHanaiRequest('market.indices', { url: 'https://example.com' })).toThrow()

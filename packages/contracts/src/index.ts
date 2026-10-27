@@ -1,6 +1,7 @@
 /** JSON-safe contracts shared by the Hanai Host and browser client. */
 import type { MarketHistorySnapshot, MarketHistorySummary } from './market-history.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
+import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
 
 /** Conventional application appearance. Theme changes must not alter layout or product semantics. */
 export type ThemeId = 'light' | 'dark'
@@ -457,6 +458,8 @@ export interface HanaiEndpointMap {
   'dashboard.get': { request: { refresh?: boolean }; response: DashboardData }
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
   'market.indices': { request: Record<string, never>; response: GlobalIndicesData }
+  'market.intraday': { request: Record<string, never>; response: MarketIntradayData | null }
+  'market.signals': { request: Record<string, never>; response: MarketSignalsData | null }
   'market.history.list': { request: Record<string, never>; response: { snapshots: MarketHistorySummary[] } }
   'market.history.get': { request: { date: string }; response: MarketHistorySnapshot | null }
   'sector.stocks': { request: { sectorCode: string }; response: { stocks: StockQuote[]; meta: ProviderMeta } }

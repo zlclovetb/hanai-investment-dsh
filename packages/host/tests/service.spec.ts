@@ -85,6 +85,8 @@ function fixture(minChars = 100) {
     fetchedAt: new Date(0).toISOString(), cacheState: 'fresh' as const,
   }
   const market: MarketFacade = {
+    getMarketIntraday: async () => null,
+    getMarketSignals: async () => null,
     getGlobalIndices: async () => ({ indices: [], meta }),
     getDashboard: async () => { throw new Error('unused') },
     getMarketBreadth: async () => null,
@@ -127,6 +129,34 @@ async function eventually(assertion: () => void): Promise<void> {
 }
 
 describe('HanaiService report lifecycle', () => {
+  it('archives intraday and news independently by source day and preserves them after failed retries', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'test', sourceName: '分时', sourceTimestamp: '2026-10-26T07:00:00Z', fetchedAt: '2026-10-27T10:00:00Z', cacheState: 'fresh' }
+    const trend = { date: '2026-10-26', points: [{ time: '15:00', price: 3500, avgPrice: null, volume: 0 }], prevClose: 3600, meta }
+    const news = { date: trend.date, signals: [], meta: { ...meta, sourceTimestamp: trend.date } }
+    const prices = vi.spyOn(market, 'getMarketIntraday').mockResolvedValue(trend)
+    const signals = vi.spyOn(market, 'getMarketSignals').mockResolvedValue(news)
+    const dashboard = vi.spyOn(market, 'getDashboard')
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.intraday', {}, signal)
+      let snapshot = await service.call('market.history.get', { date: trend.date }, signal)
+      expect(marketHistoryPanel(snapshot, 'intraday')).toEqual(trend)
+      expect(marketHistoryPanel(snapshot, 'signals')).toBeNull()
+      await service.call('market.signals', {}, signal)
+      snapshot = await service.call('market.history.get', { date: trend.date }, signal)
+      expect(marketHistoryPanel(snapshot, 'signals')).toEqual(news)
+      prices.mockResolvedValue(null)
+      signals.mockResolvedValue({ ...news, meta: { ...news.meta, cacheState: 'stale' } })
+      await service.call('market.intraday', {}, signal)
+      await service.call('market.signals', {}, signal)
+      expect(await service.call('market.history.get', { date: trend.date }, signal)).toEqual(snapshot)
+      expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toBeNull()
+      expect(dashboard).not.toHaveBeenCalled()
+    } finally { database.close(); vi.useRealTimers() }
+  })
   it('archives independent overseas indices by observation date without rewriting their market dates', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
@@ -218,7 +248,7 @@ describe('HanaiService report lifecycle', () => {
       await service.call('dashboard.get', { refresh: false }, signal)
       await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
       const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
-      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => key !== 'global.indices'), 'sector:SINA:new_blhy']))
+      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !['global.indices', 'intraday', 'signals'].includes(key)), 'sector:SINA:new_blhy']))
       expect(marketHistoryPanel(snapshot, 'overview')).toMatchObject({ indices: [{ ...data.overview.indices[0], meta }], meta })
       expect(marketHistoryPanel(snapshot, 'breadth')).toEqual(width)
       expect(marketHistoryPanel(snapshot, 'industry')).toEqual(data.industry)

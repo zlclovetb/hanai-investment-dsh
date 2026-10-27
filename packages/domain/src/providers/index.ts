@@ -31,6 +31,7 @@ import { leguBreadth, type BreadthSnapshot } from './market-breadth.ts'
 import { SourceCircuit, type SourceCircuitOptions, type SourceId } from './source-circuit.ts'
 import { DOMESTIC_INDICES } from '../../../contracts/src/market-indices.ts'
 import { GlobalIndexProvider } from './global-indices.ts'
+import { MarketActivityProvider } from './market-activity.ts'
 
 export { EastmoneyProvider, type EastmoneyProviderOptions } from './eastmoney.ts'
 export {
@@ -76,6 +77,7 @@ async function optional<T>(promise: Promise<T>): Promise<T | null> {
 
 /** Facade consumed by the Host; all external transport and time are injectable for deterministic tests. */
 export class MarketDataService {
+  readonly activity: MarketActivityProvider
   readonly globalIndices: GlobalIndexProvider
   readonly eastmoney: EastmoneyProvider
   readonly tencent: TencentProvider
@@ -96,6 +98,7 @@ export class MarketDataService {
     this.breadthTimeoutMs = options.timeoutMs ?? 10_000
     this.clock = options.clock ?? systemClock
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
+    this.activity = new MarketActivityProvider(http, this.clock, this.circuit, () => this.getTrend('1.000001'))
     this.breadthCache = new ProviderCache(this.clock, () => {
       const beijing = new Date(this.clock.now() + 8 * 3_600_000)
       const minutes = beijing.getUTCHours() * 60 + beijing.getUTCMinutes()
@@ -147,6 +150,7 @@ export class MarketDataService {
       ['gurufocus', '价值大师网', 'valuation'],
       ['sina', '新浪', 'security'], ['eastmoney-push2', '东方财富', 'security'],
       ['legu', '乐咕乐股（AKShare 同源）', 'breadth'],
+      ['ths-news', '同花顺板块异动快讯', 'market'],
       ['eastmoney-push2ex', '东方财富 push2ex（兜底）', 'breadth'],
     ] as const
     return [...sources.map(([source, sourceName, scope]) => ({
@@ -156,6 +160,8 @@ export class MarketDataService {
   }
 
   getGlobalIndices() { return this.globalIndices.get() }
+  getMarketIntraday() { return this.activity.getIntraday() }
+  getMarketSignals() { return this.activity.getSignals() }
 
   getMarketBreadth(): Promise<BreadthSnapshot | null> {
     return this.breadthCache.get('market', async () => {
@@ -351,7 +357,7 @@ export class MarketDataService {
   }
 
   clearMarketCache(): number {
-    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear()
+    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear()
   }
 
   async syncSecurities(
