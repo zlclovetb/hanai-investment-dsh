@@ -41,7 +41,10 @@ vi.mock('echarts/charts', () => ({
   LineChart: {},
   RadarChart: {},
   TreemapChart: {},
+  ScatterChart: {},
 }))
+
+vi.mock('echarts/features', () => ({ LabelLayout: {} }))
 vi.mock('echarts/components', () => ({
   AxisPointerComponent: {},
   DataZoomComponent: {},

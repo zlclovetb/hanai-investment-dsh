@@ -313,7 +313,19 @@
 .indexChange { display: flex; gap: 8px; margin-top: 8px; color: currentColor; font: 11px ui-monospace, monospace; }
 .indexAmount { margin-top: 8px; color: var(--faint); font-size: 10px; }
 
-.breadthCard { margin-bottom: 12px; }
+.marketContextGrid { margin-bottom: 12px; }
+.activityCard, .breadthCard { min-width: 0; }
+.activityCard .activityChart { height: 300px; }
+.activityEmpty { min-height: 230px; display: grid; place-items: center; color: var(--muted); }
+.activityHead { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.activityHead > div:first-child { flex-wrap: wrap; gap: 4px 8px; }
+.activityHead > span:last-child { justify-self: end; white-space: nowrap; }
+.activityHeadMeta { text-align: center; overflow-wrap: anywhere; }
+.activityNotice { padding: 4px 16px 12px; font-size: 11px; color: var(--muted); }
+.activityActions { display: flex; align-items: center; gap: 10px; }
+.activityDialog { position: fixed; margin: 0; padding: 0; transform: translateY(-50%); max-width: calc(100vw - 32px); overflow: auto; border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text); background: var(--panel); box-shadow: var(--shadow); }
+.activityDialog::backdrop { background: rgba(0, 0, 0, .35); }
+.activityDialog .activityChart { height: auto; aspect-ratio: 16 / 7; max-height: calc(var(--activity-dialog-height) - 100px); }
 .breadthBar { display: flex; height: 12px; gap: 2px; margin: 14px 16px 10px; overflow: hidden; border-radius: 999px; background: var(--bg-soft); }
 .breadthBar i { display: block; height: 100%; }
 .breadthLimitUp { background: #c43142; }

@@ -273,6 +273,7 @@ export function buildTrendOption(
   points: TrendPoint[],
   prevClose: number | null = null,
   palette: ChartPalette = DARK_CHART_PALETTE,
+  priceUnit = '元',
 ): EChartsCoreOption | null {
   if (points.length === 0) return null
   const base = prevClose !== null && Number.isFinite(prevClose) ? prevClose : null
@@ -287,10 +288,10 @@ export function buildTrendOption(
         if (!point) return ''
         const lines = [
           `<b>${escapeHtml(point.time)}</b>`,
-          `<span style="color:${palette.gold}">●</span> 价格 <b>${fmtNum(point.price)} 元</b>`,
+          `<span style="color:${palette.gold}">●</span> 价格 <b>${fmtNum(point.price)} ${priceUnit}</b>`,
         ]
         if (point.avgPrice !== null) {
-          lines.push(`<span style="color:${palette.averageBlue}">●</span> 均价 <b>${fmtNum(point.avgPrice)} 元</b>`)
+          lines.push(`<span style="color:${palette.averageBlue}">●</span> 均价 <b>${fmtNum(point.avgPrice)} ${priceUnit}</b>`)
         }
         lines.push(`<span style="color:${palette.flat}">●</span> 成交量 <b>${fmtHands(point.volume)}</b>`)
         return lines.join('<br/>')

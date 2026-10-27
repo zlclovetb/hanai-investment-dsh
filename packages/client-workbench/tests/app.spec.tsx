@@ -1398,6 +1398,8 @@ function historyFixture(date = '2026-10-26'): MarketHistorySnapshot {
   const add = (key: string, data: unknown) => { records[key] = { key, data, meta, version: 1, capturedAt: meta.fetchedAt } }
   add('overview', { ...dashboard.overview, indices: DOMESTIC_INDICES.map((item, i) => ({ ...dashboard.overview.indices[0]!, code: item.code, name: i === 0 ? `历史指数 ${date}` : `历史${item.name} ${date}`, price: 3333 })), meta })
   add('global.indices', { indices: GLOBAL_INDICES.map(item => ({ ...dashboard.overview.indices[0]!, code: item.code, name: item.name, marketDate: date, meta })), meta })
+  add('intraday', { date, points: [{ time: '15:00', price: 3333, avgPrice: null, volume: 10 }], prevClose: 3340, meta })
+  add('signals', { date, method: 'ths-sector-events-v2', signals: [], meta })
   add('breadth', { up: 111, down: 222, flat: 3, limitUp: 4, limitDown: 5, qdate: date, meta })
   add('industry', { ...dashboard.industry, meta })
   add('concept', { ...dashboard.concept, sectors: dashboard.industry.sectors, meta })

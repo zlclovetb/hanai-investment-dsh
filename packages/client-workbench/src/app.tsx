@@ -32,6 +32,7 @@ import { HanaiClient, type DefaultModelView } from './api.ts'
 import { isClosingSnapshotCurrent, MarketHistoryBar, snapshotDashboard, useMarketHistory } from './market-history.tsx'
 import { beijingMarketDate, MARKET_HISTORY_PANELS, marketHistoryPanel, type MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
 import { DOMESTIC_INDICES, GLOBAL_INDICES, isGlobalMarketOpen, isGlobalSnapshotCurrent, type GlobalIndicesData } from '../../contracts/src/market-indices.ts'
+import { MarketActivityPanel } from './market-activity.tsx'
 import {
   buildKlineOption,
   buildRadarOption,
@@ -297,6 +298,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const [liveBreadth, setBreadth] = useState<MarketBreadthData | null>(null)
   const [liveBreadthLoading, setBreadthLoading] = useState(true)
   const [liveGlobal, setGlobal] = useState<GlobalIndicesData | null>(null)
+  const [activityRefreshVersion, setActivityRefreshVersion] = useState(0)
   const global = historical ? marketHistoryPanel(history.snapshot, 'global.indices') : liveGlobal
   const globalController = useRef<AbortController | null>(null)
   const globalInFlight = useRef(false)
@@ -414,7 +416,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
               if (!isGlobalSnapshotCurrent(overseas)) void loadGlobal()
             }
             // US trading can create a new Beijing-day record before the next A-share session.
-            if (snapshot.panels.every(key => key === 'global.indices')) continue
+            if (snapshot.panels.every(key => ['global.indices', 'intraday', 'signals'].includes(key))) continue
             setData(snapshotDashboard(snapshot))
             setBreadth(marketHistoryPanel(snapshot, 'breadth'))
             setRestingSnapshot(snapshot)
@@ -484,7 +486,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     history.selectDate(date)
   }
   const dateBar = <MarketHistoryBar history={history} onSelect={selectDate} />
-  const missingPanels = historical ? history.missing : MARKET_HISTORY_PANELS.filter(key => key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
+  const missingPanels = historical ? history.missing : MARKET_HISTORY_PANELS.filter(key => ['intraday', 'signals'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
   if ((historical ? history.loading : loading) && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><PageSkeleton cards={6} /></Page>
   if (historical && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title={history.error === null ? '该日期暂无历史记录' : '历史记录读取失败'} detail={history.error ?? '历史从成功归档的数据积累；未保存的日期无法还原，页面不会补入实时数据。'} action={<button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取</button>} /></Page>
   if (data === null) {
@@ -549,7 +551,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
       title="今日市场"
       className={styles['marketPageHeader'] ?? ''}
       meta={historical ? <span>历史快照 · {history.selectedDate}</span> : restingSnapshot !== null ? <span>休市快照 · {restingSnapshot.date}</span> : <><DataStateBadge meta={data.overview.meta} marketStatus={data.overview.marketStatus} refreshFailed={refreshError !== null} /><DataSourceText meta={data.overview.meta} /></>}
-      action={<>{dateBar}{historical ? <button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取历史</button> : <button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing || !canRefresh} onClick={() => { mainController.current?.abort(); startCooldown(); void load(true); void loadBreadth(); void loadGlobal() }} aria-label="手动刷新今日市场">{refreshing ? '刷新中' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}</>}
+      action={<>{dateBar}{historical ? <button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取历史</button> : <button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing || !canRefresh} onClick={() => { mainController.current?.abort(); startCooldown(); setActivityRefreshVersion(value => value + 1); void load(true); void loadBreadth(); void loadGlobal() }} aria-label="手动刷新今日市场">{refreshing ? '刷新中' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}</>}
     />
     {archived && missingPanels.length > 0 && <div className={styles['errorCard']} role="status">历史记录不完整：有 {missingPanels.length} 个面板未保存，仅展示该日期已有的记录。</div>}
     {!historical && refreshError !== null && <div className={styles['errorCard']}><b>行情获取失败：</b>{refreshError}<span>请检查网络后点击刷新；其他面板保留最近成功的数据。</span></div>}
@@ -557,6 +559,8 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
 
     <MarketIndexPanel overview={data.overview} global={global} />
 
+    <div className={`${styles['dashboardMainGrid']} ${styles['marketContextGrid']}`}>
+    <MarketActivityPanel client={client} snapshot={historical ? history.snapshot : restingSnapshot} historical={historical} palette={palette} refreshVersion={activityRefreshVersion} onArchived={history.reloadIndex} />
     <article className={`${styles['card']} ${styles['breadthCard']}`}>
       <PanelHead title="市场宽度" hint={breadthScope} extra={<span className={styles['metaText']}>两市成交 {money(data.overview.breadth.totalAmount)}</span>} />
       {breadthMeta !== undefined && <div className={styles['dataStrip']}>
@@ -584,6 +588,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
       </> : breadthLoading ? <div className={styles['breadthStats']} aria-label="市场宽度加载中"><span className={styles['cellSkeleton']} /></div>
         : <Empty compact title={archived ? '该日期未保存市场宽度' : '市场宽度暂不可用'} detail={archived ? '历史视图不会调用实时接口补齐。' : '行情源尚未返回市场宽度。'} />}
     </article>
+    </div>
 
     <div className={styles['dashboardMainGrid']}>
       <article className={`${styles['card']} ${styles['treemapCard']}`}>

@@ -7,25 +7,31 @@ import styles from './styles.module.css'
 import { DOMESTIC_INDICES } from '../../contracts/src/market-indices.ts'
 
 /** Uses the same weekday policy as polling; this is not an exchange holiday calendar. */
-export function isClosingSnapshotCurrent(snapshot: MarketHistorySnapshot, now = new Date()): boolean {
+function latestClosingDate(now: Date): string {
   const bj = new Date(now.getTime() + 8 * 3_600_000)
   const minutes = bj.getUTCHours() * 60 + bj.getUTCMinutes()
   if (minutes <= 15 * 60 + 5) bj.setUTCDate(bj.getUTCDate() - 1)
   while (bj.getUTCDay() === 0 || bj.getUTCDay() === 6) bj.setUTCDate(bj.getUTCDate() - 1)
-  const date = bj.toISOString().slice(0, 10)
-  if (snapshot.date !== date) return false
+  return bj.toISOString().slice(0, 10)
+}
+
+export function isClosingPanelCurrent(meta: ProviderMeta, now = new Date()): boolean {
+  const date = latestClosingDate(now)
   const cutoff = Date.parse(`${date}T15:05:00+08:00`)
-  const current = (meta: ProviderMeta) => {
-    const fetchedAt = Date.parse(meta.fetchedAt)
-    if (!Number.isFinite(fetchedAt) || fetchedAt > now.getTime() || meta.cacheState === 'unavailable') return false
-    if (meta.sourceTimestamp === null) return fetchedAt >= cutoff && meta.cacheState !== 'stale'
-    if (isMarketDate(meta.sourceTimestamp)) return meta.sourceTimestamp === date && fetchedAt >= cutoff
-    const sourceAt = Date.parse(meta.sourceTimestamp)
-    return Number.isFinite(sourceAt) && beijingMarketDate(sourceAt) === date
-      && sourceAt >= Date.parse(`${date}T15:00:00+08:00`) && sourceAt <= fetchedAt
-  }
+  const fetchedAt = Date.parse(meta.fetchedAt)
+  if (!Number.isFinite(fetchedAt) || fetchedAt > now.getTime() || meta.cacheState === 'unavailable') return false
+  if (meta.sourceTimestamp === null) return fetchedAt >= cutoff && meta.cacheState !== 'stale'
+  if (isMarketDate(meta.sourceTimestamp)) return meta.sourceTimestamp === date && fetchedAt >= cutoff
+  const sourceAt = Date.parse(meta.sourceTimestamp)
+  return Number.isFinite(sourceAt) && beijingMarketDate(sourceAt) === date
+    && sourceAt >= Date.parse(`${date}T15:00:00+08:00`) && sourceAt <= fetchedAt
+}
+
+export function isClosingSnapshotCurrent(snapshot: MarketHistorySnapshot, now = new Date()): boolean {
+  if (snapshot.date !== latestClosingDate(now)) return false
+  const current = (meta: ProviderMeta) => isClosingPanelCurrent(meta, now)
   for (const key of MARKET_HISTORY_PANELS) {
-    if (key === 'global.indices') continue
+    if (['global.indices', 'intraday', 'signals'].includes(key)) continue
     const record = snapshot.records[key]
     if (record === undefined || marketHistoryPanel(snapshot, key) === null || !current(record.meta)) return false
   }

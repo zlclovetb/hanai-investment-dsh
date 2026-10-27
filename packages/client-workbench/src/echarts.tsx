@@ -19,10 +19,13 @@ function loadEChartsRuntime(): Promise<EChartsRuntime> {
     import('echarts/charts'),
     import('echarts/components'),
     import('echarts/renderers'),
-  ]).then(([echarts, charts, components, renderers]) => {
+    import('echarts/features'),
+  ]).then(([echarts, charts, components, renderers, features]) => {
     echarts.use([
       charts.TreemapChart,
       charts.LineChart,
+      charts.ScatterChart,
+      features.LabelLayout,
       charts.BarChart,
       charts.CandlestickChart,
       charts.RadarChart,
