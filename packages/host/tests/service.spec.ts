@@ -14,6 +14,7 @@ import { SessionSeq, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DashboardData, DefaultModelSelection, ProviderMeta, StockDetail } from '../../contracts/src/index.ts'
 import { MARKET_HISTORY_PANELS, marketHistoryPanel } from '../../contracts/src/market-history.ts'
+import { GLOBAL_INDICES } from '../../contracts/src/market-indices.ts'
 import { HanaiDatabase } from '../../domain/src/database.ts'
 import { ensureHanaiLayout, resolveHanaiPaths } from '../../domain/src/paths.ts'
 import { ReportStore } from '../../domain/src/reports.ts'
@@ -84,6 +85,7 @@ function fixture(minChars = 100) {
     fetchedAt: new Date(0).toISOString(), cacheState: 'fresh' as const,
   }
   const market: MarketFacade = {
+    getGlobalIndices: async () => ({ indices: [], meta }),
     getDashboard: async () => { throw new Error('unused') },
     getMarketBreadth: async () => null,
     getSectorStocks: async () => ({ stocks: [], meta }),
@@ -125,6 +127,28 @@ async function eventually(assertion: () => void): Promise<void> {
 }
 
 describe('HanaiService report lifecycle', () => {
+  it('archives independent overseas indices by observation date without rewriting their market dates', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'global-indices', sourceName: '海外指数汇总', sourceTimestamp: null, fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const data = { meta, indices: GLOBAL_INDICES.map(item => ({ code: item.code, name: item.name, price: 100, change: 0, changePct: 0, amount: null, upCount: null, downCount: null, flatCount: null,
+      marketDate: item.code === 'IXIC' ? '2026-10-26' : '2026-10-27', meta: { ...meta, sourceTimestamp: item.code === 'IXIC' ? '2026-10-26T20:00:00Z' : '2026-10-27T07:00:00Z' } })) }
+    vi.spyOn(market, 'getGlobalIndices').mockResolvedValue(data)
+    const dashboard = vi.spyOn(market, 'getDashboard')
+    const signal = new AbortController().signal
+    try {
+      expect(await service.call('market.indices', {}, signal)).toEqual(data)
+      expect(dashboard).not.toHaveBeenCalled()
+      const record = await service.call('market.history.get', { date: '2026-10-27' }, signal)
+      expect(marketHistoryPanel(record, 'global.indices')).toEqual(data)
+      expect(await service.call('market.history.get', { date: '2026-10-26' }, signal)).toBeNull()
+      vi.setSystemTime(new Date('2026-10-28T00:01:00+08:00'))
+      vi.spyOn(market, 'getGlobalIndices').mockResolvedValue({ ...data, meta: { ...meta, cacheState: 'cached' } })
+      await service.call('market.indices', {}, signal)
+      expect(await service.call('market.history.get', { date: '2026-10-28' }, signal)).toBeNull()
+    } finally { database.close(); vi.useRealTimers() }
+  })
   it('never rebinds undated boards, ranks or sector caches to a different market day', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00'))
@@ -194,7 +218,7 @@ describe('HanaiService report lifecycle', () => {
       await service.call('dashboard.get', { refresh: false }, signal)
       await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
       const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
-      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS, 'sector:SINA:new_blhy']))
+      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => key !== 'global.indices'), 'sector:SINA:new_blhy']))
       expect(marketHistoryPanel(snapshot, 'overview')).toMatchObject({ indices: [{ ...data.overview.indices[0], meta }], meta })
       expect(marketHistoryPanel(snapshot, 'breadth')).toEqual(width)
       expect(marketHistoryPanel(snapshot, 'industry')).toEqual(data.industry)

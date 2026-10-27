@@ -29,6 +29,19 @@ function setup() {
 }
 
 describe('daily market panel history', () => {
+  it('merges overseas rows by source time without replacing saved quotes with missing or older results', () => {
+    const { store } = setup()
+    const batch = { ...meta, sourceTimestamp: null }
+    const row = (code: string, price: number | null, source = meta) => ({ code, name: code, price, change: 0, changePct: 0, amount: null, marketDate: '2026-10-27', meta: source })
+    store.save('global.indices', { indices: [row('HSI', 100), row('IXIC', 200)], meta: batch }, batch)
+    const later = { ...meta, sourceTimestamp: '2026-10-27T03:00:00Z', fetchedAt: '2026-10-27T03:01:00Z' }
+    const next = { ...batch, fetchedAt: later.fetchedAt }
+    store.save('global.indices', { indices: [row('HSI', null, { ...later, cacheState: 'unavailable' }), row('IXIC', 201, later)], meta: next }, next)
+    expect(marketHistoryPanel(store.get('2026-10-27'), 'global.indices')?.indices).toEqual([row('HSI', 100), row('IXIC', 201, later)])
+    const before = store.get('2026-10-27')
+    store.save('global.indices', { indices: [row('HSI', 99), row('IXIC', 199)], meta: next }, next)
+    expect(store.get('2026-10-27')).toEqual(before)
+  })
   it('merges newer partial indices with per-index times and never sums a retained old constituent', () => {
     const { store } = setup()
     const index = (code: string, price: number, amount: number, source = meta) => ({ code, name: code, price, amount, change: 0, changePct: 0, upCount: null, downCount: null, flatCount: null, meta: source })

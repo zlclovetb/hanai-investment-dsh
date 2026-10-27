@@ -43,14 +43,17 @@ import { ExpertChatStore } from '../../domain/src/expert-chats.ts'
 import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domain/src/securities.ts'
 import { MarketHistoryStore } from '../../domain/src/market-history.ts'
 import { beijingMarketDate, marketDateFromMeta } from '../../contracts/src/market-history.ts'
+import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const BREADTH_SUCCESS_SETTING = 'market.breadth.latestSuccess'
+const GLOBAL_SUCCESS_SETTING = 'market.indices.latestSuccess'
 const VALUATION_SUCCESS_SETTING = 'valuation.latestSuccess'
 const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableAt'
 const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
+  getGlobalIndices(): Promise<GlobalIndicesData>
   getDashboard(refresh?: boolean): Promise<DashboardData>
   getMarketBreadth(): Promise<MarketBreadthData | null>
   getSectorStocks(sectorCode: string): Promise<{ stocks: StockQuote[]; meta: ProviderMeta }>
@@ -249,6 +252,14 @@ export class HanaiService {
         return result
       }
       case 'market.history.list': return { snapshots: this.marketHistory.list() }
+      case 'market.indices': {
+        const result = await this.market.getGlobalIndices()
+        this.recordProviderSuccess(GLOBAL_SUCCESS_SETTING, result.indices.map(item => item.meta))
+        if (result.meta.cacheState !== 'unavailable' && result.meta.cacheState !== 'stale') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
+        // The record is the Beijing-day observation; every overseas row retains its own market date.
+        this.marketHistory.save('global.indices', result, result.meta, beijingMarketDate(Date.parse(result.meta.fetchedAt)))
+        return result
+      }
       case 'market.history.get': return this.marketHistory.get((request as HanaiRequest<'market.history.get'>).date)
       case 'sector.stocks': {
         const { sectorCode } = request as HanaiRequest<'sector.stocks'>
@@ -445,7 +456,7 @@ export class HanaiService {
       expertChatCount: this.database.expertChatCount(),
       latestMarketSuccess: this.database.getSetting('market.latestSuccess'),
       latestValuationSuccess: this.database.getSetting('valuation.latestSuccess'),
-      marketSources: [...this.providerSources(MARKET_SUCCESS_SETTING), ...this.providerSources(BREADTH_SUCCESS_SETTING)],
+      marketSources: [...this.providerSources(MARKET_SUCCESS_SETTING), ...this.providerSources(BREADTH_SUCCESS_SETTING), ...this.providerSources(GLOBAL_SUCCESS_SETTING)],
       valuationSources: this.providerSources(VALUATION_SUCCESS_SETTING),
       securitySource: this.database.getSetting(SECURITY_SOURCE_SETTING),
       latestSecuritySuccess: this.database.getSetting(SECURITY_SYNCED_AT_SETTING),

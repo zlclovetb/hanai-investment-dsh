@@ -29,6 +29,8 @@ import { EastmoneyFinancialProvider } from './financials.ts'
 import { ProviderCache } from './cache.ts'
 import { leguBreadth, type BreadthSnapshot } from './market-breadth.ts'
 import { SourceCircuit, type SourceCircuitOptions, type SourceId } from './source-circuit.ts'
+import { DOMESTIC_INDICES } from '../../../contracts/src/market-indices.ts'
+import { GlobalIndexProvider } from './global-indices.ts'
 
 export { EastmoneyProvider, type EastmoneyProviderOptions } from './eastmoney.ts'
 export {
@@ -74,6 +76,7 @@ async function optional<T>(promise: Promise<T>): Promise<T | null> {
 
 /** Facade consumed by the Host; all external transport and time are injectable for deterministic tests. */
 export class MarketDataService {
+  readonly globalIndices: GlobalIndexProvider
   readonly eastmoney: EastmoneyProvider
   readonly tencent: TencentProvider
   readonly gurufocus: GuruFocusProvider
@@ -89,6 +92,7 @@ export class MarketDataService {
   constructor(options: MarketDataServiceOptions = {}) {
     const http = options.http ?? new NodeFetchHttpClient()
     this.http = http
+    this.globalIndices = new GlobalIndexProvider(http, options.clock ?? systemClock, Math.min(options.timeoutMs ?? 5000, 5000), options.circuit)
     this.breadthTimeoutMs = options.timeoutMs ?? 10_000
     this.clock = options.clock ?? systemClock
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
@@ -145,11 +149,13 @@ export class MarketDataService {
       ['legu', '乐咕乐股（AKShare 同源）', 'breadth'],
       ['eastmoney-push2ex', '东方财富 push2ex（兜底）', 'breadth'],
     ] as const
-    return sources.map(([source, sourceName, scope]) => ({
+    return [...sources.map(([source, sourceName, scope]) => ({
       source, sourceName, scope,
       ...(scope === 'security' ? this.securitiesCircuit : this.circuit).snapshot(source),
-    }))
+    })), ...(['tencent', 'sina', 'eastmoney-push2'] as const).map(source => ({ source, sourceName: `${source}（海外指数）`, scope: 'indices' as const, ...this.globalIndices.circuit.snapshot(source) }))]
   }
+
+  getGlobalIndices() { return this.globalIndices.get() }
 
   getMarketBreadth(): Promise<BreadthSnapshot | null> {
     return this.breadthCache.get('market', async () => {
@@ -162,7 +168,7 @@ export class MarketDataService {
   }
 
   private async getMarketOverview(): Promise<MarketOverview> {
-    const ids = ['1.000001', '0.399001', '0.399006', '1.000300', '1.000688', '0.899050']
+    const ids = DOMESTIC_INDICES.map(item => item.secId)
     const result = await this.getQuotes(ids)
     const byId = new Map(result.quotes.map(quote => [quote.secId, quote]))
     const indices = ids.flatMap(id => {
@@ -345,7 +351,7 @@ export class MarketDataService {
   }
 
   clearMarketCache(): number {
-    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache()
+    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear()
   }
 
   async syncSecurities(

@@ -1,8 +1,10 @@
 import type { MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, SectorBoard, StockQuote } from './index.ts'
+import type { GlobalIndicesData } from './market-indices.ts'
 
-export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover'] as const
+export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices'] as const
 
 export interface MarketPanelPayloads {
+  'global.indices': GlobalIndicesData
   overview: MarketOverview
   breadth: MarketBreadthData
   industry: SectorBoard
@@ -63,6 +65,9 @@ export function isMarketProviderMeta(value: unknown): value is ProviderMeta {
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
+  if (key === 'global.indices') return namedRows(value.indices, ['price', 'change', 'changePct', 'amount']) && isMarketProviderMeta(value.meta)
+    && (value.indices as Array<Record<string, unknown>>).every(row => isMarketProviderMeta(row.meta)
+      && (row.marketDate === null || (typeof row.marketDate === 'string' && isMarketDate(row.marketDate))))
   if (key === 'overview') return namedRows(value.indices, ['price', 'change', 'changePct', 'amount'])
     && (value.indices as Array<Record<string, unknown>>).every(row => row.meta === undefined || isMarketProviderMeta(row.meta))
     && object(value.breadth) && numberOrNull(value.breadth.totalAmount) && isMarketProviderMeta(value.meta)

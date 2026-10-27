@@ -1,8 +1,22 @@
 import type { DatabaseSync } from 'node:sqlite'
 import type { MarketOverview, ProviderMeta } from '../../contracts/src/index.ts'
+import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import { isMarketDate, isMarketPanelPayload, isMarketProviderMeta, marketDateFromMeta, marketHistoryPanel, type MarketHistorySnapshot, type MarketHistorySummary, type MarketPanelSnapshot } from '../../contracts/src/market-history.ts'
 
 const observationTime = (meta: ProviderMeta): number => Date.parse(meta.sourceTimestamp !== null && !isMarketDate(meta.sourceTimestamp) ? meta.sourceTimestamp : meta.fetchedAt)
+
+function mergeGlobalIndices(previous: GlobalIndicesData | null, incoming: GlobalIndicesData): GlobalIndicesData | null {
+  const indices = new Map((previous?.indices ?? []).map(index => [index.code, index]))
+  let changed = false
+  for (const index of incoming.indices) {
+    if (index.price === null || index.meta.sourceTimestamp === null || index.meta.cacheState === 'unavailable') continue
+    const old = indices.get(index.code)
+    if (old !== undefined && observationTime(index.meta) <= observationTime(old.meta)) continue
+    indices.set(index.code, index)
+    changed = true
+  }
+  return changed ? { ...incoming, indices: [...indices.values()] } : null
+}
 
 function mergeOverview(previous: MarketOverview | null, incoming: MarketOverview, date: string): MarketOverview | null {
   const indices = new Map((previous?.indices ?? []).map(index => [index.code, { ...index, meta: index.meta ?? previous!.meta }]))
@@ -45,6 +59,11 @@ export class MarketHistoryStore {
     if (date === null || !isMarketDate(date) || !/^[A-Za-z0-9_.:-]{1,150}$/.test(key) || !Number.isFinite(Date.parse(capturedAt))) throw new Error('市场历史日期或面板标识无效')
     if (!isMarketProviderMeta(meta) || !isMarketPanelPayload(key, data)) throw new Error('市场历史面板数据无效')
     if (meta.cacheState === 'unavailable' || (meta.cacheState === 'stale' && meta.sourceTimestamp === null)) return
+    if (key === 'global.indices') {
+      const merged = mergeGlobalIndices(marketHistoryPanel(this.get(date), 'global.indices'), data as GlobalIndicesData)
+      if (merged === null) return
+      data = merged
+    }
     if (key === 'overview') {
       const merged = mergeOverview(marketHistoryPanel(this.get(date), 'overview'), data as MarketOverview, date)
       if (merged === null) return
@@ -59,7 +78,7 @@ export class MarketHistoryStore {
       ON CONFLICT(date, panel_key) DO UPDATE SET version = excluded.version,
         captured_at = excluded.captured_at, observed_at = excluded.observed_at,
         payload = excluded.payload, meta = excluded.meta
-      WHERE excluded.observed_at > market_panel_snapshots.observed_at OR ? = 'overview'
+      WHERE excluded.observed_at > market_panel_snapshots.observed_at OR ? IN ('overview', 'global.indices')
     `).run(date, key, capturedAt, observedAt, JSON.stringify(data), JSON.stringify(meta), key)
   }
 

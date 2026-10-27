@@ -13,6 +13,7 @@ const schemas = {
   'bootstrap': empty,
   'dashboard.get': z.object({ refresh: z.boolean().optional() }).strict(),
   'market.breadth': empty,
+  'market.indices': empty,
   'market.history.list': empty,
   'market.history.get': z.object({ date: z.string().refine(isMarketDate, '无效的历史日期') }).strict(),
   'sector.stocks': z.object({ sectorCode: z.string().trim().regex(/^(?:BK\d{4}|SINA:(?:new_|gn_)[A-Za-z0-9_]{1,60})$/) }).strict(),
