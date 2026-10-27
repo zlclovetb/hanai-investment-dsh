@@ -837,6 +837,13 @@
 .splash > span { margin-top: 8px; color: var(--muted); font-size: 10px; }
 .splash button { margin-top: 18px; padding: 7px 14px; border: 1px solid var(--control-border); border-radius: 7px; color: var(--text); background: var(--control-bg); box-shadow: var(--control-shadow); }
 
+.marketPageHeader { align-items: center; flex-wrap: wrap; }
+.marketPageHeader .pageActions { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.marketHistoryBar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; font-size: 12px; }
+.marketHistoryBar label { display: flex; align-items: center; gap: 8px; }
+.marketHistoryBar button, .marketHistoryBar small { font-size: inherit; }
+.marketHistoryBar input, .marketHistoryBar select { min-height: 30px; border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; color: var(--text); background: var(--panel); font: inherit; }
+.marketHistoryBar small { color: var(--muted); }
 .skeletonGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .skeletonGrid > div { height: 150px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
 .skeletonGrid i { display: block; width: 62%; height: 9px; margin-bottom: 13px; border-radius: 4px; background: linear-gradient(90deg, var(--hover), var(--border-strong), var(--hover)); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
