@@ -6,7 +6,7 @@ import { FakeClock, HandlerHttpClient, jsonResponse } from '../helpers.ts'
 const NOW = Date.parse('2026-10-26T10:00:00+08:00')
 const rows = Array.from({ length: 1001 }, (_, index) => {
   const symbol = index === 0 ? 'bj920000' : index === 1 ? 'sz000001' : `sh${600000 + index}`
-  return { symbol, code: symbol.slice(2), name: index === 2 ? '*ST测试' : `证券${index}`, trade: '0.000' }
+  return { symbol, code: symbol.slice(2), name: index === 2 ? '*ST测试' : `证券${index}`, trade: '0.000', settlement: '10.000', volume: 0 }
 })
 const securities = rows.map(row => ({ code: row.code, name: row.name, market: row.symbol.startsWith('sh') ? 1 : 0 }))
 
@@ -46,6 +46,32 @@ describe('security master fallback', () => {
     expect(http.requests).toHaveLength(12)
     expect(clock.sleeps).toEqual(Array(10).fill(120))
     expect(http.requests.slice(1).every(({ url }) => new URL(url).searchParams.get('sort') === 'symbol')).toBe(true)
+  })
+
+  it('retries only a transient short page and retains the full market snapshot', async () => {
+    const complete = sinaHttp('complete')
+    const pages: number[] = []
+    let shortPages = 0
+    const http = new HandlerHttpClient((url, request) => {
+      if (url.includes('getHQNodeData')) {
+        const page = Number(new URL(url).searchParams.get('page'))
+        pages.push(page)
+        if (page === 2 && shortPages++ < 2) return jsonResponse(shortPages === 1 ? [] : rows.slice(100, 150))
+      }
+      return complete.request(url, request)
+    })
+    const clock = new FakeClock(NOW)
+    expect(await new SinaProvider(http, clock).getAllSecurities()).toEqual(securities)
+    expect(pages.filter(page => page === 1)).toHaveLength(1)
+    expect(pages.filter(page => page === 2)).toHaveLength(3)
+    expect(clock.sleeps.filter(ms => ms >= 500)).toEqual([500, 1000])
+  })
+
+  it('bounds retries and reports the failed page when a short page never recovers', async () => {
+    const http = sinaHttp('truncated')
+    await expect(new SinaProvider(http, new FakeClock(NOW)).getAllSecurities()).rejects.toThrow('第 2 页不完整（0/100 条）')
+    expect(http.requests.filter(({ url }) => new URL(url).searchParams.get('page') === '2')).toHaveLength(3)
+    expect(http.requests.some(({ url }) => new URL(url).searchParams.get('page') === '3')).toBe(false)
   })
 
   it.each(['truncated', 'duplicate', 'invalid', 'no-count'] as const)('rejects a %s snapshot', async mode => {

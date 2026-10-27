@@ -70,14 +70,20 @@ export class SinaProvider {
     const securities = new Map<string, EastmoneySecurityRow>()
     for (let page = 1; page <= Math.ceil(total / 100); page += 1) {
       if (page > 1) await this.clock.sleep(120)
-      const rows = await this.rows('hs_a', page, 'symbol', true)
+      let rows = await this.rows('hs_a', page, 'symbol', true)
+      const expected = Math.min(100, total - (page - 1) * 100)
+      // 新浪偶发返回空页；仅重取当前短页，避免重跑全市场或把半份快照当成功。
+      for (let retry = 1; rows.length !== expected && retry <= 2; retry += 1) {
+        await this.clock.sleep(500 * retry)
+        rows = await this.rows('hs_a', page, 'symbol', true)
+      }
+      if (rows.length !== expected) throw new Error(`新浪主数据第 ${page} 页不完整（${rows.length}/${expected} 条）`)
       for (const row of rows) {
         const symbol = typeof row.symbol === 'string' ? row.symbol : ''
         if (!/^(?:sh6\d{5}|sz[03]\d{5}|bj\d{6})$/.test(symbol)
           || row.code !== symbol.slice(2) || typeof row.name !== 'string' || row.name.trim() === '') continue
         securities.set(symbol, { code: symbol.slice(2), name: row.name.trim(), market: symbol.startsWith('sh') ? 1 : 0 })
       }
-      if (rows.length < 100) break
     }
     if (securities.size < total) throw new Error(`新浪主数据不完整（${securities.size}/${total} 条）`)
     return [...securities.values()]
