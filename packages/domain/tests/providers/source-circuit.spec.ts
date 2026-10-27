@@ -103,5 +103,6 @@ describe('SourceCircuit', () => {
       'tencent', 'sina', 'eastmoney-push2his', 'eastmoney-push2', 'gurufocus',
     ])
     expect(SOURCE_PRIORITY[0]).toBe('tencent')
+    expect(circuit.available(['eastmoney-push2ex', 'legu'])).toEqual(['legu', 'eastmoney-push2ex'])
   })
 })

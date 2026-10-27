@@ -1,6 +1,7 @@
 import type {
   DashboardData,
   KLinePeriod,
+  MarketOverview,
   ProviderMeta,
   SearchResult,
   SourceDiagnostic,
@@ -25,6 +26,8 @@ import {
 import { TencentProvider } from './tencent.ts'
 import { SinaProvider } from './sina.ts'
 import { EastmoneyFinancialProvider } from './financials.ts'
+import { ProviderCache } from './cache.ts'
+import { leguBreadth, type BreadthSnapshot } from './market-breadth.ts'
 import { SourceCircuit, type SourceCircuitOptions, type SourceId } from './source-circuit.ts'
 
 export { EastmoneyProvider, type EastmoneyProviderOptions } from './eastmoney.ts'
@@ -79,11 +82,22 @@ export class MarketDataService {
   private readonly clock: Clock
   private readonly circuit: SourceCircuit
   private readonly securitiesCircuit: SourceCircuit
+  private readonly breadthCache: ProviderCache<BreadthSnapshot>
+  private readonly http: HttpClient
+  private readonly breadthTimeoutMs: number
 
   constructor(options: MarketDataServiceOptions = {}) {
     const http = options.http ?? new NodeFetchHttpClient()
+    this.http = http
+    this.breadthTimeoutMs = options.timeoutMs ?? 10_000
     this.clock = options.clock ?? systemClock
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
+    this.breadthCache = new ProviderCache(this.clock, () => {
+      const beijing = new Date(this.clock.now() + 8 * 3_600_000)
+      const minutes = beijing.getUTCHours() * 60 + beijing.getUTCMinutes()
+      const open = beijing.getUTCDay() > 0 && beijing.getUTCDay() < 6 && minutes >= 565 && minutes <= 905
+      return open ? 25_000 : 6 * 60 * 60_000
+    })
     // 行情成功不能重置主数据列表的失败次数。
     this.securitiesCircuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
     this.tencent = new TencentProvider(http, this.clock, options.timeoutMs ?? 10_000)
@@ -128,6 +142,8 @@ export class MarketDataService {
       ['eastmoney-push2his', '东方财富（行情 / K线调用链）', 'market'],
       ['gurufocus', '价值大师网', 'valuation'],
       ['sina', '新浪', 'security'], ['eastmoney-push2', '东方财富', 'security'],
+      ['legu', '乐咕乐股（AKShare 同源）', 'breadth'],
+      ['eastmoney-push2ex', '东方财富 push2ex（兜底）', 'breadth'],
     ] as const
     return sources.map(([source, sourceName, scope]) => ({
       source, sourceName, scope,
@@ -135,9 +151,38 @@ export class MarketDataService {
     }))
   }
 
+  getMarketBreadth(): Promise<BreadthSnapshot | null> {
+    return this.breadthCache.get('market', async () => {
+      const primary = await this.callSource('legu', () => leguBreadth(this.http, this.clock, this.breadthTimeoutMs))
+      if (primary !== null) return primary
+      const fallback = await this.callSource('eastmoney-push2ex', () => this.eastmoney.getBreadth())
+      if (fallback === null) throw new Error('完整市场宽度数据源均不可用')
+      return fallback
+    })
+  }
+
+  private async getMarketOverview(): Promise<MarketOverview> {
+    const ids = ['1.000001', '0.399001', '0.399006', '1.000300', '1.000688', '0.899050']
+    const result = await this.getQuotes(ids)
+    const byId = new Map(result.quotes.map(quote => [quote.secId, quote]))
+    const indices = ids.flatMap(id => {
+      const quote = byId.get(id)
+      return quote === undefined ? [] : [{ ...quote, upCount: null, downCount: null, flatCount: null }]
+    })
+    const shanghai = indices.find(quote => quote.code === '000001')
+    const shenzhen = indices.find(quote => quote.code === '399001')
+    const totalAmount = shanghai?.amount != null && shenzhen?.amount != null ? shanghai.amount + shenzhen.amount : null
+    return {
+      indices,
+      breadth: { up: null, down: null, flat: null, limitUp: null, limitDown: null, totalAmount },
+      marketStatus: this.eastmoney.marketStatus(result.meta.sourceTimestamp?.slice(0, 10) ?? null),
+      meta: indices.length > 0 ? result.meta : this.unavailableMeta(),
+    }
+  }
+
   async getDashboard(): Promise<DashboardData> {
     const [overview, industry, concept, gainers, losers, amount, turnover] = await Promise.all([
-      this.callSource('eastmoney-push2his', () => this.eastmoney.getMarketOverview()),
+      optional(this.getMarketOverview()),
       this.getSectorBoard('industry'),
       this.getSectorBoard('concept'),
       this.getRankList('gainers'),
@@ -300,7 +345,7 @@ export class MarketDataService {
   }
 
   clearMarketCache(): number {
-    return this.eastmoney.clearQuoteCache() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache()
+    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache()
   }
 
   async syncSecurities(

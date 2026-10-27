@@ -15,6 +15,7 @@ import type {
   Judgement,
   JudgementDetail,
   MasterPersona,
+  MarketBreadthData,
   ProviderMeta,
   SearchResult,
   SecurityMaster,
@@ -285,6 +286,10 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
 
 function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient; theme: ThemeId; onStock: (stock: SearchResult) => void; notify: Notify }) {
   const [data, setData] = useState<DashboardData | null>(null)
+  const [breadth, setBreadth] = useState<MarketBreadthData | null>(null)
+  const [breadthLoading, setBreadthLoading] = useState(true)
+  const [breadthFailed, setBreadthFailed] = useState(false)
+  const breadthInFlight = useRef(false)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshError, setRefreshError] = useState<string | null>(null)
@@ -295,8 +300,11 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const drillGeneration = useRef(0)
   const drillController = useRef<AbortController | null>(null)
   const { cooldown, canRefresh, startCooldown } = useRefreshCooldown(60)
+  const requestInFlight = useRef(false)
   const load = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true)
+    if (requestInFlight.current) return
+    requestInFlight.current = true
+    setRefreshing(true)
     try {
       setData(await client.call('dashboard.get', { refresh }))
       setRefreshError(null)
@@ -305,20 +313,39 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
       setRefreshError(message)
       if (refresh) notify(message, 'error')
     } finally {
+      requestInFlight.current = false
       setLoading(false)
       setRefreshing(false)
     }
   }, [client, notify])
 
+  const loadBreadth = useCallback(async () => {
+    if (breadthInFlight.current) return
+    breadthInFlight.current = true
+    setBreadthLoading(true)
+    try {
+      const result = await client.call('market.breadth', {})
+      if (result !== null) setBreadth(result)
+      setBreadthFailed(result === null)
+    } catch {
+      setBreadthFailed(true)
+    } finally {
+      breadthInFlight.current = false
+      setBreadthLoading(false)
+    }
+  }, [client])
+
   useEffect(() => {
     void load()
+    void loadBreadth()
     // 闭市后停自动轮询；interval 常驻注册、回调内判断，跨过开盘边界自然恢复。
     const timer = window.setInterval(() => {
       if (!isMarketOpen()) return
       void load()
+      void loadBreadth()
     }, 30_000)
     return () => window.clearInterval(timer)
-  }, [load])
+  }, [load, loadBreadth])
   useEffect(() => () => {
     drillGeneration.current += 1
     drillController.current?.abort()
@@ -334,14 +361,17 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     return <Page><PageHeader title="今日市场" /><Empty title="市场数据暂不可用" detail={refreshError ?? '行情源尚未返回可用数据。'} action={<button className={styles['button']} onClick={() => void load(true)}>重新加载</button>} /></Page>
   }
 
-  const breadth = data.overview.breadth
-  const limitUp = Math.max(0, breadth.limitUp ?? 0)
-  const limitDown = Math.max(0, breadth.limitDown ?? 0)
+  const breadthMeta = breadth?.meta
+  const breadthScope = breadthMeta?.providerId === 'legu-breadth'
+    ? '乐咕统计口径 · AKShare 同源'
+    : breadthMeta?.providerId === 'eastmoney-breadth' ? '东方财富统计口径 · 沪深北非 ST' : '统计口径以实际来源为准'
+  const limitUp = Math.max(0, breadth?.limitUp ?? 0)
+  const limitDown = Math.max(0, breadth?.limitDown ?? 0)
   const breadthSegments = {
     limitUp,
-    up: Math.max(0, (breadth.up ?? 0) - limitUp),
-    flat: Math.max(0, breadth.flat ?? 0),
-    down: Math.max(0, (breadth.down ?? 0) - limitDown),
+    up: Math.max(0, (breadth?.up ?? 0) - limitUp),
+    flat: Math.max(0, breadth?.flat ?? 0),
+    down: Math.max(0, (breadth?.down ?? 0) - limitDown),
     limitDown,
   }
   const breadthTotal = Object.values(breadthSegments).reduce((sum, value) => sum + value, 0)
@@ -383,7 +413,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     <PageHeader
       title="今日市场"
       meta={<><DataStateBadge meta={data.overview.meta} marketStatus={data.overview.marketStatus} refreshFailed={refreshError !== null} /><DataSourceText meta={data.overview.meta} /></>}
-      action={<button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing || !canRefresh} onClick={() => { startCooldown(); void load(true) }} aria-label="手动刷新今日市场">{refreshing ? '刷新中' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}
+      action={<button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing || !canRefresh} onClick={() => { startCooldown(); void load(true); void loadBreadth() }} aria-label="手动刷新今日市场">{refreshing ? '刷新中' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}
     />
     {refreshError !== null && <div className={styles['errorCard']}><b>行情获取失败：</b>{refreshError}<span>请检查网络后点击刷新；其他面板保留最近成功的数据。</span></div>}
 
@@ -399,7 +429,12 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     </div>
 
     <article className={`${styles['card']} ${styles['breadthCard']}`}>
-      <PanelHead title="市场宽度" hint="东方财富口径 · 沪深北非 ST" extra={<span className={styles['metaText']}>两市成交 {money(breadth.totalAmount)}</span>} />
+      <PanelHead title="市场宽度" hint={breadthScope} extra={<span className={styles['metaText']}>两市成交 {money(data.overview.breadth.totalAmount)}</span>} />
+      {breadthMeta !== undefined && <div className={styles['dataStrip']}>
+        <DataStateBadge meta={breadthMeta} {...(breadthMeta.providerId === 'legu-breadth' ? { liveCapable: false } : { marketStatus: data.overview.marketStatus })} refreshFailed={breadthMeta.cacheState === 'stale' || breadthFailed} />
+        <DataSourceText meta={breadthMeta} />
+        {(breadthMeta.cacheState === 'stale' || breadthFailed) && <small>更新失败，沿用最近成功的完整宽度快照</small>}
+      </div>}
       {breadthTotal > 0 ? <>
         <div className={styles['breadthBar']} aria-label="涨停、上涨、平盘、下跌、跌停分布">
           {([
@@ -417,7 +452,8 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
           <span className={styles['down']}>下跌 <b>{breadthSegments.down}</b></span>
           <span className={styles['limitDown']}>跌停 <b>{breadthSegments.limitDown}</b></span>
         </div>
-      </> : <Empty compact title="暂无涨跌分布数据" detail="行情源尚未返回市场宽度。" />}
+      </> : breadthLoading ? <div className={styles['breadthStats']} aria-label="市场宽度加载中"><span className={styles['cellSkeleton']} /></div>
+        : <Empty compact title="市场宽度暂不可用" detail="行情源尚未返回市场宽度。" />}
     </article>
 
     <div className={styles['dashboardMainGrid']}>
@@ -1841,8 +1877,9 @@ function DataStateBadge({ meta, marketStatus, refreshFailed = false, liveCapable
 
 function DataSourceText({ meta }: { meta: ProviderMeta | null | undefined }) {
   if (meta === null || meta === undefined) return <small className={styles['dataSource']}>来源元数据未提供</small>
-  const timestamp = meta.sourceTimestamp === null ? `获取 ${dateTime(meta.fetchedAt)}` : `数据 ${dateTime(meta.sourceTimestamp)}`
-  return <small className={styles['dataSource']}>{meta.sourceName} · {timestamp}</small>
+  const timestamp = meta.sourceTimestamp === null ? '' : /^\d{4}-\d{2}-\d{2}$/.test(meta.sourceTimestamp)
+    ? `交易日 ${meta.sourceTimestamp} · ` : `数据时间 ${dateTime(meta.sourceTimestamp)} · `
+  return <small className={styles['dataSource']}>{meta.sourceName} · {timestamp}{meta.cacheState === 'unavailable' ? '尝试于' : '获取于'} {dateTime(meta.fetchedAt)}</small>
 }
 
 function Metric({ label, value, tone }: { label: string; value: string; tone?: 'up' | 'down' }) {

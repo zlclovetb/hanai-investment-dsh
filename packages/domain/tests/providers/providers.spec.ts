@@ -419,7 +419,8 @@ describe('MarketDataService', () => {
     const quote = await service.getStockQuoteMetrics('0.002594')
 
     expect(dashboard.overview.indices).toHaveLength(6)
-    expect(dashboard.overview.breadth.up).toBe(1250)
+    expect(dashboard.overview.breadth.up).toBeNull()
+    expect((await service.getMarketBreadth())?.up).toBe(1250)
     expect(dashboard.overview.breadth.totalAmount).toBe(1_438_018_090_000)
     expect(dashboard.overview.meta.providerId).toBe('tencent')
     expect(dashboard.overview.marketStatus).toBe('closed')
@@ -435,6 +436,9 @@ describe('MarketDataService', () => {
       clock: new FakeClock(NOW),
       http: new HandlerHttpClient(url => {
         if (url.startsWith('https://push2ex.eastmoney.com/')) return jsonResponse(fixtures.eastmoney.breadth)
+        if (url.includes('/api/qt/ulist.np/get')) return jsonResponse({ data: { diff: Object.entries(fixtures.eastmoney.indices).map(([id, row]) => ({
+          f12: row.f57, f13: Number(id[0]), f14: row.f58, f2: row.f43, f3: row.f170, f4: row.f169, f6: row.f48,
+        })) } })
         if (url.includes('/api/qt/stock/get')) {
           const secId = new URL(url).searchParams.get('secid') ?? ''
           return jsonResponse({ data: fixtures.eastmoney.indices[secId] })

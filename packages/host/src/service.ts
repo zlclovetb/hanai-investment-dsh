@@ -22,6 +22,7 @@ import type {
   Judgement,
   JudgementDetail,
   KLinePeriod,
+  MarketBreadthData,
   ProviderMeta,
   SearchResult,
   SourceDiagnostic,
@@ -42,12 +43,14 @@ import { ExpertChatStore } from '../../domain/src/expert-chats.ts'
 import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domain/src/securities.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
+const BREADTH_SUCCESS_SETTING = 'market.breadth.latestSuccess'
 const VALUATION_SUCCESS_SETTING = 'valuation.latestSuccess'
 const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableAt'
 const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
   getDashboard(refresh?: boolean): Promise<DashboardData>
+  getMarketBreadth(): Promise<MarketBreadthData | null>
   getSectorStocks(sectorCode: string): Promise<{ stocks: StockQuote[]; meta: ProviderMeta }>
   getStockDetail(secId: string, security?: ReturnType<HanaiDatabase['getSecurity']>): Promise<StockDetail>
   getStockQuoteMetrics(secId: string): Promise<StockQuoteMetricsData>
@@ -230,6 +233,12 @@ export class HanaiService {
           result.concept.meta,
           ...Object.values(result.rankSources ?? {}),
         ])
+        return result
+      }
+      case 'market.breadth': {
+        const result = await this.market.getMarketBreadth()
+        this.recordProviderSuccess(BREADTH_SUCCESS_SETTING, [result?.meta ?? null])
+        if (result !== null && result.meta.cacheState !== 'unavailable') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
         return result
       }
       case 'sector.stocks': {
@@ -427,7 +436,7 @@ export class HanaiService {
       expertChatCount: this.database.expertChatCount(),
       latestMarketSuccess: this.database.getSetting('market.latestSuccess'),
       latestValuationSuccess: this.database.getSetting('valuation.latestSuccess'),
-      marketSources: this.providerSources(MARKET_SUCCESS_SETTING),
+      marketSources: [...this.providerSources(MARKET_SUCCESS_SETTING), ...this.providerSources(BREADTH_SUCCESS_SETTING)],
       valuationSources: this.providerSources(VALUATION_SUCCESS_SETTING),
       securitySource: this.database.getSetting(SECURITY_SOURCE_SETTING),
       latestSecuritySuccess: this.database.getSetting(SECURITY_SYNCED_AT_SETTING),

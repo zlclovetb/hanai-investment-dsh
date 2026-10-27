@@ -10,8 +10,10 @@ import { systemClock } from '../http.ts'
 export const SOURCE_PRIORITY = [
   'tencent',
   'sina',
+  'legu',
   'eastmoney-push2his',
   'eastmoney-push2',
+  'eastmoney-push2ex',
   'gurufocus',
 ] as const
 

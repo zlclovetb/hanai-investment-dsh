@@ -437,6 +437,120 @@ describe('HanaiWorkbench old-client parity', () => {
     }
   })
 
+  it.each([
+    ['legu-breadth', '乐咕统计口径 · AKShare 同源'],
+    ['eastmoney-breadth', '东方财富统计口径 · 沪深北非 ST'],
+  ])('labels the actual breadth scope for %s rather than hardcoding Eastmoney', async (providerId, hint) => {
+    renderAt('/dashboard', makeClient({ 'market.breadth': () => ({ ...dashboard.overview.breadth,
+      qdate: '2026-10-27', meta: { ...fresh, providerId },
+    }) }))
+    expect(await screen.findByText(hint)).not.toBeNull()
+    if (providerId === 'legu-breadth') {
+      const card = screen.getByRole('heading', { name: '市场宽度' }).closest('article')!
+      expect(within(card).getByText('最新数据')).not.toBeNull()
+      expect(within(card).queryByText('实时')).toBeNull()
+    }
+  })
+
+  it('shows breadth trading date separately from the actual acquisition time for a valid cache', async () => {
+    const fetchedAt = '2026-10-27T06:13:58.176Z'
+    renderAt('/dashboard', makeClient({ 'market.breadth': () => ({ ...dashboard.overview.breadth,
+      qdate: '2026-10-27', meta: { ...fresh, providerId: 'legu-breadth',
+        sourceTimestamp: '2026-10-27', fetchedAt, cacheState: 'cached' },
+    }) }))
+    const card = (await screen.findByRole('heading', { name: '市场宽度' })).closest('article')!
+    expect(within(card).getByText('缓存复用')).not.toBeNull()
+    expect(within(card).getByText(/交易日 2026-10-27 · 获取于/).textContent).toContain(new Date(fetchedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }))
+    expect(within(card).queryByText(/数据.*08:00/)).toBeNull()
+  })
+
+  it('keeps breadth visible while polling and coalesces overlapping page requests', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00'))
+    const pending = deferred<DashboardData>()
+    let requests = 0
+    const client = makeClient({ 'dashboard.get': () => ++requests === 1 ? dashboard : pending.promise })
+    try {
+      await act(async () => { renderAt('/dashboard', client) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      const card = screen.getByRole('heading', { name: '市场宽度' }).closest('article')!
+      expect(within(card).queryByText('正在刷新市场宽度…')).toBeNull()
+      expect(within(card).getByText('30')).not.toBeNull()
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      expect(requests).toBe(2)
+      await act(async () => { pending.resolve(dashboard); await pending.promise })
+      expect(within(card).queryByRole('status')).toBeNull()
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      expect(requests).toBe(3)
+    } finally { cleanup(); vi.useRealTimers() }
+  })
+
+  it('keeps the complete breadth snapshot visible and marks it stale after an automatic refresh fails', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00'))
+    const widthMeta: ProviderMeta = { ...fresh, providerId: 'eastmoney-breadth', sourceName: '东方财富市场宽度（沪深北非 ST）', fetchedAt: new Date().toISOString() }
+    let requests = 0
+    const client = makeClient({ 'market.breadth': () => ({ ...dashboard.overview.breadth,
+      qdate: '2026-10-27', meta: { ...widthMeta, cacheState: ++requests === 1 ? 'fresh' : 'stale' },
+    }) })
+    try {
+      await act(async () => { renderAt('/dashboard', client) })
+      const card = screen.getByRole('heading', { name: '市场宽度' }).closest('article')!
+      expect(within(card).getByLabelText('涨停、上涨、平盘、下跌、跌停分布')).not.toBeNull()
+      expect(within(card).getByText('30')).not.toBeNull()
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      expect(requests).toBe(2)
+      expect(within(card).getByLabelText('涨停、上涨、平盘、下跌、跌停分布')).not.toBeNull()
+      expect(within(card).getByText('30')).not.toBeNull()
+      expect(within(card).getByText('更新失败，沿用最近成功的完整宽度快照')).not.toBeNull()
+      expect(within(card).getByText('刷新失败')).not.toBeNull()
+      expect(within(card).queryByText('暂无涨跌分布数据')).toBeNull()
+    } finally { cleanup(); vi.useRealTimers() }
+  })
+
+  it('renders the dashboard before slow breadth completes and keeps other polling independent', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00'))
+    const pending = deferred<unknown>()
+    const client = makeClient({ 'market.breadth': () => pending.promise })
+    try {
+      await act(async () => { renderAt('/dashboard', client) })
+      expect(screen.getByRole('heading', { name: '今日市场' })).not.toBeNull()
+      expect(screen.getByRole('heading', { name: '板块热力' })).not.toBeNull()
+      const card = screen.getByRole('heading', { name: '市场宽度' }).closest('article')!
+      expect(within(card).getByLabelText('市场宽度加载中')).not.toBeNull()
+      expect(within(card).queryByText('正在刷新市场宽度…')).toBeNull()
+      await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
+      expect(callsOf(client, 'dashboard.get')).toHaveLength(3)
+      expect(callsOf(client, 'market.breadth')).toHaveLength(1)
+      await act(async () => {
+        pending.resolve({ ...dashboard.overview.breadth, qdate: '2026-10-27', meta: fresh })
+        await pending.promise
+      })
+      expect(within(card).getByText('30')).not.toBeNull()
+      expect(within(card).queryByLabelText('市场宽度加载中')).toBeNull()
+    } finally { cleanup(); vi.useRealTimers() }
+  })
+
+  it.each(['null', 'error'])('retains only breadth as a failed snapshot when its independent request returns %s', async failure => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00'))
+    let requests = 0
+    const client = makeClient({ 'market.breadth': () => {
+      if (++requests === 1) return { ...dashboard.overview.breadth, qdate: '2026-10-27', meta: fresh }
+      if (failure === 'null') return null
+      throw new Error('offline')
+    } })
+    try {
+      await act(async () => { renderAt('/dashboard', client) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      const card = screen.getByRole('heading', { name: '市场宽度' }).closest('article')!
+      expect(within(card).getByText('30')).not.toBeNull()
+      expect(within(card).getByText('刷新失败')).not.toBeNull()
+      expect(screen.queryByText('行情获取失败：')).toBeNull()
+    } finally { cleanup(); vi.useRealTimers() }
+  })
+
   it('keeps the dashboard order and renders an ECharts treemap with in-place sector drill-down', async () => {
     renderAt('/dashboard')
     await screen.findByRole('heading', { name: '今日市场' })
@@ -1262,10 +1376,12 @@ describe('HanaiWorkbench old-client parity', () => {
     fireEvent.click(refreshButton())
     await act(async () => { await vi.advanceTimersByTimeAsync(0) })
     expect(callsOf(client, 'dashboard.get').length).toBe(2)
+    expect(callsOf(client, 'market.breadth')).toHaveLength(2)
     expect(refreshButton().disabled).toBe(true)
     expect(refreshButton().textContent).toContain('60s')
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
     expect(refreshButton().textContent).toContain('30s')
+    expect(callsOf(client, 'market.breadth')).toHaveLength(3)
     await act(async () => { await vi.advanceTimersByTimeAsync(31_000) })
     expect(refreshButton().disabled).toBe(false)
     expect(refreshButton().textContent).toContain('刷新')
@@ -1293,6 +1409,7 @@ function makeClient(overrides: Record<string, CallOverride> = {}): HanaiClient {
       case 'bootstrap': return bootstrap
       case 'diagnostics.get': return bootstrap.diagnostics
       case 'dashboard.get': return dashboard
+      case 'market.breadth': return { ...dashboard.overview.breadth, qdate: '2026-10-27', meta: fresh }
       case 'sector.stocks': return { stocks: [watchQuote], meta: fresh }
       case 'watch.quotes': return { quotes: [watchQuote, watchQuoteMissing], meta: stale }
       case 'watch.valuations': return {

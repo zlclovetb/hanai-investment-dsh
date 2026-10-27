@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { parseHanaiRequest } from '../src/rpc.ts'
 
 describe('Hanai RPC request validation', () => {
+  it('accepts an independent breadth request and rejects arbitrary parameters', () => {
+    expect(parseHanaiRequest('market.breadth', {})).toEqual({})
+    expect(() => parseHanaiRequest('market.breadth', { url: 'https://example.com' })).toThrow()
+  })
   it('accepts namespaced backup sector nodes without accepting arbitrary query or URL input', () => {
     for (const sectorCode of ['BK0475', 'SINA:new_blhy', 'SINA:gn_BCdc']) {
       expect(parseHanaiRequest('sector.stocks', { sectorCode })).toEqual({ sectorCode })

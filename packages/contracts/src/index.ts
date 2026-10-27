@@ -25,6 +25,16 @@ export interface IndexQuote {
   flatCount: number | null
 }
 
+export interface MarketBreadthData {
+  up: number
+  down: number
+  flat: number
+  limitUp: number
+  limitDown: number
+  qdate: string
+  meta: ProviderMeta
+}
+
 export interface MarketOverview {
   indices: IndexQuote[]
   breadth: {
@@ -364,7 +374,7 @@ export interface DashboardData {
 export interface SourceDiagnostic {
   source: string
   sourceName: string
-  scope: 'market' | 'security' | 'valuation'
+  scope: 'market' | 'security' | 'valuation' | 'breadth'
   lastAttemptAt: string | null
   lastSuccessAt: string | null
   lastError: string | null
@@ -442,6 +452,7 @@ export interface CreateExpertChatInput {
 export interface HanaiEndpointMap {
   'bootstrap': { request: Record<string, never>; response: BootstrapData }
   'dashboard.get': { request: { refresh?: boolean }; response: DashboardData }
+  'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
   'sector.stocks': { request: { sectorCode: string }; response: { stocks: StockQuote[]; meta: ProviderMeta } }
   'security.sync': { request: { force?: boolean }; response: { count: number; updatedAt: string | null } }
   'security.search': { request: { query: string }; response: SearchResult[] }

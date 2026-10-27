@@ -84,6 +84,7 @@ function fixture(minChars = 100) {
   }
   const market: MarketFacade = {
     getDashboard: async () => { throw new Error('unused') },
+    getMarketBreadth: async () => null,
     getSectorStocks: async () => ({ stocks: [], meta }),
     getStockDetail: async () => stockDetail(),
     getStockQuoteMetrics: async () => ({
@@ -123,6 +124,24 @@ async function eventually(assertion: () => void): Promise<void> {
 }
 
 describe('HanaiService report lifecycle', () => {
+  it('serves independent breadth without running the dashboard and preserves both source records', async () => {
+    const { database, market, service } = fixture()
+    const quoteMeta: ProviderMeta = { providerId: 'tencent', sourceName: '腾讯行情', sourceTimestamp: null,
+      fetchedAt: '2026-10-27T06:40:00.000Z', cacheState: 'fresh' }
+    const width = { up: 100, down: 200, flat: 3, limitUp: 4, limitDown: 5, qdate: '2026-10-27',
+      meta: { ...quoteMeta, providerId: 'legu-breadth', sourceName: '乐咕乐股（AKShare 同源）' } }
+    database.setSetting('market.latestSuccess.sources', JSON.stringify([quoteMeta]))
+    const dashboard = vi.spyOn(market, 'getDashboard')
+    vi.spyOn(market, 'getMarketBreadth').mockResolvedValue(width)
+    try {
+      expect(await service.call('market.breadth', {}, new AbortController().signal)).toEqual(width)
+      expect(dashboard).not.toHaveBeenCalled()
+      const diagnostics = await service.call('diagnostics.get', {}, new AbortController().signal)
+      expect(diagnostics.marketSources).toEqual([quoteMeta, width.meta])
+      expect(diagnostics.latestMarketSuccess).toBe(width.meta.fetchedAt)
+    } finally { database.close() }
+  })
+
   it('creates a stock-independent expert chat, tracks DSH turns, and removes its workspace safely', async () => {
     const { database, paths, service, sessions } = fixture()
     const created = await service.call('expert-chat.create', {
