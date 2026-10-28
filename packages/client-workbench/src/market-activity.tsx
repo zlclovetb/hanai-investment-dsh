@@ -7,7 +7,8 @@ import { buildTrendOption, type ChartPalette } from './chart-options.ts'
 import { isClosingPanelCurrent } from './market-history.tsx'
 import { isMarketOpen } from './market-hours.ts'
 import { EChart } from './echarts.tsx'
-import { dateTime, number } from './format.ts'
+import { number } from './format.ts'
+import { PanelHead, PanelDataMeta } from './panel-head.tsx'
 import styles from './styles.module.css'
 
 function latestTrend(previous: MarketIntradayData | null, incoming: MarketIntradayData): MarketIntradayData {
@@ -120,16 +121,16 @@ export function MarketActivityPanel({ client, snapshot, historical, palette, ref
     return () => { controller.abort(); window.clearInterval(timer) }
   }, [client, snapshot, historical, refreshVersion, onArchived])
   const option = useMemo(() => buildMarketActivityOption(trend, signals, palette), [trend, signals, palette])
-  const header = (zoomed: boolean) => <header className={`${styles['panelHead']} ${styles['activityHead']}`}><div><h2>大盘异动</h2><span>上证分时 · 同花顺快讯标注</span></div>
-      <span className={styles['activityHeadMeta']}>{trend !== null && <>{trend.meta.sourceName} · {trend.date} · 数据时间 {dateTime(trend.meta.sourceTimestamp)}</>}</span>
-      <span className={`${styles['metaText']} ${styles['activityActions']}`}>昨收 {number(trend?.prevClose ?? null)}
+  const header = (zoomed: boolean) => <PanelHead title="大盘异动" hint="上证分时 · 同花顺快讯标注" meta={<>
+      {trend !== null && <PanelDataMeta meta={trend.meta} history={historical} liveCapable={false} />}
+      {!historical && (failed.trend || failed.signals) && <small>部分更新失败，保留已有数据</small>}
+      {signals?.method !== 'ths-sector-events-v2' && signals !== null && <small>{historical ? '旧版异动快照，仅保存了部分事件' : '旧版异动数据，正在更新'}</small>}
+    </>} extra={<span className={`${styles['metaText']} ${styles['activityActions']}`}>昨收 {number(trend?.prevClose ?? null)}
         <button className={styles['button']} aria-label={zoomed ? '缩小大盘异动' : '放大大盘异动'} aria-pressed={zoomed} autoFocus={zoomed} onClick={() => setExpanded(!zoomed)}>{zoomed ? '缩小' : '放大'}</button>
-      </span></header>
+      </span>} />
   const content = <>
-    {!historical && (failed.trend || failed.signals) && <div className={styles['dataStrip']}><small>部分更新失败，保留已有数据</small></div>}
     {option === null ? <div className={styles['activityEmpty']}>{historical ? '该日期未保存大盘分时' : trendLoading ? '正在加载上证分时…' : '上证分时暂不可用'}</div>
       : <EChart option={option} className={styles['activityChart']!} ariaLabel="大盘异动分时走势图" />}
-    {signals?.method !== 'ths-sector-events-v2' && signals !== null && <div className={styles['activityNotice']}>{historical ? '旧版异动快照，仅保存了部分事件' : '旧版异动数据，正在更新'}</div>}
     {(signals === null || signals.date !== trend?.date || signals.signals.length === 0) && <div className={styles['activityNotice']}>{historical && signals === null ? '该日期未保存板块异动' : signalsLoading ? '正在读取异动快讯…' : signals === null || signals.date !== trend?.date ? '板块异动暂不可用' : '当日暂无匹配的板块异动快讯'}</div>}
   </>
   return <>

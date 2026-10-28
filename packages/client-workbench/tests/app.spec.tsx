@@ -1467,6 +1467,17 @@ describe('whole-page market history', () => {
     expect(['dashboard.get', 'market.breadth', 'market.indices'].map(endpoint => callsOf(client, endpoint).length)).toEqual(before)
   })
 
+  it('places dashboard provenance and snapshot states inside panel headers', async () => {
+    const { container } = renderAt('/dashboard')
+    await act(async () => {})
+    const provenance = [...container.querySelectorAll('article [class*="dataSource"], article [data-data-status]')]
+    expect(provenance.length).toBeGreaterThan(3)
+    expect(provenance.every(element => element.closest('header[data-panel-head]') !== null)).toBe(true)
+    for (const title of ['指数行情', '大盘异动', '市场宽度', '板块热力', '榜单']) {
+      expect(screen.getByRole('heading', { name: title }).closest('header')?.hasAttribute('data-panel-head')).toBe(true)
+    }
+  })
+
   it('polls overseas during US hours without polling the closed A-share panels', async () => {
     vi.setSystemTime(new Date('2026-10-27T22:00:00+08:00'))
     const snapshot = historyFixture('2026-10-27')

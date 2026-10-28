@@ -100,7 +100,7 @@ describe('market activity panel', () => {
     await act(async () => {})
     expect(screen.getByLabelText('大盘异动分时走势图')).toBeTruthy()
     expect(screen.getByText('机器人').closest('[aria-label="大盘异动分时走势图"]')).toBeTruthy()
-    expect(screen.getByText(/腾讯行情 · 2026-10-27 · 数据时间/).closest('header')).toBeTruthy()
+    expect(screen.getByText(/腾讯行情 · 数据时间.*获取于/).closest('header')).toBeTruthy()
     rerender(<MarketActivityPanel {...props} refreshVersion={1} />)
     await act(async () => {})
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })

@@ -48,7 +48,7 @@ import { EChart } from './echarts.tsx'
 import { type KlineMaMode } from './kline-ma.ts'
 import { isMarketOpen, useRefreshCooldown } from './market-hours.ts'
 import { MarkdownView } from './markdown.tsx'
-import { describeDataStatus } from './data-status.ts'
+import { PanelHead, PanelDataMeta, DataStateBadge, DataSourceText } from './panel-head.tsx'
 import { DataSources } from './data-sources.tsx'
 import { classForChange, dateTime, money, number, percent, quantity, ratio } from './format.ts'
 import styles from './styles.module.css'
@@ -562,12 +562,11 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     <div className={`${styles['dashboardMainGrid']} ${styles['marketContextGrid']}`}>
     <MarketActivityPanel client={client} snapshot={historical ? history.snapshot : restingSnapshot} historical={historical} palette={palette} refreshVersion={activityRefreshVersion} onArchived={history.reloadIndex} />
     <article className={`${styles['card']} ${styles['breadthCard']}`}>
-      <PanelHead title="市场宽度" hint={breadthScope} extra={<span className={styles['metaText']}>两市成交 {money(data.overview.breadth.totalAmount)}</span>} />
-      {breadthMeta !== undefined && <div className={styles['dataStrip']}>
+      <PanelHead title="市场宽度" hint={breadthScope} extra={<span className={styles['metaText']}>两市成交 {money(data.overview.breadth.totalAmount)}</span>} meta={breadthMeta !== undefined && <>
         <DataStateBadge history={archived} meta={breadthMeta} {...(breadthMeta.providerId === 'legu-breadth' ? { liveCapable: false } : { marketStatus: data.overview.marketStatus })} refreshFailed={!archived && (breadthMeta.cacheState === 'stale' || breadthFailed)} />
         <DataSourceText meta={breadthMeta} />
         {!archived && (breadthMeta.cacheState === 'stale' || breadthFailed) && <small>更新失败，沿用最近成功的完整宽度快照</small>}
-      </div>}
+      </>} />
       {breadthTotal > 0 ? <>
         <div className={styles['breadthBar']} aria-label="涨停、上涨、平盘、下跌、跌停分布">
           {([
@@ -594,13 +593,14 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
       <article className={`${styles['card']} ${styles['treemapCard']}`}>
         <PanelHead
           title={drill === null ? '板块热力' : `板块热力 · ${drill.name}`}
+          meta={drill === null ? (!archived || sector?.meta.providerId !== 'history-missing') && <PanelDataMeta history={archived} meta={sector?.meta} liveCapable={sector?.meta.sourceTimestamp !== null} />
+            : drill.stocks !== null && drill.meta !== null && <PanelDataMeta history={archived} meta={drill.meta} />}
           extra={drill === null ? <div className={styles['buttonGroup']}>
             <button className={sectorType === 'industry' ? styles['buttonSelected'] : styles['button']} disabled={sectorLoading} onClick={() => selectSectorType('industry')}>行业</button>
             <button className={sectorType === 'concept' ? styles['buttonSelected'] : styles['button']} disabled={sectorLoading} onClick={() => selectSectorType('concept')}>概念</button>
           </div> : <button className={styles['button']} onClick={closeDrill}>← 返回板块</button>}
         />
         {drill === null ? <div className={styles['treemapBody']}>
-          {(!archived || sector?.meta.providerId !== 'history-missing') && <div className={styles['dataStrip']}><DataStateBadge history={archived} meta={sector?.meta} liveCapable={sector?.meta.sourceTimestamp !== null} /><DataSourceText meta={sector?.meta} /></div>}
           {treemapOption === null ? <Empty compact title={archived ? '该日期未保存此板块热力' : '暂无板块热力数据'} detail={archived ? '历史视图不会补入当前板块数据。' : sector?.meta.cacheState === 'unavailable' ? '板块数据源暂不可用，其余行情可继续查看。' : '等待板块成交额与涨跌幅。'} /> : <EChart option={treemapOption} {...(styles['treemapChart'] === undefined ? {} : { className: styles['treemapChart'] })} ariaLabel="板块成交额热力图" onChartClick={openSector} />}
           <div className={styles['treemapLegend']}>
             <span>涨</span>
@@ -612,11 +612,10 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
       </article>
 
       <article className={`${styles['card']} ${styles['rankCard']}`}>
-        <PanelHead title="榜单" extra={<div className={styles['buttonGroup']}>
+        <PanelHead title="榜单" meta={data.rankSources !== undefined && (!archived || data.rankSources[rank].providerId !== 'history-missing') && <PanelDataMeta history={archived} meta={data.rankSources[rank]} liveCapable={data.rankSources[rank].sourceTimestamp !== null} />} extra={<div className={styles['buttonGroup']}>
           {([['gainers', '涨幅榜'], ['losers', '跌幅榜'], ['amount', '成交额'], ['turnover', '换手率']] as const).map(([id, label]) => <button key={id} className={rank === id ? styles['buttonSelected'] : styles['button']} onClick={() => setRank(id)}>{label}</button>)}
         </div>} />
         <div className={styles['rankBody']}>
-          {data.rankSources !== undefined && (!archived || data.rankSources[rank].providerId !== 'history-missing') && <div className={styles['dataStrip']}><DataStateBadge history={archived} meta={data.rankSources[rank]} liveCapable={data.rankSources[rank].sourceTimestamp !== null} /><DataSourceText meta={data.rankSources[rank]} /></div>}
           <table className={styles['dataTable']}>
             <thead><tr><th>名称</th><th>最新价</th><th>涨跌幅</th><th>{rank === 'turnover' ? '换手率' : '成交额'}</th></tr></thead>
             <tbody>{data.ranks[rank].map(item => <tr key={item.secId} onClick={() => onStock(toSearchResult(item))}><td><b>{item.name}</b><small>{item.code}</small></td><td>{number(item.price)}</td><td className={styles[classForChange(item.changePct)]}>{percent(item.changePct)}</td><td>{rank === 'turnover' ? ratio(item.turnoverRate) : money(item.amount)}</td></tr>)}</tbody>
@@ -653,7 +652,7 @@ function MarketIndexPanel({ overview, global }: { overview: DashboardData['overv
     <div className={styles['indexAmount']}>成交 {money(index.amount)}</div>
   </article>)
   return <section className={`${styles['card']} ${styles['indexPanel']}`} aria-label="指数行情">
-    <PanelHead title="指数行情" hint={hint} extra={<button className={styles['button']} aria-label={expanded ? '收起其余指数' : '展开其余指数'} aria-expanded={expanded} aria-controls={extraId} onClick={() => setExpanded(value => !value)}>{expanded ? '收起' : `展开其余 ${rows.length - 6} 个`}</button>} />
+    <PanelHead title="指数行情" meta={<span>{hint}</span>} extra={<button className={styles['button']} aria-label={expanded ? '收起其余指数' : '展开其余指数'} aria-expanded={expanded} aria-controls={extraId} onClick={() => setExpanded(value => !value)}>{expanded ? '收起' : `展开其余 ${rows.length - 6} 个`}</button>} />
     <div className={styles['indexGrid']} role="group" aria-label="主要指数">{cards.slice(0, 6)}</div>
     {expanded && <div id={extraId} className={`${styles['indexGrid']} ${styles['indexGridMore']}`} role="group" aria-label="更多指数">{cards.slice(6)}</div>}
   </section>
@@ -663,7 +662,6 @@ function SectorDrill({ drill, onStock, historical = false }: { drill: { name: st
   if (drill.stocks === null) return <PageSkeleton cards={3} />
   if (historical && drill.meta === null) return <Empty compact title="该日期未保存此板块成分" detail="历史下钻不会调用实时行情接口。" />
   return <div className={styles['drillBody']}>
-    <div className={styles['dataStrip']}><DataStateBadge history={historical} meta={drill.meta} /><DataSourceText meta={drill.meta} /></div>
     <table className={styles['dataTable']}>
       <thead><tr><th>名称</th><th>最新价</th><th>涨跌幅</th><th>成交额</th><th>换手率</th><th>市值</th></tr></thead>
       <tbody>{drill.stocks.map(stock => <tr key={stock.secId} onClick={() => onStock(toSearchResult(stock))}><td><b>{stock.name}</b><small>{stock.code}</small></td><td>{number(stock.price)}</td><td className={styles[classForChange(stock.changePct)]}>{percent(stock.changePct)}</td><td>{money(stock.amount)}</td><td>{ratio(stock.turnoverRate)}</td><td>{money(stock.marketCap)}</td></tr>)}</tbody>
@@ -918,7 +916,7 @@ function WatchPage({ client, groups, onGroups, onStock, notify }: { client: Hana
   return <Page>
     <PageHeader
       title="自选与发现"
-      meta={<>{initialLoading ? <span className={`${styles['dataState']} ${styles['dataState_loading']}`}>加载中</span> : <DataStateBadge meta={quoteMeta} refreshFailed={refreshFailed} />}<span>当前分组 · 行情更新于 {shortTime(quoteMeta?.fetchedAt ?? null)} · 估值按日缓存</span></>}
+      meta={<span>当前分组 · 估值按日缓存</span>}
       action={<button className={styles['button']} disabled={refreshing || !canRefresh || groupId === ''} onClick={() => { startCooldown(); void refreshCurrentGroup() }} aria-label="刷新当前自选分组"><span className={`${styles['refreshIcon']} ${refreshing ? styles['refreshIconSpinning'] : ''}`} aria-hidden="true">↻</span>{refreshing ? '刷新中…' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}
     />
     <div className={styles['watchToolbar']}>
@@ -933,6 +931,11 @@ function WatchPage({ client, groups, onGroups, onStock, notify }: { client: Hana
     </div>
 
     <article className={styles['card']}>
+      <PanelHead title="自选行情" meta={<>
+        {initialLoading ? <span className={`${styles['dataState']} ${styles['dataState_loading']}`}>加载中</span> : <DataStateBadge meta={quoteMeta} refreshFailed={refreshFailed} />}
+        <span><b>行情</b><DataSourceText meta={quoteMeta} /></span>
+        <span><b>合理估值</b>{valuationMeta !== null ? <DataSourceText meta={valuationMeta} /> : <small className={styles['dataSource']}>{valuationLoading ? '价值大师网 · 整组加载中…' : valuationFailed ? '价值大师网 · 本次加载失败' : '价值大师网 · 暂无可用数据'}</small>}</span>
+      </>} />
       {initialLoading ? <WatchTableSkeleton rows={skeletonRows} /> : initialLoadFailed ? <Empty title="自选行情暂不可用" detail="已有自选仍保存在本地，请检查网络后重试。" action={<button className={styles['button']} onClick={() => void refreshCurrentGroup()}>重新加载</button>} /> : sorted.length === 0 ? <Empty title="当前分组暂无自选股" detail="使用上方搜索框或 ⌘K 全局搜索添加。" /> : <div className={styles['tableWrap']}><table className={`${styles['dataTable']} ${styles['watchTable']}`}>
         <thead><tr>
           <th>名称</th><th>最新价</th>
@@ -958,10 +961,6 @@ function WatchPage({ client, groups, onGroups, onStock, notify }: { client: Hana
           <td><div className={styles['rowActions']}>{groups.length > 1 && displayedGroupId !== null && <button className={`${styles['button']} ${styles['buttonGhost']}`} onClick={event => { event.stopPropagation(); setMoveTarget({ quote, sourceGroupId: displayedGroupId }) }}>移动</button>}{displayedGroupId !== null && <button className={`${styles['button']} ${styles['buttonGhost']}`} onClick={event => { event.stopPropagation(); void client.call('watch.item.remove', { groupId: displayedGroupId, secId: quote.secId }).then(next => { changed(next); notify('已移出自选') }).catch(error => notify(messageOf(error), 'error')) }}>移除</button>}</div></td>
         </tr>)}</tbody>
       </table></div>}
-      <div className={styles['tableFoot']}>
-        <span><b>行情</b><DataSourceText meta={quoteMeta} /></span>
-        <span><b>合理估值</b>{valuationMeta !== null ? <DataSourceText meta={valuationMeta} /> : <small className={styles['dataSource']}>{valuationLoading ? '价值大师网 · 整组加载中…' : valuationFailed ? '价值大师网 · 本次加载失败' : '价值大师网 · 暂无可用数据'}</small>}</span>
-      </div>
     </article>
 
     <WatchGroupManager client={client} open={managerOpen} groups={groups} onClose={() => setManagerOpen(false)} onChanged={changed} notify={notify} />
@@ -1418,7 +1417,7 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
     <div className={styles['stockDetailGrid']}>
       <div className={styles['stockMainColumn']}>
         <article className={styles['card']}>
-          <PanelHead title="价格走势" hint={`${chart === 'trend' ? '分时均价' : '前复权'} · ${chartMeta?.sourceName ?? '来源未知'}${chart === 'daily' ? ` · ${dailyHasMore ? '左拖加载更早数据' : '已加载完整历史'}` : chart === 'weekly' || chart === 'monthly' ? ' · 完整历史' : ''}`} extra={<div className={styles['buttonGroup']}>{([['trend', '分时'], ['daily', '日K'], ['weekly', '周K'], ['monthly', '月K']] as const).map(([id, label]) => <button key={id} className={chart === id ? styles['buttonSelected'] : styles['button']} onClick={() => setChart(id)}>{label}</button>)}</div>} />
+          <PanelHead title="价格走势" hint={`${chart === 'trend' ? '分时均价' : '前复权'}${chart === 'daily' ? ` · ${dailyHasMore ? '左拖加载更早数据' : '已加载完整历史'}` : chart === 'weekly' || chart === 'monthly' ? ' · 完整历史' : ''}`} meta={<PanelDataMeta meta={chartMeta} liveCapable={chart === 'trend'} />} extra={<div className={styles['buttonGroup']}>{([['trend', '分时'], ['daily', '日K'], ['weekly', '周K'], ['monthly', '月K']] as const).map(([id, label]) => <button key={id} className={chart === id ? styles['buttonSelected'] : styles['button']} onClick={() => setChart(id)}>{label}</button>)}</div>} />
           {chart !== 'trend' && <div className={styles['klineMaBar']}>
             <div className={styles['klineMaModes']} role="group" aria-label="均线组合模式">
               <span>均线组合</span>
@@ -1445,7 +1444,7 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
           />}{dailyHistoryLoading && <span className={styles['historyLoading']} role="status" aria-label="正在加载更早行情"><i />正在加载更早行情…</span>}</div>
         </article>
 
-        <article className={styles['card']}><PanelHead title="实时行情快照" /><div className={styles['stockMetricGrid']}>
+        <article className={styles['card']}><PanelHead title="实时行情快照" meta={<PanelDataMeta meta={detail.sources.quote} />} /><div className={styles['stockMetricGrid']}>
           <Metric label="今开" value={number(quote?.open ?? metrics?.open ?? null)} />
           <Metric label="最高" value={number(quote?.high ?? metrics?.high ?? null)} tone="up" />
           <Metric label="最低" value={number(quote?.low ?? metrics?.low ?? null)} tone="down" />
@@ -1461,8 +1460,7 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
           <Metric label="流通市值" value={money(quote?.floatCap ?? metrics?.floatCap ?? null)} />
         </div></article>
 
-        <article className={styles['card']}><PanelHead title="基本面（财报期数据）" hint={metrics?.reportDate ? `报告期 ${metrics.reportDate} · ${metrics.reportName ?? '累计财报'} · 估值随行情更新` : '低频数据 · 与盘中价格时效不同'} />
-          <div className={styles['dataStrip']}><DataStateBadge meta={detail.sources.metrics} liveCapable={false} /><small className={styles['dataSource']}>{detail.sources.metrics?.sourceName ?? '财报来源未提供'}{metrics?.reportDate ? ' · 营收、利润、每股收益和 ROE 为本年累计值' : ''}</small></div>
+        <article className={styles['card']}><PanelHead title="基本面（财报期数据）" hint={metrics?.reportDate ? `报告期 ${metrics.reportDate} · ${metrics.reportName ?? '累计财报'} · 估值随行情更新` : '低频数据 · 与盘中价格时效不同'} meta={<><PanelDataMeta meta={detail.sources.metrics} liveCapable={false} dateLabel="报告期" />{metrics?.reportDate && <small>营收、利润、每股收益和 ROE 为本年累计值</small>}</>} />
           <div className={styles['stockMetricGrid']}>
           {fundamentalMetrics(metrics).map(item => <Metric key={item.label} label={item.label} value={item.value} {...(item.tone === undefined ? {} : { tone: item.tone })} />)}
         </div></article>
@@ -1470,7 +1468,7 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
 
       <div className={styles['stockSideColumn']}>
         <article className={styles['card']}>
-          <PanelHead title="价值判断" extra={!valuationLoading && valuation !== null && <span className={styles['tag']}>{valuationRank(valuation.valuationRank)}</span>} />
+          <PanelHead title="价值判断" meta={!valuationLoading && valuation !== null && <PanelDataMeta meta={valuation.meta} liveCapable={false} />} extra={!valuationLoading && valuation !== null && <span className={styles['tag']}>{valuationRank(valuation.valuationRank)}</span>} />
           {valuationLoading ? <ValuationLoading variant="summary" /> : valuation === null ? <Empty compact title="估值数据暂不可用" detail="估值为日级数据，不影响行情与研判功能。" /> : <>
             <div className={styles['valuationSummary']}>
               <Metric label="大师价值" value={number(valuation.medps)} />
@@ -1478,11 +1476,10 @@ function StockPage({ client, secId, theme, groups: bootstrapGroups, onGroups, on
               <Metric label="GF 评分" value={valuation.gfScore === null ? '—' : `${number(valuation.gfScore, 0)}/100`} />
             </div>
             <div className={styles['radarChart']}><EChart option={buildRadarOption(valuation.dimensions, palette)} ariaLabel="估值五维雷达图" /></div>
-            <div className={styles['metaLine']}><DataStateBadge meta={valuation.meta} liveCapable={false} /><DataSourceText meta={valuation.meta} /></div>
           </>}
         </article>
         <article className={styles['card']}>
-          <PanelHead title="价值曲线" />
+          <PanelHead title="价值曲线" meta={!valuationLoading && valuation !== null && <PanelDataMeta meta={valuation.meta} liveCapable={false} />} />
           <div className={styles['valuationChart']}>{valuationLoading ? <ValuationLoading variant="chart" /> : valuationOption === null ? <Empty compact title="暂无估值曲线" detail="供应商尚未返回价格与价值序列。" /> : <EChart option={valuationOption} ariaLabel="价格与大师价值曲线" />}</div>
           <p className={styles['chartNote']}>金线为大师价值线，蓝线为股价；红带为高估区（+10% / +30%），绿带为低估区（−10% / −30%）。价值线末端为供应商预测，非历史真实点。</p>
         </article>
@@ -1983,10 +1980,6 @@ function PageHeader({ title, description, meta, action, className = '' }: { titl
   return <header className={`${styles['pageHeader']} ${className}`}><div><h1>{title}</h1>{description !== undefined && <p>{description}</p>}</div>{meta !== undefined && <div className={styles['pageMeta']}>{meta}</div>}{action !== undefined && <div className={styles['pageActions']}>{action}</div>}</header>
 }
 
-function PanelHead({ title, hint, extra }: { title: string; hint?: string; extra?: ReactNode }) {
-  return <header className={styles['panelHead']}><div><h2>{title}</h2>{hint !== undefined && <span>{hint}</span>}</div>{extra}</header>
-}
-
 function ThemeToggle({ theme, onToggle }: { theme: ThemeId; onToggle: () => void }) {
   const target = theme === 'dark' ? '亮色' : '黑夜'
   return <button className={styles['themeToggle']} title={`切换为${target}模式`} aria-label={`切换为${target}模式`} onClick={onToggle}>{theme === 'dark' ? '☀' : '☾'}</button>
@@ -2034,20 +2027,6 @@ function EnterFullscreenIcon() {
 
 function ExitFullscreenIcon() {
   return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" /></svg>
-}
-
-function DataStateBadge({ meta, marketStatus, refreshFailed = false, liveCapable = true, history = false }: { meta: ProviderMeta | null | undefined; marketStatus?: DashboardData['overview']['marketStatus']; refreshFailed?: boolean; liveCapable?: boolean; history?: boolean }) {
-  const state = history && meta != null && meta.cacheState !== 'unavailable'
-    ? { kind: 'cached', label: '历史快照', detail: '所选日期已保存的本地数据，来源与获取时间保持原样' }
-    : describeDataStatus(meta, { ...(marketStatus === undefined ? {} : { marketStatus }), ...(refreshFailed ? { refreshFailed: true } : {}), ...(!liveCapable ? { liveCapable: false } : {}) })
-  return <span className={`${styles['dataState']} ${styles[`dataState_${state.kind}`]}`} data-data-status={state.kind} title={state.detail}>{state.label}</span>
-}
-
-function DataSourceText({ meta }: { meta: ProviderMeta | null | undefined }) {
-  if (meta === null || meta === undefined) return <small className={styles['dataSource']}>来源元数据未提供</small>
-  const timestamp = meta.sourceTimestamp === null ? '' : /^\d{4}-\d{2}-\d{2}$/.test(meta.sourceTimestamp)
-    ? `交易日 ${meta.sourceTimestamp} · ` : `数据时间 ${dateTime(meta.sourceTimestamp)} · `
-  return <small className={styles['dataSource']}>{meta.sourceName} · {timestamp}{meta.cacheState === 'unavailable' ? '尝试于' : '获取于'} {dateTime(meta.fetchedAt)}</small>
 }
 
 function Metric({ label, value, tone }: { label: string; value: string; tone?: 'up' | 'down' }) {
@@ -2316,12 +2295,6 @@ function changeTone(value: number | null | undefined): 'up' | 'down' | undefined
 
 function dateOnly(value: string | null): string {
   return value === null ? '—' : value.slice(0, 10)
-}
-
-function shortTime(value: string | null): string {
-  if (value === null) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatBytes(value: number): string {

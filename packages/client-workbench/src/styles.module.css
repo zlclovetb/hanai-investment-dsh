@@ -262,10 +262,18 @@
 .pageActions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
 .card { border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
-.panelHead { display: flex; min-height: 45px; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--border); }
-.panelHead > div:first-child { display: flex; min-width: 0; align-items: baseline; gap: 10px; }
+.panelHead { container-type: inline-size; min-height: 45px; border-bottom: 1px solid var(--border); }
+.panelHeadLayout { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px 12px; min-height: 44px; padding: 8px 16px; }
+.panelHeading { display: flex; min-width: 0; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; grid-column: 1; grid-row: 1; }
+.panelMetadata { display: flex; min-width: 0; max-width: 100%; align-items: center; justify-content: center; flex-wrap: wrap; gap: 5px 8px; grid-column: 2; grid-row: 1; font-size: 10px; overflow-wrap: anywhere; }
+.panelActions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; grid-column: 3; grid-row: 1; color: var(--faint); font-size: 10px; }
+@container (max-width: 780px) {
+  .panelHeadLayout { grid-template-columns: minmax(0, 1fr) auto; }
+  .panelActions { grid-column: 2; }
+  .panelMetadata { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+}
 .panelHead h2 { margin: 0; color: var(--text); font-size: 13px; font-weight: 650; }
-.panelHead span { color: var(--faint); font-size: 10px; }
+.panelHeading > span { color: var(--faint); font-size: 10px; overflow-wrap: anywhere; }
 
 .button,
 .buttonPrimary,
@@ -297,9 +305,6 @@
 .errorCard span { color: var(--muted); }
 
 .indexPanel { margin-bottom: 12px; }
-.indexPanel .panelHead > div:first-child { min-width: 0; flex-wrap: wrap; }
-.indexPanel .panelHead > div:first-child > span { overflow-wrap: anywhere; }
-.indexPanel .panelHead > button { flex-shrink: 0; }
 .indexGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; padding: 12px 16px; }
 .indexGridMore { padding-top: 0; }
 .indexCard { min-height: 76px; padding: 8px 10px; border-top: 2px solid var(--border-strong); }
@@ -317,10 +322,6 @@
 .activityCard, .breadthCard { min-width: 0; }
 .activityCard .activityChart { height: 300px; }
 .activityEmpty { min-height: 230px; display: grid; place-items: center; color: var(--muted); }
-.activityHead { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
-.activityHead > div:first-child { flex-wrap: wrap; gap: 4px 8px; }
-.activityHead > span:last-child { justify-self: end; white-space: nowrap; }
-.activityHeadMeta { text-align: center; overflow-wrap: anywhere; }
 .activityNotice { padding: 4px 16px 12px; font-size: 11px; color: var(--muted); }
 .activityActions { display: flex; align-items: center; gap: 10px; }
 .activityDialog { position: fixed; margin: 0; padding: 0; transform: translateY(-50%); max-width: calc(100vw - 32px); overflow: auto; border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text); background: var(--panel); box-shadow: var(--shadow); }
@@ -346,7 +347,6 @@
 .treemapLegend small { margin-left: auto; color: var(--faint); }
 .rankBody,
 .drillBody { height: calc(100% - 45px); overflow: auto; }
-.dataStrip { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
 
 .dataTable { width: 100%; border-collapse: collapse; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .dataTable th { height: 36px; padding: 0 12px; color: var(--faint); font-size: 10px; font-weight: 550; text-align: right; white-space: nowrap; }
@@ -427,9 +427,6 @@
 .watchSkeleton::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--control-border); }
 .tableWrap::-webkit-scrollbar-track,
 .watchSkeleton::-webkit-scrollbar-track { background: transparent; }
-.tableFoot { display: flex; min-height: 39px; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 20px; padding: 8px 12px; border-top: 1px solid var(--border); text-align: right; }
-.tableFoot > span { display: inline-flex; align-items: center; gap: 7px; }
-.tableFoot > span > b { color: var(--muted); font-size: 9px; font-weight: 600; }
 .sortButton { padding: 0; cursor: pointer; color: inherit; font-size: inherit; background: transparent; }
 .rowActions { display: flex; justify-content: flex-end; gap: 4px; }
 .rowActions .button { min-height: 24px; padding: 0 7px; font-size: 9px; }
