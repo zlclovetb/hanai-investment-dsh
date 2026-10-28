@@ -122,7 +122,7 @@ export function MarketActivityPanel({ client, snapshot, historical, palette, ref
   }, [client, snapshot, historical, refreshVersion, onArchived])
   const option = useMemo(() => buildMarketActivityOption(trend, signals, palette), [trend, signals, palette])
   const header = (zoomed: boolean) => <PanelHead title="大盘异动" hint="上证分时 · 同花顺快讯标注" meta={<>
-      {trend !== null && <PanelDataMeta meta={trend.meta} history={historical} liveCapable={false} />}
+      {trend !== null && <PanelDataMeta meta={trend.meta} history={historical} liveCapable={false} refreshFailed={failed.trend} />}
       {!historical && (failed.trend || failed.signals) && <small>部分更新失败，保留已有数据</small>}
       {signals?.method !== 'ths-sector-events-v2' && signals !== null && <small>{historical ? '旧版异动快照，仅保存了部分事件' : '旧版异动数据，正在更新'}</small>}
     </>} extra={<span className={`${styles['metaText']} ${styles['activityActions']}`}>昨收 {number(trend?.prevClose ?? null)}

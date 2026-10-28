@@ -11,6 +11,42 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
 afterEach(() => vi.useRealTimers())
 
 describe('market activity', () => {
+  it.each([
+    ['tencent', '20261028', '09:48', true],
+    ['tencent', '20261028', '09:49', false],
+    ['tencent', '20261029', '09:30', false],
+    ['eastmoney', '2026-10-28', '09:48', false],
+  ])('validates minute labels for %s %s %s', async (providerId, date, time, accepted) => {
+    const now = Date.parse('2026-10-28T09:47:51+08:00')
+    vi.setSystemTime(now)
+    const clock = new FakeClock(now)
+    const provider = new MarketActivityProvider(new HandlerHttpClient(() => jsonResponse({})), clock, new SourceCircuit({ clock }), async () => ({
+      ...trend, trend: [{ time, price: 3672.97, avgPrice: null, volume: 0 }],
+      meta: { ...meta, providerId, sourceTimestamp: date, fetchedAt: new Date(now).toISOString() },
+    }))
+    const result = await provider.getIntraday()
+    if (accepted) expect(result).toMatchObject({ date: '2026-10-28', points: [{ time }], meta: { sourceTimestamp: '2026-10-28T01:48:00.000Z' } })
+    else expect(result).toBeNull()
+  })
+
+  it('replaces yesterday with the current minute and fetches news for the new trading day', async () => {
+    const clock = new FakeClock(NOW)
+    const http = new HandlerHttpClient(() => jsonResponse({ code: 200, data: { list: [
+      { ...item('09:34', '机器人板块走强'), ctime: Date.parse('2026-10-28T09:34:00+08:00') / 1000 },
+    ] } }))
+    const load = vi.fn(async () => trend)
+    const provider = new MarketActivityProvider(http, clock, new SourceCircuit({ clock }), load)
+    expect((await provider.getIntraday())?.date).toBe('2026-10-27')
+    const now = Date.parse('2026-10-28T09:47:51+08:00')
+    clock.advance(now - NOW)
+    vi.setSystemTime(now)
+    load.mockResolvedValue({ ...trend, trend: [{ time: '09:48', price: 3672.97, avgPrice: null, volume: 100 }],
+      meta: { ...meta, sourceTimestamp: '20261028', fetchedAt: new Date(now).toISOString() } })
+    expect(await provider.getIntraday()).toMatchObject({ date: '2026-10-28', meta: { cacheState: 'fresh' } })
+    expect(await provider.getSignals()).toMatchObject({ date: '2026-10-28', signals: [{ name: '机器人' }] })
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
   it('uses the actual trend date, preserves zero volume and retains repeat afternoon events', async () => {
     const clock = new FakeClock(NOW)
     const http = new HandlerHttpClient(() => jsonResponse({ code: '200', data: { list: [item('14:30', '机器人板块拉升'), item('09:30', '机器人板块走强'), item('10:01', '港股机器人板块上涨'), item('12:01', '机器人板块走强'), item('09:31', '银行板块下挫', '银行')] } }))

@@ -142,6 +142,8 @@ describe('market activity panel', () => {
     expect(screen.getByLabelText('大盘异动分时走势图')).toBeTruthy()
     expect(screen.getByText('机器人')).toBeTruthy()
     expect(screen.getByText('部分更新失败，保留已有数据')).toBeTruthy()
+    expect(screen.getByText('刷新失败').closest('header')).toBeTruthy()
+    expect(screen.queryByText('最新数据')).toBeNull()
     await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
     expect(call).toHaveBeenCalledTimes(2)
   })

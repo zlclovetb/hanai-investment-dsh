@@ -34,7 +34,9 @@ export class MarketActivityProvider {
         && Number.isFinite(point.price) && point.price > 0 && Number.isFinite(point.volume) && point.volume >= 0)
       if (!isMarketDate(date) || points.length === 0) throw new Error('上证分时日期或数据无效')
       const sourceTimestamp = new Date(`${date}T${points.at(-1)!.time}:00+08:00`).toISOString()
-      if (Date.parse(sourceTimestamp) > this.clock.now()) throw new Error('上证分时时间晚于当前时间')
+      // Tencent labels the in-progress minute by its end, up to one minute ahead.
+      const minuteEnd = result.meta.providerId === 'tencent' && date === marketLocalTime(this.clock.now(), 'Asia/Shanghai').date ? 60_000 : 0
+      if (Date.parse(sourceTimestamp) > this.clock.now() + minuteEnd) throw new Error('上证分时时间晚于当前时间')
       // Index turnover/volume is not an index-point average; Tencent does not supply that line.
       return { date, points: points.map(point => ({ ...point, avgPrice: result.meta!.providerId === 'tencent' ? null : point.avgPrice })), prevClose: result.trendPrevClose, meta: { ...result.meta, sourceTimestamp } }
     })
