@@ -70,9 +70,9 @@ export function MarketActivityPanel({ client, snapshot, historical, palette, ref
     window.addEventListener('resize', measure)
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); if (dialog.open) dialog.close() }
   }, [expanded])
-  const [liveTrend, setTrend] = useState<MarketIntradayData | null>(null)
+  const [liveTrend, setTrend] = useState<{ data: MarketIntradayData; archived: boolean } | null>(null)
   const [liveSignals, setSignals] = useState<MarketSignalsData | null>(null)
-  const trend = historical ? marketHistoryPanel(snapshot, 'intraday') : liveTrend
+  const trend = historical ? marketHistoryPanel(snapshot, 'intraday') : liveTrend?.data ?? null
   const signals = historical ? marketHistoryPanel(snapshot, 'signals') : liveSignals
   const [trendLoading, setTrendLoading] = useState(false)
   const [signalsLoading, setSignalsLoading] = useState(false)
@@ -81,7 +81,7 @@ export function MarketActivityPanel({ client, snapshot, historical, palette, ref
     if (historical) return
     const savedTrend = marketHistoryPanel(snapshot, 'intraday')
     const savedSignals = marketHistoryPanel(snapshot, 'signals')
-    if (savedTrend !== null) setTrend(previous => latestTrend(previous, savedTrend))
+    if (savedTrend !== null) setTrend(previous => previous !== null && latestTrend(previous.data, savedTrend) === previous.data ? previous : { data: savedTrend, archived: true })
     if (savedSignals !== null) setSignals(previous => latestSignals(previous, savedSignals))
     setFailed({ trend: false, signals: false })
     setTrendLoading(false)
@@ -97,7 +97,7 @@ export function MarketActivityPanel({ client, snapshot, historical, palette, ref
         const result = await client.call('market.intraday', {}, controller.signal)
         if (controller.signal.aborted) return
         setFailed(previous => ({ ...previous, trend: result === null || result.meta.cacheState === 'stale' }))
-        if (result !== null) setTrend(previous => latestTrend(previous, result))
+        if (result !== null) setTrend(previous => previous !== null && latestTrend(previous.data, result) === previous.data ? previous : { data: result, archived: false })
         void onArchived()
       } catch { if (!controller.signal.aborted) setFailed(previous => ({ ...previous, trend: true })) }
       finally { trendPending = false; if (!controller.signal.aborted) setTrendLoading(false) }
@@ -122,7 +122,7 @@ export function MarketActivityPanel({ client, snapshot, historical, palette, ref
   }, [client, snapshot, historical, refreshVersion, onArchived])
   const option = useMemo(() => buildMarketActivityOption(trend, signals, palette), [trend, signals, palette])
   const header = (zoomed: boolean) => <PanelHead title="大盘异动" hint="上证分时 · 同花顺快讯标注" meta={<>
-      {trend !== null && <PanelDataMeta meta={trend.meta} history={historical} liveCapable={false} refreshFailed={failed.trend} />}
+      {trend !== null && <PanelDataMeta meta={trend.meta} history={historical} resting={!historical && liveTrend?.archived === true} liveCapable={false} refreshFailed={!historical && failed.trend} />}
       {!historical && (failed.trend || failed.signals) && <small>部分更新失败，保留已有数据</small>}
       {signals?.method !== 'ths-sector-events-v2' && signals !== null && <small>{historical ? '旧版异动快照，仅保存了部分事件' : '旧版异动数据，正在更新'}</small>}
     </>} extra={<span className={`${styles['metaText']} ${styles['activityActions']}`}>昨收 {number(trend?.prevClose ?? null)}

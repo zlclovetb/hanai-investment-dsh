@@ -22,6 +22,11 @@ describe('shared panel header', () => {
     expect(header.querySelector('[data-data-status="unavailable"]')).toBeTruthy()
     expect(within(header).getByText(/测试来源.*尝试于/)).toBeTruthy()
   })
+  it('gives failed refresh priority over a resting archive', () => {
+    render(<PanelHead title="行情" meta={<PanelDataMeta meta={meta} resting refreshFailed />} />)
+    expect(screen.getByText('刷新失败')).toBeTruthy()
+    expect(screen.queryByText('休市快照')).toBeNull()
+  })
   it('preserves report-period semantics when showing financial snapshot dates', () => {
     render(<PanelHead title="季度规模" meta={<PanelDataMeta meta={meta} liveCapable={false} dateLabel="报告期" />} />)
     expect(screen.getByText(/报告期 2026-10-27/).closest('header')).toBeTruthy()

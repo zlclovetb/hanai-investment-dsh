@@ -14,12 +14,14 @@ export function PanelHead({ title, hint, meta, extra }: { title: string; hint?: 
   </header>
 }
 
-interface DataStateProps { meta: ProviderMeta | null | undefined; marketStatus?: MarketStatus; refreshFailed?: boolean; liveCapable?: boolean; history?: boolean }
+interface DataStateProps { meta: ProviderMeta | null | undefined; marketStatus?: MarketStatus; refreshFailed?: boolean; liveCapable?: boolean; history?: boolean; resting?: boolean }
 
-export function DataStateBadge({ meta, marketStatus, refreshFailed = false, liveCapable = true, history = false }: DataStateProps) {
+export function DataStateBadge({ meta, marketStatus, refreshFailed = false, liveCapable = true, history = false, resting = false }: DataStateProps) {
   const state = history && meta != null && meta.cacheState !== 'unavailable'
     ? { kind: 'cached', label: '历史快照', detail: '所选日期已保存的本地数据，来源与获取时间保持原样' }
-    : describeDataStatus(meta, { ...(marketStatus === undefined ? {} : { marketStatus }), ...(refreshFailed ? { refreshFailed: true } : {}), ...(!liveCapable ? { liveCapable: false } : {}) })
+    : resting && !refreshFailed && meta != null && meta.cacheState !== 'unavailable'
+      ? { kind: 'cached', label: '休市快照', detail: '自动读取的本地归档，来源与获取时间保持原样' }
+      : describeDataStatus(meta, { ...(marketStatus === undefined ? {} : { marketStatus }), ...(refreshFailed ? { refreshFailed: true } : {}), ...(!liveCapable ? { liveCapable: false } : {}) })
   return <span className={`${styles['dataState']} ${styles[`dataState_${state.kind}`]}`} data-data-status={state.kind} title={state.detail}>{state.label}</span>
 }
 

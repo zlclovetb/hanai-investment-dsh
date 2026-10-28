@@ -11,6 +11,7 @@ import type {
   ExpertChat,
   Judgement,
   JudgementDetail,
+  MarketBreadthData,
   MasterPersona,
   ProviderMeta,
   StockDetail,
@@ -1527,6 +1528,10 @@ describe('whole-page market history', () => {
     const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot })
     renderAt('/dashboard', client)
     await act(async () => {})
+    const indexHeader = screen.getByRole('heading', { name: '指数行情' }).closest('header')!
+    expect(within(indexHeader).getByText('休市快照')).toBeTruthy()
+    expect(within(indexHeader).getByText('最新数据')).toBeTruthy()
+    for (const title of ['市场宽度', '板块热力', '榜单']) expect(within(screen.getByRole('heading', { name: title }).closest('header')!).getByText('休市快照')).toBeTruthy()
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
     expect(callsOf(client, 'market.indices')).toHaveLength(1)
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
@@ -1624,7 +1629,23 @@ describe('whole-page market history', () => {
     expect(screen.getByText('历史指数 2026-10-26')).toBeTruthy()
     expect(screen.getByText('休市快照 · 2026-10-26')).toBeTruthy()
     expect(screen.getAllByText('行情源不可用').length).toBeGreaterThan(0)
+    for (const title of ['指数行情', '市场宽度', '板块热力', '榜单']) expect(within(screen.getByRole('heading', { name: title }).closest('header')!).getByText('刷新失败')).toBeTruthy()
     expect(callsOf(client, 'dashboard.get')).toHaveLength(1)
+  })
+
+  it('labels newly fetched breadth by its own result while the dashboard archive is still displayed', async () => {
+    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
+    const snapshot = historyFixture('2026-10-27')
+    const pending = deferred<DashboardData>()
+    const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot,
+      'dashboard.get': () => pending.promise, 'market.breadth': () => ({ ...snapshot.records.breadth!.data as MarketBreadthData, meta: { ...fresh, cacheState: 'fresh' } }) })
+    renderAt('/dashboard', client)
+    await act(async () => {})
+    fireEvent.click(screen.getByRole('button', { name: '手动刷新今日市场' }))
+    await act(async () => {})
+    const header = screen.getByRole('heading', { name: '市场宽度' }).closest('header')!
+    expect(within(header).queryByText('休市快照')).toBeNull()
+    expect(within(header).getByText('已收盘')).toBeTruthy()
   })
 
   it('retains the archive when the RPC succeeds but every dashboard provider is unavailable', async () => {
