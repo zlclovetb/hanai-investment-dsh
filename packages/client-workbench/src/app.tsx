@@ -32,6 +32,7 @@ import { HanaiClient, type DefaultModelView } from './api.ts'
 import { isClosingSnapshotCurrent, MarketHistoryBar, snapshotDashboard, useMarketHistory } from './market-history.tsx'
 import { beijingMarketDate, MARKET_HISTORY_PANELS, marketHistoryPanel, type MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
 import { DOMESTIC_INDICES, GLOBAL_INDICES, isGlobalMarketOpen, isGlobalSnapshotCurrent, type GlobalIndicesData } from '../../contracts/src/market-indices.ts'
+import { MacroPage } from './market-macro.tsx'
 import { MarketActivityPanel } from './market-activity.tsx'
 import {
   buildKlineOption,
@@ -53,7 +54,7 @@ import { DataSources } from './data-sources.tsx'
 import { classForChange, dateTime, money, number, percent, quantity, ratio } from './format.ts'
 import styles from './styles.module.css'
 
-type TopPage = 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
+type TopPage = 'macro' | 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
 type AppRoute =
   | { page: TopPage }
   | { page: 'stock'; secId: string }
@@ -66,6 +67,7 @@ const BRAND_NAME = 'Hanai Worth · 值见'
 
 const NAV: ReadonlyArray<{ page: TopPage; path: string; icon: string; label: string }> = [
   { page: 'dashboard', path: '/dashboard', icon: '◈', label: '今日市场' },
+  { page: 'macro', path: '/dashboard/macro', icon: '↳', label: '宏观数据' },
   { page: 'watch', path: '/watch', icon: '☆', label: '自选与发现' },
   { page: 'judgements', path: '/judgements', icon: '研', label: '大师研判' },
   { page: 'expert-chats', path: '/expert-chats', icon: '聊', label: '专家对谈' },
@@ -178,7 +180,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
           {NAV.map(item => (
             <button
               key={item.page}
-              className={activePage === item.page ? styles['navActive'] : ''}
+              className={`${activePage === item.page ? styles['navActive'] : ''} ${item.page === 'macro' ? styles['navChild'] : ''}`}
               onClick={() => navigate(item.path)}
               aria-current={activePage === item.page ? 'page' : undefined}
             >
@@ -211,6 +213,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
         </header>
 
         <main className={styles['content']}>
+          {route.page === 'macro' && <MacroPage client={client} theme={bootstrap.theme} />}
           {route.page === 'dashboard' && <DashboardPage client={client} theme={bootstrap.theme} onStock={openStock} notify={notify} />}
           {route.page === 'watch' && <WatchPage client={client} groups={bootstrap.groups} onGroups={setGroups} onStock={openStock} notify={notify} />}
           {route.page === 'stock' && (
@@ -416,7 +419,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
               if (!isGlobalSnapshotCurrent(overseas)) void loadGlobal()
             }
             // US trading can create a new Beijing-day record before the next A-share session.
-            if (snapshot.panels.every(key => ['global.indices', 'intraday', 'signals'].includes(key))) continue
+            if (snapshot.panels.every(key => key.startsWith('macro.') || ['global.indices', 'intraday', 'signals'].includes(key))) continue
             setData(snapshotDashboard(snapshot))
             setBreadth(marketHistoryPanel(snapshot, 'breadth'))
             setRestingSnapshot(snapshot)
@@ -486,7 +489,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     history.selectDate(date)
   }
   const dateBar = <MarketHistoryBar history={history} onSelect={selectDate} />
-  const missingPanels = historical ? history.missing : MARKET_HISTORY_PANELS.filter(key => ['intraday', 'signals'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
+  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.')) : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
   if ((historical ? history.loading : loading) && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><PageSkeleton cards={6} /></Page>
   if (historical && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title={history.error === null ? '该日期暂无历史记录' : '历史记录读取失败'} detail={history.error ?? '历史从成功归档的数据积累；未保存的日期无法还原，页面不会补入实时数据。'} action={<button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取</button>} /></Page>
   if (data === null) {
@@ -2217,6 +2220,7 @@ function optionalToneMetric(label: string, value: number | null | undefined): { 
 
 function routeTitle(route: AppRoute): string {
   switch (route.page) {
+    case 'macro': return '宏观数据'
     case 'dashboard': return '今日市场'
     case 'watch': return '自选与发现'
     case 'judgements':
@@ -2238,6 +2242,7 @@ function routeFromHash(hash: string): AppRoute {
   if (judgement?.[1]) return { page: 'judgement-detail', judgementId: decodeURIComponent(judgement[1]) }
   const expertChat = /^\/expert-chats\/([^/]+)$/.exec(path)
   if (expertChat?.[1]) return { page: 'expert-chat-detail', chatId: decodeURIComponent(expertChat[1]) }
+  if (path === '/dashboard/macro') return { page: 'macro' }
   if (path === '/watch') return { page: 'watch' }
   if (path === '/judgements') return { page: 'judgements' }
   if (path === '/expert-chats') return { page: 'expert-chats' }

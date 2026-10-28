@@ -14,6 +14,7 @@ import { SessionSeq, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DashboardData, DefaultModelSelection, ProviderMeta, StockDetail } from '../../contracts/src/index.ts'
 import { MARKET_HISTORY_PANELS, marketHistoryPanel } from '../../contracts/src/market-history.ts'
+import { MACRO_ETFS } from '../../contracts/src/market-macro.ts'
 import { GLOBAL_INDICES } from '../../contracts/src/market-indices.ts'
 import { HanaiDatabase } from '../../domain/src/database.ts'
 import { ensureHanaiLayout, resolveHanaiPaths } from '../../domain/src/paths.ts'
@@ -85,6 +86,13 @@ function fixture(minChars = 100) {
     fetchedAt: new Date(0).toISOString(), cacheState: 'fresh' as const,
   }
   const market: MarketFacade = {
+    getMacroInputs: () => null,
+    getMacroAllDaily: async () => null,
+    getMacroAllEtfs: async () => null,
+    getMacroCapital: async () => null,
+    getMacroDaily: async () => null,
+    getMacroEtfs: async () => null,
+    getMacroIndex: async () => null,
     getMarketIntraday: async () => null,
     getMarketSignals: async () => null,
     getGlobalIndices: async () => ({ indices: [], meta }),
@@ -129,6 +137,150 @@ async function eventually(assertion: () => void): Promise<void> {
 }
 
 describe('HanaiService report lifecycle', () => {
+  it('keeps macro work in the host after the caller disconnects and archives subsequent batches', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'test', sourceName: '日频数据', sourceTimestamp: '2026-10-27', fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const first = { points: [{ date: '2026-10-27', assets: 400 }], expectedDays: 2, complete: false, meta }
+    let release!: (value: typeof first) => void
+    const load = vi.spyOn(market, 'getMacroDaily').mockImplementationOnce(() => new Promise(resolve => { release = resolve }))
+      .mockResolvedValue({ ...first, points: [{ date: '2026-10-26', assets: 390 }, ...first.points], complete: true, meta: { ...meta, fetchedAt: new Date(Date.now() + 1000).toISOString() } })
+    const caller = new AbortController()
+    const reader = new AbortController().signal
+    try {
+      expect((await service.call('market.macro.generate', {}, caller.signal)).state).toBe('running')
+      caller.abort()
+      await service.call('market.macro.generate', {}, reader)
+      expect(load).toHaveBeenCalledTimes(1)
+      vi.advanceTimersByTime(1000)
+      release(first)
+      await vi.waitFor(async () => expect((await service.call('market.macro.generation', {}, reader)).state).not.toBe('running'))
+      expect(load).toHaveBeenCalledTimes(2)
+      expect(load).toHaveBeenLastCalledWith(first, null)
+      const saved = marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-27' }, reader), 'macro.etf.daily')
+      expect(saved?.points).toHaveLength(2)
+      const count = load.mock.calls.length
+      await service.call('market.macro.generation', {}, reader)
+      expect(load).toHaveBeenCalledTimes(count)
+    } finally { service.dispose(); database.close(); vi.useRealTimers() }
+  })
+  it('archives raw ETF inputs and daily totals together, resumes both and never erases them on failure or cache clearing', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'test', sourceName: '公开原始数据', sourceTimestamp: '2026-10-27', fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const raw = { funds: MACRO_ETFS.map(fund => ({ code: fund.code, navFetchedAt: meta.fetchedAt, navs: [{ date: '2026-10-27', value: 4 }], shares: [{ date: '2026-10-27', value: 100000, fetchedAt: meta.fetchedAt }] })), meta }
+    const total = { funds: MACRO_ETFS.map(fund => ({ code: fund.code, name: fund.name, listedOn: '2012-01-01' })), universeAsOf: '2026-10-28',
+      points: [{ date: '2026-10-27', assets: 160, fourAssets: 160, otherAssets: 0 }], missingDates: [], expectedDays: 1, complete: true, meta }
+    const load = vi.spyOn(market, 'getMacroAllDaily').mockResolvedValue(total)
+    vi.spyOn(market, 'getMacroInputs').mockReturnValue(raw)
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.history.list', {}, signal)
+      expect(load).not.toHaveBeenCalled()
+      await service.call('market.macro.allDaily', { retryMissing: true }, signal)
+      expect(load).toHaveBeenLastCalledWith(null, null, true)
+      const snapshot = await service.call('market.history.get', { date: '2026-10-27' }, signal)
+      expect(marketHistoryPanel(snapshot, 'macro.etf.inputs')).toEqual(raw)
+      expect(marketHistoryPanel(snapshot, 'macro.etf.all.daily')).toEqual(total)
+      load.mockResolvedValue(null)
+      await service.call('market.macro.allDaily', {}, signal)
+      expect(load).toHaveBeenLastCalledWith(total, raw, undefined)
+      await service.call('cache.clear', { scope: 'market' }, signal)
+      expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toEqual(snapshot)
+    } finally { database.close(); vi.useRealTimers() }
+  })
+  it('archives macro tradable caps by their report date, resumes saved months and never fetches them from history reads', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'sse-statistics', sourceName: '上交所统计月报', sourceTimestamp: '2026-09-30', fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const first = { points: [{ date: '2026-09-30', floatCap: 500000 }], checkedMonths: ['202609', '202610'], complete: false, meta }
+    const load = vi.spyOn(market, 'getMacroCapital').mockResolvedValue(first)
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.history.list', {}, signal)
+      expect(load).not.toHaveBeenCalled()
+      await service.call('market.macro.capital', {}, signal)
+      expect(load).toHaveBeenLastCalledWith(null)
+      const snapshot = await service.call('market.history.get', { date: '2026-09-30' }, signal)
+      expect(marketHistoryPanel(snapshot, 'macro.capital')).toEqual(first)
+      expect(await service.call('market.history.get', { date: '2026-10-28' }, signal)).toBeNull()
+      vi.advanceTimersByTime(1000)
+      const next = { ...first, checkedMonths: ['202608', ...first.checkedMonths], meta: { ...meta, fetchedAt: new Date().toISOString() } }
+      load.mockResolvedValue(next)
+      await service.call('market.macro.capital', {}, signal)
+      expect(load).toHaveBeenLastCalledWith(first)
+      const saved = await service.call('market.history.get', { date: '2026-09-30' }, signal)
+      expect(marketHistoryPanel(saved, 'macro.capital')).toEqual(next)
+      load.mockResolvedValue(null)
+      await service.call('market.macro.capital', {}, signal)
+      await service.call('cache.clear', { scope: 'market' }, signal)
+      expect(await service.call('market.history.get', { date: '2026-09-30' }, signal)).toEqual(saved)
+    } finally { database.close(); vi.useRealTimers() }
+  })
+  it('persists incremental daily ETF history and passes saved progress back to the provider without changing its source date', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'exchange-etf-nav', sourceName: '日份额×单位净值', sourceTimestamp: '2026-10-27', fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const first = { points: [{ date: '2026-10-27', assets: 3403.3 }], expectedDays: 2, complete: false, meta }
+    const load = vi.spyOn(market, 'getMacroDaily').mockResolvedValue(first)
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.macro.daily', {}, signal)
+      expect(load).toHaveBeenLastCalledWith(null, null)
+      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-27' }, signal), 'macro.etf.daily')).toEqual(first)
+      expect(await service.call('market.history.get', { date: '2026-10-28' }, signal)).toBeNull()
+      vi.advanceTimersByTime(1000)
+      const second = { ...first, complete: true, points: [{ date: '2026-10-26', assets: 3390.8 }, ...first.points], meta: { ...meta, fetchedAt: new Date().toISOString() } }
+      load.mockResolvedValue(second)
+      await service.call('market.macro.daily', {}, signal)
+      expect(load).toHaveBeenLastCalledWith(first, null)
+      const snapshot = await service.call('market.history.get', { date: '2026-10-27' }, signal)
+      expect(marketHistoryPanel(snapshot, 'macro.etf.daily')).toEqual(second)
+      load.mockResolvedValue(null)
+      await service.call('market.macro.daily', {}, signal)
+      await service.call('cache.clear', { scope: 'market' }, signal)
+      expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toEqual(snapshot)
+    } finally { database.close(); vi.useRealTimers() }
+  })
+  it('archives macro series independently by their source dates and retains them after failure and cache clearing', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'eastmoney-fund', sourceName: '基金季报', sourceTimestamp: '2026-09-30', fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const etfs = { funds: MACRO_ETFS.map(fund => ({ code: fund.code, points: [{ date: '2026-09-30', assets: 100 }] })), meta }
+    const allEtfs = { ...etfs, universeAsOf: '2026-10-27', funds: etfs.funds.map(fund => ({ ...fund, name: fund.code, inceptionDate: '2013-01-01' })) }
+    const index = { points: [{ date: '2026-10-26', close: 4000 }], meta: { ...meta, sourceTimestamp: '2026-10-26' } }
+    const funds = vi.spyOn(market, 'getMacroEtfs').mockResolvedValue(etfs)
+    const allFunds = vi.spyOn(market, 'getMacroAllEtfs').mockResolvedValue(allEtfs)
+    const prices = vi.spyOn(market, 'getMacroIndex').mockResolvedValue(index)
+    const dashboard = vi.spyOn(market, 'getDashboard')
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.macro.etf', {}, signal)
+      await service.call('market.macro.all', {}, signal)
+      await service.call('market.macro.index', {}, signal)
+      const quarter = await service.call('market.history.get', { date: '2026-09-30' }, signal)
+      const day = await service.call('market.history.get', { date: '2026-10-26' }, signal)
+      expect(marketHistoryPanel(quarter, 'macro.etf')).toEqual(etfs)
+      expect(marketHistoryPanel(quarter, 'macro.etf.all.quarter')).toEqual(allEtfs)
+      expect(marketHistoryPanel(day, 'macro.index')).toEqual(index)
+      expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toBeNull()
+      funds.mockResolvedValue(null)
+      allFunds.mockResolvedValue(null)
+      prices.mockResolvedValue({ ...index, meta: { ...index.meta, cacheState: 'stale' } })
+      await service.call('market.macro.etf', {}, signal)
+      await service.call('market.macro.all', {}, signal)
+      await service.call('market.macro.index', {}, signal)
+      await service.call('cache.clear', { scope: 'market' }, signal)
+      expect(await service.call('market.history.get', { date: '2026-09-30' }, signal)).toEqual(quarter)
+      expect(await service.call('market.history.get', { date: '2026-10-26' }, signal)).toEqual(day)
+      expect(dashboard).not.toHaveBeenCalled()
+    } finally { database.close(); vi.useRealTimers() }
+  })
   it('archives intraday and news independently by source day and preserves them after failed retries', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
@@ -248,7 +400,7 @@ describe('HanaiService report lifecycle', () => {
       await service.call('dashboard.get', { refresh: false }, signal)
       await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
       const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
-      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !['global.indices', 'intraday', 'signals'].includes(key)), 'sector:SINA:new_blhy']))
+      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !['global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily'].includes(key)), 'sector:SINA:new_blhy']))
       expect(marketHistoryPanel(snapshot, 'overview')).toMatchObject({ indices: [{ ...data.overview.indices[0], meta }], meta })
       expect(marketHistoryPanel(snapshot, 'breadth')).toEqual(width)
       expect(marketHistoryPanel(snapshot, 'industry')).toEqual(data.industry)

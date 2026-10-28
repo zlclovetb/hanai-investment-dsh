@@ -919,3 +919,16 @@
   .expertChatSurface { height: 620px; }
   .expertChatExpertGrid { grid-template-columns: 1fr; }
 }
+
+.nav .navChild { padding-left: 30px; font-size: 12px; }
+.macroToolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.macroNotice { padding: 8px 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.macroNotice p { margin: 4px 0; }
+.macroChart { height: 760px; min-height: 660px; }
+@media (max-width: 720px) { .macroChart { height: 660px; } }
+
+.macroMetadata { display: grid; max-width: 680px; min-width: 0; gap: 6px; }
+.macroMetadataGroup { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; gap: 8px; }
+.macroSources { display: grid; min-width: 0; gap: 4px; }
+.macroSourceRow { min-width: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.macroMetadata small { max-width: 100%; overflow-wrap: anywhere; }

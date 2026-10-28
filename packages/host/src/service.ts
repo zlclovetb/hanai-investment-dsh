@@ -42,9 +42,11 @@ import { ReportStore, ReportValidationError } from '../../domain/src/reports.ts'
 import { ExpertChatStore } from '../../domain/src/expert-chats.ts'
 import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domain/src/securities.ts'
 import { MarketHistoryStore } from '../../domain/src/market-history.ts'
-import { beijingMarketDate, marketDateFromMeta } from '../../contracts/src/market-history.ts'
+import { beijingMarketDate, marketDateFromMeta, marketHistoryPanel } from '../../contracts/src/market-history.ts'
+import type { MacroAllDailyData, MacroEtfInputs, MacroAllEtfData, MacroCapitalData, MacroEtfData, MacroIndexData, MacroDailyEtfData } from '../../contracts/src/market-macro.ts'
 import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
+import { MacroGeneration } from './macro-generation.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const BREADTH_SUCCESS_SETTING = 'market.breadth.latestSuccess'
@@ -55,6 +57,13 @@ const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableA
 const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
+  getMacroInputs(): MacroEtfInputs | null
+  getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing?: boolean): Promise<MacroAllDailyData | null>
+  getMacroAllEtfs(): Promise<MacroAllEtfData | null>
+  getMacroCapital(previous: MacroCapitalData | null): Promise<MacroCapitalData | null>
+  getMacroDaily(previous: MacroDailyEtfData | null, inputs?: MacroEtfInputs | null): Promise<MacroDailyEtfData | null>
+  getMacroEtfs(): Promise<MacroEtfData | null>
+  getMacroIndex(): Promise<MacroIndexData | null>
   getMarketIntraday(): Promise<MarketIntradayData | null>
   getMarketSignals(): Promise<MarketSignalsData | null>
   getGlobalIndices(): Promise<GlobalIndicesData>
@@ -117,6 +126,10 @@ export class HanaiService {
   private securitySyncInProgress = false
   private readonly marketHistory: MarketHistoryStore
   private marketDateContext: { date: string; observedOn: string } | null = null
+  private disposed = false
+  private readonly macroGeneration = new MacroGeneration((endpoint, first, signal) => this.call(endpoint, endpoint === 'market.macro.allDaily' ? { retryMissing: first } : {}, signal))
+
+  dispose(): void { this.disposed = true; this.macroGeneration.dispose() }
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
@@ -256,6 +269,52 @@ export class HanaiService {
         return result
       }
       case 'market.history.list': return { snapshots: this.marketHistory.list() }
+      case 'market.macro.generate': return this.macroGeneration.start()
+      case 'market.macro.generation': return this.macroGeneration.get()
+      case 'market.macro.allDaily': {
+        const saved = this.marketHistory.list().find(snapshot => snapshot.date <= beijingMarketDate() && snapshot.panels.includes('macro.etf.all.daily'))
+        const previous = saved === undefined ? null : marketHistoryPanel(this.marketHistory.get(saved.date), 'macro.etf.all.daily')
+        const inputDate = this.marketHistory.list().find(snapshot => snapshot.date <= beijingMarketDate() && snapshot.panels.includes('macro.etf.inputs'))
+        const inputs = inputDate === undefined ? null : marketHistoryPanel(this.marketHistory.get(inputDate.date), 'macro.etf.inputs')
+        const result = await this.market.getMacroAllDaily(previous, inputs, (request as HanaiRequest<'market.macro.allDaily'>).retryMissing)
+        const raw = this.market.getMacroInputs()
+        if (raw !== null) this.archiveMarketPanel('macro.etf.inputs', raw, raw.meta)
+        if (result !== null) this.archiveMarketPanel('macro.etf.all.daily', result, result.meta)
+        return result
+      }
+      case 'market.macro.all': {
+        const result = await this.market.getMacroAllEtfs()
+        if (result !== null) this.archiveMarketPanel('macro.etf.all.quarter', result, result.meta)
+        return result
+      }
+      case 'market.macro.capital': {
+        const saved = this.marketHistory.list().find(snapshot => snapshot.date <= beijingMarketDate() && snapshot.panels.includes('macro.capital'))
+        const previous = saved === undefined ? null : marketHistoryPanel(this.marketHistory.get(saved.date), 'macro.capital')
+        const result = await this.market.getMacroCapital(previous)
+        if (result !== null) this.archiveMarketPanel('macro.capital', result, result.meta)
+        return result
+      }
+      case 'market.macro.daily': {
+        const saved = this.marketHistory.list().find(snapshot => snapshot.date <= beijingMarketDate() && snapshot.panels.includes('macro.etf.daily'))
+        const previous = saved === undefined ? null : marketHistoryPanel(this.marketHistory.get(saved.date), 'macro.etf.daily')
+        const inputDate = this.marketHistory.list().find(snapshot => snapshot.date <= beijingMarketDate() && snapshot.panels.includes('macro.etf.inputs'))
+        const inputs = inputDate === undefined ? null : marketHistoryPanel(this.marketHistory.get(inputDate.date), 'macro.etf.inputs')
+        const result = await this.market.getMacroDaily(previous, inputs)
+        const raw = this.market.getMacroInputs()
+        if (raw !== null) this.archiveMarketPanel('macro.etf.inputs', raw, raw.meta)
+        if (result !== null) this.archiveMarketPanel('macro.etf.daily', result, result.meta)
+        return result
+      }
+      case 'market.macro.etf': {
+        const result = await this.market.getMacroEtfs()
+        if (result !== null) this.archiveMarketPanel('macro.etf', result, result.meta)
+        return result
+      }
+      case 'market.macro.index': {
+        const result = await this.market.getMacroIndex()
+        if (result !== null) this.archiveMarketPanel('macro.index', result, result.meta)
+        return result
+      }
       case 'market.intraday': {
         const result = await this.market.getMarketIntraday()
         if (result !== null) {
@@ -524,7 +583,7 @@ export class HanaiService {
   }
 
   private archiveMarketPanel(key: string, data: unknown, meta: ProviderMeta, date?: string): void {
-    if (meta.cacheState === 'unavailable') return
+    if (this.disposed || meta.cacheState === 'unavailable') return
     if (meta.sourceTimestamp === null) {
       const context = this.marketDateContext
       // Undated caches retain their original archive; never bind them to a later index date.

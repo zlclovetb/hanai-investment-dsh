@@ -281,7 +281,7 @@ describe('HanaiWorkbench old-client parity', () => {
     expect(document.title).toBe('今日市场 — Hanai Worth · 值见')
     const nav = screen.getByRole('navigation', { name: '主导航' })
     expect(within(nav).getAllByRole('button').map(button => button.querySelector('span:last-child')?.textContent)).toEqual([
-      '今日市场', '自选与发现', '大师研判', '专家对谈', '专家中心', '设置与诊断',
+      '今日市场', '宏观数据', '自选与发现', '大师研判', '专家对谈', '专家中心', '设置与诊断',
     ])
     expect(container.querySelector('[data-theme="dark"]')).not.toBeNull()
     expect(screen.queryByText('市场全景')).toBeNull()
@@ -291,6 +291,20 @@ describe('HanaiWorkbench old-client parity', () => {
     await screen.findByRole('heading', { name: '自选与发现' })
     expect(window.location.hash).toBe('#/watch')
     expect(document.title).toBe('自选与发现 — Hanai Worth · 值见')
+  })
+
+  it('opens macro data beneath today market and supports direct hash navigation', async () => {
+    const client = makeClient({ 'market.macro.etf': () => null, 'market.macro.index': () => null })
+    renderAt('/dashboard', client)
+    await screen.findByRole('heading', { name: '今日市场' })
+    fireEvent.click(within(screen.getByRole('navigation', { name: '主导航' })).getByRole('button', { name: /宏观数据/ }))
+    await screen.findByRole('heading', { name: '宏观数据' })
+    expect(window.location.hash).toBe('#/dashboard/macro')
+    expect(document.title).toBe('宏观数据 — Hanai Worth · 值见')
+    expect(screen.getByText(/占比不可用/)).toBeTruthy()
+    cleanup()
+    renderAt('/dashboard/macro', client)
+    await screen.findByRole('heading', { name: '宏观数据' })
   })
 
   it('keeps the sidebar footer empty regardless of provider health timestamps', async () => {
@@ -1415,6 +1429,35 @@ describe('whole-page market history', () => {
     fireEvent.change(screen.getByLabelText('市场数据日期'), { target: { value: date } })
     await act(async () => {})
   }
+
+  it('ignores missing macro archives on the dashboard but reports missing market panels', async () => {
+    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
+    const snapshot = historyFixture('2026-10-27')
+    const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot })
+    const view = renderAt('/dashboard', client)
+    await act(async () => {})
+    expect(screen.getByText('休市快照 · 2026-10-27')).toBeTruthy()
+    expect(screen.queryByText(/历史记录不完整/)).toBeNull()
+    view.unmount()
+    delete snapshot.records['rank.amount']
+    snapshot.panels = Object.keys(snapshot.records)
+    const incomplete = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot, 'dashboard.get': () => { throw new Error('offline') } })
+    renderAt('/dashboard', incomplete)
+    await act(async () => {})
+    expect(screen.getByText(/历史记录不完整：有 1 个面板未保存/)).toBeTruthy()
+  })
+
+  it('skips a macro-only archive when choosing the latest dashboard snapshot', async () => {
+    vi.setSystemTime(new Date('2026-10-28T08:00:00+08:00'))
+    const previous = historyFixture('2026-10-27')
+    const macro = { date: '2026-10-28', capturedAt: previous.capturedAt, panels: ['macro.capital'], records: {} }
+    const client = makeClient({ 'market.history.list': () => ({ snapshots: [macro, previous] }),
+      'market.history.get': request => (request as { date: string }).date === macro.date ? macro : previous })
+    renderAt('/dashboard', client)
+    await act(async () => {})
+    expect(screen.getByText('休市快照 · 2026-10-27')).toBeTruthy()
+    expect(screen.queryByText(/历史记录不完整/)).toBeNull()
+  })
 
   it('renders thirteen index cards before a slow overseas request and preserves explicit historical isolation', async () => {
     const pending = deferred<unknown>()

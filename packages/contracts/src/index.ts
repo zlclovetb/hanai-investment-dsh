@@ -1,5 +1,6 @@
 /** JSON-safe contracts shared by the Hanai Host and browser client. */
 import type { MarketHistorySnapshot, MarketHistorySummary } from './market-history.ts'
+import type { MacroGenerationStatus, MacroAllDailyData, MacroAllEtfData, MacroCapitalData, MacroEtfData, MacroIndexData, MacroDailyEtfData } from './market-macro.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
 
@@ -458,6 +459,14 @@ export interface HanaiEndpointMap {
   'dashboard.get': { request: { refresh?: boolean }; response: DashboardData }
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
   'market.indices': { request: Record<string, never>; response: GlobalIndicesData }
+  'market.macro.generate': { request: Record<string, never>; response: MacroGenerationStatus }
+  'market.macro.generation': { request: Record<string, never>; response: MacroGenerationStatus }
+  'market.macro.allDaily': { request: { retryMissing?: boolean }; response: MacroAllDailyData | null }
+  'market.macro.all': { request: Record<string, never>; response: MacroAllEtfData | null }
+  'market.macro.capital': { request: Record<string, never>; response: MacroCapitalData | null }
+  'market.macro.daily': { request: Record<string, never>; response: MacroDailyEtfData | null }
+  'market.macro.etf': { request: Record<string, never>; response: MacroEtfData | null }
+  'market.macro.index': { request: Record<string, never>; response: MacroIndexData | null }
   'market.intraday': { request: Record<string, never>; response: MarketIntradayData | null }
   'market.signals': { request: Record<string, never>; response: MarketSignalsData | null }
   'market.history.list': { request: Record<string, never>; response: { snapshots: MarketHistorySummary[] } }

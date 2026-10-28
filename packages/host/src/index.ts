@@ -77,7 +77,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     }
   })
 
-  ctx.effect(() => () => database.close(), 'hanai-investment-dsh: close database')
+  ctx.effect(() => () => { service.dispose(); database.close() }, 'hanai-investment-dsh: close database')
   void service.recover().catch((error) => {
     console.error('[hanai-investment-dsh] recovery failed:', error)
   })
