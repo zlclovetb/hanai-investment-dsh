@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { MacroPage } from '../src/market-macro.tsx'
@@ -21,7 +22,19 @@ it('reads a range with cached data and source metadata, without a generated-hist
  expect(call).toHaveBeenCalledWith('market.macro.query', { range: { from: '2021-10-29', to: '2026-10-29' }, refresh: false }, expect.any(AbortSignal))
  expect(screen.queryByRole('combobox')).toBeNull()
  const header = within(screen.getByRole('heading', { name: '沪深300 ETF规模与流通市值占比' }).closest('header')!)
- expect(header.getAllByText(/上交所统计月报/).length).toBeGreaterThan(0)
+ expect(header.queryByText(/上交所统计月报/)).toBeNull()
+ const details = screen.getByLabelText('数据详情').closest('details')!
+ const source = screen.getAllByText(/上交所统计月报/)[0]!
+ expect(details).not.toHaveAttribute('open')
+ expect(source).not.toBeVisible()
+ const count = call.mock.calls.length
+ fireEvent.click(screen.getByLabelText('数据详情'))
+ expect(details).toHaveAttribute('open')
+ expect(source).toBeVisible()
+ expect(screen.getByText(/日频规模按交易所同日份额/)).toBeVisible()
+ fireEvent.click(screen.getByLabelText('数据详情'))
+ expect(details).not.toHaveAttribute('open')
+ expect(call).toHaveBeenCalledTimes(count)
  expect(screen.getByRole('button', { name: '更新数据' })).toBeTruthy()
 })
 it('validates five years and queries older selected dates instead of history snapshots', async () => {
@@ -74,6 +87,34 @@ it('does not label the current data as failed because a different range failed',
  view.unmount()
  value.taskRange = defaultMacroRange()
  render(<MacroPage client={client} theme="light" />)
+ fireEvent.click(await screen.findByLabelText('数据详情'))
  await screen.findByText('旧区间分母缺失')
- expect(screen.getByText('刷新失败')).toBeTruthy()
+ expect(screen.getByText('刷新失败')).toBeVisible()
+})
+
+it('keeps source dates and an incomplete reference visible while detailed copy is collapsed', async () => {
+ const { value, client } = fixture()
+ const meta = value.data.daily!.meta
+ value.data.daily = { ...value.data.daily!, points: [{ date: '2026-10-28', assets: 3400 }], expectedDays: 2, complete: false }
+ value.data.index = { points: [{ date: '2026-10-29', close: 4100 }], meta }
+ value.data.capital!.reference = { points: [{ date: '2026-10-28', floatCap: 490000, membershipDate: '2026-10-26' }], checkedDates: ['2026-10-28'], missingDates: [], expectedDays: 2, complete: false, meta }
+ render(<MacroPage client={client} theme="light" />)
+ await screen.findByText('分母参考待补 1 日')
+ const brief = within(screen.getByLabelText('宏观数据摘要'))
+ expect(brief.getByText('ETF至 2026-10-28')).toBeVisible()
+ expect(brief.getByText('指数至 2026-10-29')).toBeVisible()
+ expect(brief.getByText('月报至 2026-09-30')).toBeVisible()
+ expect(brief.getByText('部分数据待补齐')).toBeVisible()
+ expect(screen.getByText(/日频规模按交易所同日份额/)).not.toBeVisible()
+})
+
+it('warns about missing denominators even when part of the ratio series is available', async () => {
+ const { value, client } = fixture()
+ const meta = value.data.daily!.meta
+ value.data.daily = { points: [{ date: '2026-09-29', assets: 3300 }, { date: '2026-09-30', assets: 3400 }], expectedDays: 2, complete: true, meta }
+ value.data.index = { points: [{ date: '2026-09-29', close: 4000 }, { date: '2026-09-30', close: 4100 }], meta }
+ render(<MacroPage client={client} theme="light" />)
+ await screen.findByText(/2026-09-30 · 四只合计/)
+ expect(screen.getByText('部分数据待补齐')).toBeVisible()
+ expect(screen.getByLabelText('数据详情').closest('details')).not.toHaveAttribute('open')
 })

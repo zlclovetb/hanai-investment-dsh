@@ -61,6 +61,10 @@ export function MacroPage({ client, theme }: { client: HanaiClient; theme: Theme
   const fourTotals = macroFourTotals(dailyData, allDailyData)
   const hasDaily = dailyData !== null || fourTotals.length > 0
   const latest = (hasDaily ? fourTotals : macroTotals(etfData)).at(-1)
+  const referenceMissing = reference ? Math.max(0, reference.expectedDays - reference.points.length) : 0
+  const incomplete = !hasDaily || indexData === null || ratios.length === 0 || ratios.length < fourTotals.length || dailyData?.complete === false || allDailyData?.complete === false || referenceMissing > 0
+  const updateFailed = shownTask?.state === 'failed' || shownTask?.state === 'partial' || Boolean(shownTask?.archiveError) || Boolean(capitalData?.referenceError)
+
   const hasDailyRatio = allDailyData?.points.some(point => capitalData?.points.some(cap => cap.date === point.date) || reference?.points.some(cap => cap.date === point.date)) ?? false
   const sources = [
     dailyData ? { label: '四只ETF日规模', meta: dailyData.meta, dateLabel: '数据日期' as const, failed: dailyError !== null }
@@ -90,8 +94,24 @@ export function MacroPage({ client, theme }: { client: HanaiClient; theme: Theme
     </div>
     {errors.map((error, i) => <p key={i} role="alert">{error}</p>)}
     <section className={styles['card']} aria-label="沪深300 ETF宏观图表">
-      <PanelHead title="沪深300 ETF规模与流通市值占比" extra={<span>{generating ? '后台补齐中…' : (loading) ? '正在读取…' : latest ? `${latest.date} · 四只合计 ${latest.assets.toLocaleString('zh-CN', { maximumFractionDigits: 2 })} 亿元` : '日规模不可用'}</span>}
-        meta={<div className={styles['macroMetadata']}>
+      <PanelHead title="沪深300 ETF规模与流通市值占比" extra={<span>{latest ? `${latest.date} · 四只合计 ${latest.assets.toLocaleString('zh-CN', { maximumFractionDigits: 2 })} 亿元` : loading ? '正在读取…' : '日规模不可用'}</span>} />
+      <details className={styles['macroDetails']}>
+        <summary aria-label="数据详情">
+          <span className={styles['macroBrief']} aria-label="宏观数据摘要">
+            {loading && result === null ? <span>正在读取本地数据…</span> : <>
+              <span>{latest ? `ETF至 ${latest.date}` : 'ETF日规模不可用'}</span>
+              <span>{indexData?.points.at(-1) ? `指数至 ${indexData.points.at(-1)!.date}` : '指数不可用'}</span>
+              <span>{capitalData?.points.at(-1) ? `月报至 ${capitalData.points.at(-1)!.date}` : '月报暂无数据'}</span>
+              {reference && <span>{referenceMissing > 0 ? `分母参考待补 ${referenceMissing} 日` : `重建参考至 ${reference.points.at(-1)?.date ?? '暂无数据'}`}</span>}
+              {(incomplete || updateFailed) && <span className={styles['macroPending']}>{updateFailed ? '更新未完成，沿用已有数据' : '部分数据待补齐'}</span>}
+            </>}
+            {generating && <span role="status">后台补齐中，可离开页面</span>}
+          </span>
+          <span className={styles['macroDetailsToggle']}>数据详情</span>
+        </summary>
+        <div className={styles['macroDetailBody']}>
+        <h3>数据来源与更新状态</h3>
+        <div className={styles['macroMetadata']}>
           {shownTask?.archiveError && <small role="alert">数据保存失败：{shownTask.archiveError}</small>}
           {shownTask && shownTask.state !== 'idle' && <div role="status">
             <details><summary>{shownTask.state === 'running' ? '后台补齐中，可离开页面；保持DSH宿主运行即可继续补齐' : shownTask.state === 'completed' ? '后台更新完成，数据已保存' : '后台任务已结束，部分数据未补齐；将于后续后台更新重试，也可点击更新数据'}</summary>
@@ -108,8 +128,9 @@ export function MacroPage({ client, theme }: { client: HanaiClient; theme: Theme
           {allError && <small role="alert">{allError}</small>}
           {capitalError && <small role="alert">{capitalError}</small>}
           {dailyError && <small role="alert">{dailyError}</small>}
-        </div>} />
-      <div className={styles['macroNotice']}>
+        </div>
+        <h3>图表口径与数据完整性</h3>
+        <div className={styles['macroNotice']}>
         <p>{ratios.length > 0 ? `上图红线：四只ETF同日规模 ÷ 沪深300流通市值 × 100（月报优先，重建参考段单独标注）；已匹配 ${ratios.length} 个交易日（${ratios[0]!.date} 至 ${ratios.at(-1)!.date}），缺少同日分子或分母处断线，不沿用其它日期数值。` : capitalData ? '占比不可用：已保存流通市值与四只ETF日频规模尚无同日交集，请后台继续补齐。' : '占比不可用：尚未保存上交所月报沪深300流通市值，后台将补齐数据；不以总市值或指数点位替代。'}</p>
         {capitalData && latest && latestCapitalDate && latestCapitalDate < latest.date && <p>{`近期占比缺口：流通市值（含重建参考）仅覆盖至 ${latestCapitalDate}，ETF规模已至 ${latest.date}；后续区间暂缺同日分母，待来源发布后由后台更新，不表示ETF规模停止变化。`}</p>}
         {reference && <p>{`分母重建参考：已取得 ${reference.points.length} / ${reference.expectedDays} 个交易日${reference.points.length > 0 ? `（${reference.points[0]!.date} 至 ${reference.points.at(-1)!.date}）` : ''}，按历史成分周快照汇总300只股票的同日流通市值；周快照不保证精确调样日，与月报存在口径差异。上图红色虚线和蓝色点线为参考段，官方月报可用时优先使用月报，不作比例校准。`}</p>}
@@ -124,11 +145,12 @@ export function MacroPage({ client, theme }: { client: HanaiClient; theme: Theme
         {!hasDaily && <p>{generating ? '后台任务正在读取日份额；红色虚线仅为季度参考。' : '尚未生成日频记录，后台将补齐数据并保存；来源未提供时保留缺口。'}</p>}
         {indexData === null && <p>沪深300点位不可用</p>}
         {etfData === null && !hasDaily && <p>四只ETF规模不可用</p>}
-      </div>
-      <EChart option={option} ariaLabel={`${range.from} 至 ${range.to} 沪深300指数与ETF规模交互图`} className={styles['macroChart'] ?? ''} />
-      <div className={styles['macroNotice']}>
+        </div>
         <p>{MACRO_ETFS.map(fund => `${fund.name} ${fund.code}`).join(' / ')}</p>
-      </div>
+        </div>
+      </details>
+      <EChart option={option} ariaLabel={`${range.from} 至 ${range.to} 沪深300指数与ETF规模交互图`} className={styles['macroChart'] ?? ''} />
+
     </section>
   </div>
 }

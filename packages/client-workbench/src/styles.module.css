@@ -923,6 +923,20 @@
 .macroToolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .macroNotice { padding: 8px 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .macroNotice p { margin: 4px 0; }
+.macroDetails { border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.macroDetails > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; cursor: pointer; list-style: none; }
+.macroDetails > summary::-webkit-details-marker { display: none; }
+.macroDetails > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.macroBrief { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; line-height: 1.6; }
+.macroPending { color: var(--primary-strong); }
+.macroDetailsToggle { flex-shrink: 0; color: var(--primary-strong); }
+.macroDetailsToggle::after { content: ' ▸'; }
+.macroDetails[open] > summary .macroDetailsToggle::after { content: ' ▾'; }
+.macroDetailBody { padding: 0 16px 12px; border-top: 1px solid var(--border); line-height: 1.6; }
+.macroDetailBody h3 { margin: 12px 0 6px; color: var(--text); font-size: 12px; }
+.macroDetailBody .macroNotice { padding: 0; }
+.macroDetailBody > p { margin: 6px 0 0; }
+.macroDetailBody .macroMetadata { max-width: none; }
 .macroChart { height: 760px; min-height: 660px; }
 @media (max-width: 720px) { .macroChart { height: 660px; } }
 
