@@ -31,7 +31,7 @@ export class MacroGeneration {
         while (!this.controller.signal.aborted) {
           const result = await this.load(panel.endpoint, count === -1, this.controller.signal)
           this.controller.signal.throwIfAborted()
-          if (result === null || ['stale', 'unavailable'].includes(result.meta.cacheState)) throw new Error('取数失败，保留已保存记录；再次手动生成可续传')
+          if (result === null || ['stale', 'unavailable'].includes(result.meta.cacheState)) throw new Error('取数失败，保留已保存数据；后续后台更新重试，也可手动更新')
           panel.checked = 'checkedMonths' in result ? result.checkedMonths.length + (result.reference?.checkedDates.length ?? 0) : 'expectedDays' in result ? result.points.length + ('missingDates' in result ? result.missingDates.length : 0) : 1
           panel.total = 'expectedDays' in result ? result.expectedDays : 'checkedMonths' in result ? Math.max(panel.checked, result.checkedMonths.length + (result.reference?.expectedDays ?? 0), result.complete ? panel.checked : panel.checked + 1) : 1
           panel.missing = 'checkedMonths' in result ? result.reference?.missingDates.length ?? 0 : 'missingDates' in result ? result.missingDates.length : 0
@@ -40,7 +40,7 @@ export class MacroGeneration {
             panel.state = panel.missing > 0 ? 'partial' : 'completed'
             return
           }
-          if (panel.checked <= count) throw new Error('未取得更多数据，保留进度；请稍后手动继续生成')
+          if (panel.checked <= count) throw new Error('未取得更多数据，保留进度，等待后续更新')
           count = panel.checked
         }
       } catch (error) {
@@ -54,7 +54,7 @@ export class MacroGeneration {
     this.status.finishedAt = new Date().toISOString()
     try { this.finish(this.get()) } catch (error) {
       this.status.state = 'partial'
-      this.status.archiveError = error instanceof Error ? error.message : '整图快照保存失败'
+      this.status.archiveError = error instanceof Error ? error.message : '数据保存失败'
     }
   }
 

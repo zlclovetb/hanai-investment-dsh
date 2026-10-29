@@ -78,8 +78,10 @@ export class MarketHistoryStore {
       ON CONFLICT(date, panel_key) DO UPDATE SET version = excluded.version,
         captured_at = excluded.captured_at, observed_at = excluded.observed_at,
         payload = excluded.payload, meta = excluded.meta
-      WHERE excluded.observed_at > market_panel_snapshots.observed_at OR ? IN ('overview', 'global.indices')
-    `).run(date, key, capturedAt, observedAt, JSON.stringify(data), JSON.stringify(meta), key)
+      WHERE excluded.observed_at > market_panel_snapshots.observed_at
+        OR (? = 'macro.series' AND excluded.observed_at = market_panel_snapshots.observed_at)
+        OR ? IN ('overview', 'global.indices')
+    `).run(date, key, capturedAt, observedAt, JSON.stringify(data), JSON.stringify(meta), key, key)
   }
 
   get(date: string): MarketHistorySnapshot | null {

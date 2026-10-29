@@ -1,3 +1,5 @@
+import { defaultMacroRange, type MacroRange } from '../../contracts/src/macro-range.ts'
+import { MacroSeries } from './macro-series.ts'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import {
@@ -43,10 +45,9 @@ import { ExpertChatStore } from '../../domain/src/expert-chats.ts'
 import { SECURITY_SOURCE_SETTING, SECURITY_SYNCED_AT_SETTING } from '../../domain/src/securities.ts'
 import { MarketHistoryStore } from '../../domain/src/market-history.ts'
 import { beijingMarketDate, marketDateFromMeta, marketHistoryPanel } from '../../contracts/src/market-history.ts'
-import type { MacroChartData, MacroGenerationStatus, MacroAllDailyData, MacroEtfInputs, MacroAllEtfData, MacroCapitalData, MacroEtfData, MacroIndexData, MacroDailyEtfData } from '../../contracts/src/market-macro.ts'
+import type { MacroAllDailyData, MacroEtfInputs, MacroAllEtfData, MacroCapitalData, MacroEtfData, MacroIndexData, MacroDailyEtfData } from '../../contracts/src/market-macro.ts'
 import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
-import { MacroGeneration } from './macro-generation.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const BREADTH_SUCCESS_SETTING = 'market.breadth.latestSuccess'
@@ -58,12 +59,12 @@ const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
   getMacroInputs(): MacroEtfInputs | null
-  getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing?: boolean): Promise<MacroAllDailyData | null>
-  getMacroAllEtfs(): Promise<MacroAllEtfData | null>
-  getMacroCapital(previous: MacroCapitalData | null, retryMissing?: boolean): Promise<MacroCapitalData | null>
-  getMacroDaily(previous: MacroDailyEtfData | null, inputs?: MacroEtfInputs | null): Promise<MacroDailyEtfData | null>
-  getMacroEtfs(): Promise<MacroEtfData | null>
-  getMacroIndex(): Promise<MacroIndexData | null>
+  getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing?: boolean, range?: MacroRange): Promise<MacroAllDailyData | null>
+  getMacroAllEtfs(range?: MacroRange): Promise<MacroAllEtfData | null>
+  getMacroCapital(previous: MacroCapitalData | null, retryMissing?: boolean, range?: MacroRange): Promise<MacroCapitalData | null>
+  getMacroDaily(previous: MacroDailyEtfData | null, inputs?: MacroEtfInputs | null, range?: MacroRange): Promise<MacroDailyEtfData | null>
+  getMacroEtfs(range?: MacroRange): Promise<MacroEtfData | null>
+  getMacroIndex(range?: MacroRange): Promise<MacroIndexData | null>
   getMarketIntraday(): Promise<MarketIntradayData | null>
   getMarketSignals(): Promise<MarketSignalsData | null>
   getGlobalIndices(): Promise<GlobalIndicesData>
@@ -126,30 +127,11 @@ export class HanaiService {
   private securitySyncInProgress = false
   private readonly marketHistory: MarketHistoryStore
   private marketDateContext: { date: string; observedOn: string } | null = null
+  private readonly macroSeries: MacroSeries
+  startMacroUpdates(): void { this.macroSeries.start() }
+
   private disposed = false
-  private readonly macroGeneration = new MacroGeneration((endpoint, first, signal) => this.call(endpoint, endpoint === 'market.macro.allDaily' || endpoint === 'market.macro.capital' ? { retryMissing: first } : {}, signal), status => this.archiveMacroChart(status))
-
-  private archiveMacroChart(task: MacroGenerationStatus): void {
-    if (this.disposed || task.finishedAt === null || !task.panels.some(panel => ['completed', 'partial'].includes(panel.state))) return
-    const generatedAt = task.finishedAt, date = beijingMarketDate(Date.parse(generatedAt))
-    const snapshots = this.marketHistory.list().filter(snapshot => snapshot.date <= date)
-    const records = new Map<string, ReturnType<MarketHistoryStore['get']>>()
-    const latest = <K extends 'macro.etf' | 'macro.index' | 'macro.etf.daily' | 'macro.capital' | 'macro.etf.all.quarter' | 'macro.etf.all.daily'>(key: K) => {
-      for (const snapshot of snapshots.filter(snapshot => snapshot.panels.includes(key))) {
-        if (!records.has(snapshot.date)) records.set(snapshot.date, this.marketHistory.get(snapshot.date))
-        const data = marketHistoryPanel(records.get(snapshot.date) ?? null, key)
-        if (data !== null) return data
-      }
-      return null
-    }
-    const chart: MacroChartData = { date, generatedAt, task, etfs: latest('macro.etf'), index: latest('macro.index'), daily: latest('macro.etf.daily'),
-      capital: latest('macro.capital'), allEtfs: latest('macro.etf.all.quarter'), allDaily: latest('macro.etf.all.daily'),
-      meta: { providerId: 'macro-generation', sourceName: '宏观图表生成快照（生成时间，各分项保留原来源日期）', sourceTimestamp: generatedAt, fetchedAt: generatedAt, cacheState: 'fresh' } }
-    if ([chart.etfs, chart.index, chart.daily, chart.capital, chart.allEtfs, chart.allDaily].every(data => data === null)) return
-    this.marketHistory.save('macro.chart', chart, chart.meta, date, generatedAt)
-  }
-
-  dispose(): void { this.disposed = true; this.macroGeneration.dispose() }
+  dispose(): void { this.disposed = true; this.macroSeries.dispose() }
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
@@ -160,6 +142,7 @@ export class HanaiService {
     this.sessions = options.sessions
     this.defaultModel = options.defaultModel
     this.market = options.market
+    this.macroSeries = new MacroSeries(this.market, this.marketHistory, this.database)
     this.version = options.version
     this.openDirectory = options.openDirectory ?? openDirectoryWithSystem
   }
@@ -289,8 +272,12 @@ export class HanaiService {
         return result
       }
       case 'market.history.list': return { snapshots: this.marketHistory.list() }
-      case 'market.macro.generate': return this.macroGeneration.start()
-      case 'market.macro.generation': return this.macroGeneration.get()
+      case 'market.macro.query': {
+        const { range, refresh } = request as HanaiRequest<'market.macro.query'>
+        return this.macroSeries.query(range, refresh)
+      }
+      case 'market.macro.generate': return this.macroSeries.query(defaultMacroRange(), true).task
+      case 'market.macro.generation': return this.macroSeries.status()
       case 'market.macro.allDaily': {
         const saved = this.marketHistory.list().find(snapshot => snapshot.date <= beijingMarketDate() && snapshot.panels.includes('macro.etf.all.daily'))
         const previous = saved === undefined ? null : marketHistoryPanel(this.marketHistory.get(saved.date), 'macro.etf.all.daily')

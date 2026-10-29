@@ -1,3 +1,4 @@
+import { macroRangeThrough, type MacroRange } from '../../../contracts/src/macro-range.ts'
 import { MACRO_ETFS, macroAllTotals, type MacroAllEtfData } from '../../../contracts/src/market-macro.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
 import { isoNow, type Clock, type HttpClient } from '../http.ts'
@@ -29,11 +30,10 @@ export class MarketMacroAllProvider {
     this.directories = new ProviderCache(clock, 6 * 3_600_000)
   }
 
-  get(): Promise<MacroAllEtfData | null> {
-    const to = beijingMarketDate(this.clock.now())
-    return this.cache.get(to, async () => {
+  get(range?: MacroRange): Promise<MacroAllEtfData | null> {
+    const { from, to } = range ?? macroRangeThrough(beijingMarketDate(this.clock.now()))
+    return this.cache.get(`${from}:${to}`, async () => {
       const directory = await this.getDirectory()
-      const from = `${Number(to.slice(0, 4)) - 5}${to.slice(4)}`
       const year = Number(to.slice(0, 4))
       const quarterEnd = [`${year - 1}-12-31`, `${year}-03-31`, `${year}-06-30`, `${year}-09-30`, `${year}-12-31`].filter(date => date <= to).at(-1)!
       const funds: MacroAllEtfData['funds'] = []

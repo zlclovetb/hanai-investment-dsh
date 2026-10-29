@@ -1,3 +1,4 @@
+import { macroRangeThrough, type MacroRange } from '../../../contracts/src/macro-range.ts'
 import { MACRO_ETFS, type MacroAllDailyData, type MacroEtfInputs, type MacroIndexData } from '../../../contracts/src/market-macro.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
 import { isoNow, type Clock, type HttpClient } from '../http.ts'
@@ -10,7 +11,7 @@ const active = (fund: MacroAllDailyData['funds'][number], date: string) => fund.
 
 export class MarketMacroAllDailyProvider {
   constructor(private readonly http: HttpClient, private readonly clock: Clock, private readonly circuit: SourceCircuit,
-    private readonly directory: MarketMacroAllProvider, readonly inputs: MarketMacroInputs, private readonly index: () => Promise<MacroIndexData | null>) {}
+    private readonly directory: MarketMacroAllProvider, readonly inputs: MarketMacroInputs, private readonly index: (range?: MacroRange) => Promise<MacroIndexData | null>) {}
 
   private async universe(previous: MacroAllDailyData | null) {
     if (previous?.universeAsOf === beijingMarketDate(this.clock.now())) return previous.funds
@@ -68,18 +69,18 @@ export class MarketMacroAllDailyProvider {
     return funds.sort((a, b) => a.code.localeCompare(b.code))
   }
 
-  async get(previous: MacroAllDailyData | null, seed: MacroEtfInputs | null = null, retryMissing = false): Promise<MacroAllDailyData | null> {
+  async get(previous: MacroAllDailyData | null, seed: MacroEtfInputs | null = null, retryMissing = false, range?: MacroRange): Promise<MacroAllDailyData | null> {
     this.inputs.restore(seed)
     const stale = () => previous === null ? null : { ...previous, meta: { ...previous.meta, cacheState: 'stale' as const } }
     try {
-      const to = beijingMarketDate(this.clock.now()), from = `${Number(to.slice(0, 4)) - 5}${to.slice(4)}`
+      const { from, to } = range ?? macroRangeThrough(beijingMarketDate(this.clock.now()))
       const funds = await this.universe(previous)
       const navs = new Map<string, Map<string, number>>()
-      for (const fund of MACRO_ETFS) navs.set(fund.code, await this.inputs.nav(fund.code))
-      const calendar = await this.index()
+      for (const fund of MACRO_ETFS) navs.set(fund.code, await this.inputs.nav(fund.code, range))
+      const calendar = await this.index(range)
       if (calendar === null || ['stale', 'unavailable'].includes(calendar.meta.cacheState)) return stale()
       const through = [...navs.get('510300')!.keys()].filter(date => MACRO_ETFS.every(fund => navs.get(fund.code)!.has(date))).sort().at(-1)
-      const dates = calendar.points.map(point => point.date).filter(date => date >= from && date <= (through ?? '')).sort()
+      const dates = calendar.points.map(point => point.date).filter(date => date >= from && date <= to && date <= (through ?? '')).sort()
       const latest = dates.at(-1)
       if (latest === undefined) return stale()
       const changed = previous !== null && JSON.stringify(previous.funds) !== JSON.stringify(funds)
@@ -90,7 +91,7 @@ export class MarketMacroAllDailyProvider {
       const windowStart = Date.parse(`${pending[0] ?? latest}T00:00:00+08:00`) - 31 * 86_400_000
       const batch = pending.filter(date => Date.parse(`${date}T00:00:00+08:00`) >= windowStart).slice(0, 8).sort()
       const needed = funds.filter(fund => batch.some(date => active(fund, date)))
-      for (const fund of needed) if (!navs.has(fund.code)) navs.set(fund.code, await this.inputs.nav(fund.code))
+      for (const fund of needed) if (!navs.has(fund.code)) navs.set(fund.code, await this.inputs.nav(fund.code, range))
       if (batch.length > 0) await this.inputs.shares(needed.map(fund => fund.code), batch, latest)
       for (const date of batch) {
         let assets = 0, fourAssets = 0
@@ -109,7 +110,7 @@ export class MarketMacroAllDailyProvider {
       if (points.size === 0 && gaps.size === 0) return stale()
       const rows = [...points.values()].sort((a, b) => a.date.localeCompare(b.date))
       const missingDates = [...gaps].sort(([a], [b]) => a.localeCompare(b)).map(([date, reason]) => ({ date, reason }))
-      return { funds, universeAsOf: to, points: rows, missingDates, expectedDays: dates.length, complete: rows.length === dates.length,
+      return { funds, universeAsOf: beijingMarketDate(this.clock.now()), points: rows, missingDates, expectedDays: dates.length, complete: rows.length === dates.length,
         meta: { providerId: 'exchange-etf-all-nav', sourceName: '中证目录+已确认退市产品 / 交易所日份额 × 东方财富单位净值', sourceTimestamp: [...rows.map(row => row.date), ...gaps.keys()].sort().at(-1)!, fetchedAt: batch.length === 0 && previous !== null ? previous.meta.fetchedAt : isoNow(this.clock), cacheState: 'fresh' } }
     } catch { return stale() }
   }

@@ -1,3 +1,4 @@
+import { macroRangeThrough, type MacroRange } from '../../../contracts/src/macro-range.ts'
 import { MACRO_ETFS, type MacroDailyEtfData, type MacroIndexData, type MacroEtfInputs } from '../../../contracts/src/market-macro.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
 import { MarketMacroInputs, macroPositive as positive } from './market-macro-inputs.ts'
@@ -28,23 +29,22 @@ export class MarketMacroDailyProvider {
   private readonly batches: ProviderCache<MacroDailyEtfData>
   readonly inputs: MarketMacroInputs
   constructor(private readonly http: HttpClient, private readonly clock: Clock, private readonly circuit: SourceCircuit,
-    private readonly index: () => Promise<MacroIndexData | null>, inputs?: MarketMacroInputs) {
+    private readonly index: (range?: MacroRange) => Promise<MacroIndexData | null>, inputs?: MarketMacroInputs) {
     this.inputs = inputs ?? new MarketMacroInputs(http, clock, circuit)
     this.batches = new ProviderCache(clock, 60_000)
   }
 
-  async get(previous: MacroDailyEtfData | null, seed: MacroEtfInputs | null = null): Promise<MacroDailyEtfData | null> {
+  async get(previous: MacroDailyEtfData | null, seed: MacroEtfInputs | null = null, range?: MacroRange): Promise<MacroDailyEtfData | null> {
     this.inputs.restore(seed)
     const stale = () => previous === null ? null : { ...previous, meta: { ...previous.meta, cacheState: 'stale' as const } }
     try {
-      const to = beijingMarketDate(this.clock.now())
-      const from = `${Number(to.slice(0, 4)) - 5}${to.slice(4)}`
+      const { from, to } = range ?? macroRangeThrough(beijingMarketDate(this.clock.now()))
       const navs = new Map<string, Map<string, number>>()
-      for (const fund of MACRO_ETFS) navs.set(fund.code, await this.inputs.nav(fund.code))
-      const calendar = await this.index()
+      for (const fund of MACRO_ETFS) navs.set(fund.code, await this.inputs.nav(fund.code, range))
+      const calendar = await this.index(range)
       if (calendar === null || ['unavailable', 'stale'].includes(calendar.meta.cacheState)) return stale()
       const navThrough = [...navs.get('510300')!.keys()].filter(date => [...navs.values()].every(fund => fund.has(date))).sort().at(-1)
-      const dates = calendar.points.map(point => point.date).filter(date => date >= from && date <= (navThrough ?? '')).sort()
+      const dates = calendar.points.map(point => point.date).filter(date => date >= from && date <= to && date <= (navThrough ?? '')).sort()
       const latest = dates.at(-1)
       if (latest === undefined) return stale()
       const points = new Map((previous?.points ?? []).filter(point => dates.includes(point.date)).map(point => [point.date, point.assets]))
@@ -53,7 +53,7 @@ export class MarketMacroDailyProvider {
       const windowStart = Date.parse(`${pending[0] ?? latest}T00:00:00+08:00`) - 31 * 86_400_000
       const missing = pending.filter(date => Date.parse(`${date}T00:00:00+08:00`) >= windowStart).slice(0, 8).sort()
       if (missing.length === 0) return previous === null ? null : { ...previous, points: [...points].sort(([a], [b]) => a.localeCompare(b)).map(([date, assets]) => ({ date, assets })), expectedDays: dates.length, complete: points.size === dates.length }
-      const result = await this.batches.get(`${to}:${points.size}:${missing.join(',')}`, async () => {
+      const result = await this.batches.get(`${from}:${to}:${points.size}:${missing.join(',')}`, async () => {
         await this.inputs.shares(MACRO_ETFS.map(fund => fund.code), missing, latest)
         for (const date of missing) {
           let assets = 0

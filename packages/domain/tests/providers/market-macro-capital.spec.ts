@@ -10,6 +10,34 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
 afterEach(() => vi.useRealTimers())
 
 describe('SSE CSI300 tradable market cap', () => {
+  it('loads a preceding official anchor when the selected recent month is unpublished', async () => {
+    const clock = new FakeClock(NOW)
+    const http = new HandlerHttpClient(url => new URL(url).searchParams.get('MDATE') === '202609'
+      ? jsonResponse({ result: [{ MDATE: '20260930', CPT_NGT: '500000' }] }) : jsonResponse({ result: [] }))
+    const reference = { get: vi.fn(async () => ({ points: [{ date: '2026-10-08', floatCap: 490000, membershipDate: '2026-10-05' }], checkedDates: ['2026-10-08'], missingDates: [], expectedDays: 1, complete: true,
+      meta: { providerId: 'test', sourceName: '重建参考', sourceTimestamp: '2026-10-08', fetchedAt: new Date(NOW).toISOString(), cacheState: 'fresh' as const } })) }
+    const provider = new MarketMacroCapitalProvider(http, clock, new SourceCircuit({ clock }), reference as never)
+    const range = { from: '2026-10-01', to: '2026-10-08' }
+    const result = (await provider.get(null, false, range))!
+    expect(result.reference?.points[0]?.date).toBe('2026-10-08')
+    expect(result.points.at(-1)?.date).toBe('2026-09-30')
+    expect(reference.get).toHaveBeenCalledWith(undefined, '2026-09-30', false, range)
+    expect(isMarketPanelPayload('macro.capital', result)).toBe(true)
+    expect(isMarketPanelPayload('macro.capital', (await provider.get(result, false, range))!)).toBe(true)
+  })
+  it('requests only months in an older chosen window', async () => {
+    const clock = new FakeClock(NOW)
+    const http = new HandlerHttpClient(url => {
+      const month = new URL(url).searchParams.get('MDATE')!
+      return jsonResponse({ result: [{ MDATE: `${month}08`, CPT_NGT: '500000' }] })
+    })
+    const provider = new MarketMacroCapitalProvider(http, clock, new SourceCircuit({ clock }))
+    const result = await provider.get(null, false, { from: '2019-10-01', to: '2019-10-31' })
+    expect(result?.points).toEqual([{ date: '2019-10-08', floatCap: 500000 }])
+    expect(result?.checkedMonths).toEqual(['201910'])
+    expect(result?.complete).toBe(true)
+    expect(http.requests).toHaveLength(1)
+  })
   it('supplements archives already marked complete from verified legacy reports without refetching or inventing recent values', async () => {
     const clock = new FakeClock(NOW)
     const http = new HandlerHttpClient(() => { throw new Error('must not fetch') })

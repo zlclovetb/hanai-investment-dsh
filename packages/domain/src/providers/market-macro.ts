@@ -1,3 +1,4 @@
+import { macroRangeThrough, type MacroRange } from '../../../contracts/src/macro-range.ts'
 import { MACRO_ETFS, type MacroEtfData, type MacroIndexData } from '../../../contracts/src/market-macro.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
 import type { StockKLineData } from '../../../contracts/src/index.ts'
@@ -40,19 +41,17 @@ export class MarketMacroProvider {
     this.officialHistory = new ProviderCache(clock, 6 * 3_600_000)
   }
 
-  private range() {
-    const to = beijingMarketDate(this.clock.now())
-    return { to, from: `${Number(to.slice(0, 4)) - 5}${to.slice(4)}` }
-  }
+  private range(range?: MacroRange) { return range ?? macroRangeThrough(beijingMarketDate(this.clock.now())) }
 
-  private closedDate(date: string, today: string): boolean {
+  private closedDate(date: string): boolean {
+    const today = beijingMarketDate(this.clock.now())
     const bj = new Date(this.clock.now() + 8 * 3_600_000)
     return date < today || (date === today && bj.getUTCHours() * 60 + bj.getUTCMinutes() >= 905)
   }
 
-  getEtfs(): Promise<MacroEtfData | null> {
-    return this.etfs.get('four', () => this.circuit.run('eastmoney-fund', async () => {
-      const { from, to } = this.range()
+  getEtfs(range?: MacroRange): Promise<MacroEtfData | null> {
+    return this.etfs.get(JSON.stringify(this.range(range)), () => this.circuit.run('eastmoney-fund', async () => {
+      const { from, to } = this.range(range)
       const funds: MacroEtfData['funds'] = []
       // Four bounded requests, sequential to avoid bursting the public fund service.
       for (const { code } of MACRO_ETFS) {
@@ -69,10 +68,10 @@ export class MarketMacroProvider {
     }))
   }
 
-  getIndex(): Promise<MacroIndexData | null> {
-    return this.index.get('000300', async () => {
-      const { from, to } = this.range()
-      const official = await this.officialHistory.get(to, () => this.circuit.run('csi-index', async () => {
+  getIndex(range?: MacroRange): Promise<MacroIndexData | null> {
+    return this.index.get(JSON.stringify(this.range(range)), async () => {
+      const { from, to } = this.range(range)
+      const official = await this.officialHistory.get(`${from}:${to}`, () => this.circuit.run('csi-index', async () => {
         const params = new URLSearchParams({ indexCode: '000300', startDate: from.replace(/-/g, ''), endDate: to.replace(/-/g, '') })
         const response = await this.http.request(`https://www.csindex.com.cn/csindex-home/perf/index-perf?${params}`, { timeoutMs: 5000 })
         if (response.status !== 200) throw new Error(`中证历史行情 HTTP ${response.status}`)
@@ -85,21 +84,22 @@ export class MarketMacroProvider {
           if (!isMarketDate(date) || date < from || date > to || typeof row.close !== 'number' || !Number.isFinite(row.close) || row.close <= 0 || (points.at(-1)?.date ?? '') >= date) throw new Error('中证指数观测无效')
           points.push({ date, close: row.close })
         }
-        if (points.length < 900 || Date.parse(points[0]!.date) - Date.parse(from) > 14 * 86_400_000 || Date.parse(to) - Date.parse(points.at(-1)!.date) > 14 * 86_400_000) throw new Error('中证历史区间不完整')
+        const minimum = Math.min(900, Math.max(1, Math.floor((Date.parse(to) - Date.parse(from)) / 86_400_000 * 0.45)))
+        if (points.length < minimum || Date.parse(points[0]!.date) - Date.parse(from) > 14 * 86_400_000 || Date.parse(to) - Date.parse(points.at(-1)!.date) > 14 * 86_400_000) throw new Error('中证历史区间不完整')
         return { points, meta: { providerId: 'csi-index', sourceName: '中证指数官方历史日线', sourceTimestamp: points.at(-1)!.date, fetchedAt: isoNow(this.clock), cacheState: 'fresh' } }
       }))
       if (official === null || official.meta.cacheState === 'stale') {
-        const fallback = await this.getFallbackIndex()
+        const fallback = await this.getFallbackIndex(range)
         if (fallback !== null) return fallback
         if (official !== null) return official
         throw new Error('沪深300历史行情不可用')
       }
       try {
-        const recent = await this.kline()
+        const recent = await this.kline(range === undefined ? undefined : new Date(Date.parse(to) + 86_400_000).toISOString().slice(0, 10))
         const known = new Map(official.points.map(point => [point.date, point.close]))
-        const bars = recent.bars.filter(bar => isMarketDate(bar.date) && this.closedDate(bar.date, to) && Number.isFinite(bar.close) && bar.close > 0)
+        const bars = recent.bars.filter(bar => isMarketDate(bar.date) && this.closedDate(bar.date) && Number.isFinite(bar.close) && bar.close > 0)
         const consistent = bars.every(bar => !known.has(bar.date) || Math.abs(known.get(bar.date)! - bar.close) <= 0.02)
-        const added = bars.filter(bar => bar.date > official.points.at(-1)!.date).sort((a, b) => a.date.localeCompare(b.date))
+        const added = bars.filter(bar => bar.date > official.points.at(-1)!.date && bar.date <= to).sort((a, b) => a.date.localeCompare(b.date))
         if (consistent && added.length > 0 && recent.meta !== null && !['stale', 'unavailable'].includes(recent.meta.cacheState)) {
           const merged = new Map([...official.points, ...added].map(point => [point.date, point.close]))
           const points = [...merged].sort(([a], [b]) => a.localeCompare(b)).map(([date, close]) => ({ date, close }))
@@ -110,19 +110,19 @@ export class MarketMacroProvider {
     })
   }
 
-  private getFallbackIndex(): Promise<MacroIndexData | null> {
-    return this.indexFallback.get('000300', async () => {
-      const { from, to } = this.range()
+  private getFallbackIndex(range?: MacroRange): Promise<MacroIndexData | null> {
+    return this.indexFallback.get(JSON.stringify(this.range(range)), async () => {
+      const { from, to } = this.range(range)
       const points = new Map<string, number>()
-      let before: string | undefined
+      let before: string | undefined = range === undefined ? undefined : new Date(Date.parse(to) + 86_400_000).toISOString().slice(0, 10)
       let meta: StockKLineData['meta'] = null
       for (let page = 0; page < 4; page += 1) {
         const result = await this.kline(before)
-        const bars = result.bars.filter(bar => isMarketDate(bar.date) && this.closedDate(bar.date, to) && Number.isFinite(bar.close) && bar.close > 0)
+        const bars = result.bars.filter(bar => isMarketDate(bar.date) && this.closedDate(bar.date) && Number.isFinite(bar.close) && bar.close > 0)
           .sort((a, b) => a.date.localeCompare(b.date))
         if (bars.length === 0 || result.meta === null || result.meta.cacheState === 'unavailable') throw new Error('沪深300历史行情不完整')
         meta ??= result.meta
-        for (const bar of bars) if (bar.date >= from) points.set(bar.date, bar.close)
+        for (const bar of bars) if (bar.date >= from && bar.date <= to) points.set(bar.date, bar.close)
         const oldest = bars[0]!.date
         if (oldest <= from || !result.hasMore) break
         if (page === 3 || (before !== undefined && oldest >= before)) throw new Error('沪深300历史分页未完成')

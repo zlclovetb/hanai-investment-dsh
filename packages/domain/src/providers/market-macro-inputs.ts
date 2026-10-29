@@ -1,3 +1,4 @@
+import { macroRangeThrough, type MacroRange } from '../../../contracts/src/macro-range.ts'
 import type { MacroEtfInputs } from '../../../contracts/src/market-macro.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
 import { isoNow, type Clock, type HttpClient } from '../http.ts'
@@ -43,6 +44,7 @@ export function parseUnitNav(body: string, from: string, to: string): Map<string
 /** Raw business records are shared by the four-fund and full-directory calculations. */
 export class MarketMacroInputs {
   private funds = new Map<string, MacroEtfInputs['funds'][number]>()
+  private navFrom = new Map<string, string>()
   private navPending = new Map<string, Promise<Map<string, number>>>()
   private shanghai = new Map<string, { at: number; result: Promise<Map<string, unknown>> }>()
   private updatedAt: string | null = null
@@ -60,22 +62,24 @@ export class MarketMacroInputs {
     return fund
   }
 
-  nav(code: string): Promise<Map<string, number>> {
-    const existing = this.navPending.get(code)
+  nav(code: string, range?: MacroRange): Promise<Map<string, number>> {
+    const { from } = range ?? macroRangeThrough(beijingMarketDate(this.clock.now()))
+    const key = `${code}:${from}`
+    const existing = this.navPending.get(key)
     if (existing !== undefined) return existing
     const fund = this.fund(code)
     const today = beijingMarketDate(this.clock.now())
-    if (fund.navs.length > 0 && beijingMarketDate(Date.parse(fund.navFetchedAt)) === today && this.clock.now() - Date.parse(fund.navFetchedAt) < 6 * 3_600_000) return Promise.resolve(new Map(fund.navs.map(row => [row.date, row.value])))
+    const coversStart = range === undefined || (this.navFrom.get(code) ?? '9999') <= from || (fund.navs.length > 0 && Date.parse(fund.navs[0]!.date) - Date.parse(from) <= 7 * 86_400_000)
+    if (coversStart && beijingMarketDate(Date.parse(fund.navFetchedAt)) === today && this.clock.now() - Date.parse(fund.navFetchedAt) < 6 * 3_600_000) return Promise.resolve(new Map(fund.navs.map(row => [row.date, row.value])))
     const run = this.circuit.run('eastmoney-fund', async () => {
-      const from = `${Number(today.slice(0, 4)) - 5}${today.slice(4)}`
       const last = fund.navs.at(-1)?.date
       let values: Map<string, number>
-      if (last === undefined || this.clock.now() - Date.parse(last) > 120 * 86_400_000) {
+      if (!coversStart || last === undefined || this.clock.now() - Date.parse(last) > 120 * 86_400_000) {
         const response = await this.http.request(`https://fund.eastmoney.com/pingzhongdata/${code}.js`, { timeoutMs: 5000 })
         if (response.status !== 200) throw new Error(`单位净值 HTTP ${response.status}`)
         values = parseUnitNav(response.body, from, today)
       } else {
-        values = new Map(fund.navs.filter(row => row.date >= from).map(row => [row.date, row.value]))
+        values = new Map(fund.navs.map(row => [row.date, row.value]))
         const start = new Date(Date.parse(`${last}T12:00:00+08:00`) - 7 * 86_400_000).toISOString().slice(0, 10)
         let total: number | null = null
         const seen = new Set<string>()
@@ -95,12 +99,14 @@ export class MarketMacroInputs {
           await this.clock.sleep(300)
         }
       }
+      values = new Map([...fund.navs.map(row => [row.date, row.value] as const), ...values])
       fund.navs = [...values].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }))
+      this.navFrom.set(code, [this.navFrom.get(code) ?? from, from].sort()[0]!)
       fund.navFetchedAt = isoNow(this.clock); this.updatedAt = fund.navFetchedAt
       await this.clock.sleep(300)
       return values
-    }).finally(() => this.navPending.delete(code))
-    this.navPending.set(code, run)
+    }).finally(() => this.navPending.delete(key))
+    this.navPending.set(key, run)
     return run
   }
 

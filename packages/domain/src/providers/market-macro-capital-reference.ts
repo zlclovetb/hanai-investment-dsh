@@ -1,3 +1,4 @@
+import { macroRangeThrough, type MacroRange } from '../../../contracts/src/macro-range.ts'
 import type { MacroCapitalReference, MacroIndexData } from '../../../contracts/src/market-macro.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
 import { isoNow, type Clock, type HttpClient } from '../http.ts'
@@ -8,10 +9,10 @@ const object = (value: unknown): value is Record<string, unknown> => value !== n
 
 export class MarketMacroCapitalReferenceProvider {
   constructor(private readonly http: HttpClient, private readonly clock: Clock, private readonly circuit: SourceCircuit,
-    private readonly index: () => Promise<MacroIndexData | null>, private readonly members: (date: string) => Promise<MacroMembers> = queryBaoStockMembers) {}
+    private readonly index: (range?: MacroRange) => Promise<MacroIndexData | null>, private readonly members: (date: string) => Promise<MacroMembers> = queryBaoStockMembers) {}
 
-  async get(previous: MacroCapitalReference | undefined, after: string, retryMissing: boolean): Promise<MacroCapitalReference> {
-    const index = await this.index()
+  async get(previous: MacroCapitalReference | undefined, after: string, retryMissing: boolean, range?: MacroRange): Promise<MacroCapitalReference> {
+    const index = await this.index(range)
     if (index === null || ['stale', 'unavailable'].includes(index.meta.cacheState)) throw new Error('重建分母缺少可核实的交易日历')
     const today = beijingMarketDate(this.clock.now())
     const beijing = new Date(this.clock.now() + 8 * 3_600_000)

@@ -40,6 +40,21 @@ function setup() {
 }
 
 describe('full-directory ETF daily inputs', () => {
+  it('fetches an older requested NAV window once and preserves already saved newer observations and shares', async () => {
+    const clock = new FakeClock(NOW)
+    const http = new HandlerHttpClient(() => ({ status: 200, body: `var Data_netWorthTrend = [{"x":${Date.parse('2019-10-08T00:00:00+08:00')},"y":3},{"x":${Date.parse('2026-10-27T00:00:00+08:00')},"y":4}];` }))
+    const inputs = new MarketMacroInputs(http, clock, new SourceCircuit({ clock }))
+    const fetchedAt = new Date(NOW).toISOString()
+    inputs.restore({ funds: [{ code: '510300', navFetchedAt: fetchedAt, navs: [{ date: '2026-10-27', value: 4 }], shares: [{ date: '2026-10-27', value: 100, fetchedAt }] }], meta: { ...meta, fetchedAt } })
+    const range = { from: '2019-10-08', to: '2019-10-11' }
+    const navs = await inputs.nav('510300', range)
+    expect(navs.get('2019-10-08')).toBe(3)
+    expect(navs.get('2026-10-27')).toBe(4)
+    inputs.clear()
+    await inputs.nav('510300', range)
+    expect(http.requests).toHaveLength(1)
+    expect(inputs.snapshot()?.funds[0]?.shares).toHaveLength(1)
+  })
   it('preserves raw business records when caches are cleared during an in-flight NAV request', async () => {
     const clock = new FakeClock(NOW)
     let release!: (value: { status: number; body: string }) => void

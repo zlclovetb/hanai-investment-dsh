@@ -2,10 +2,13 @@ import type { MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, Sector
 import { MACRO_GENERATION_PANELS, MACRO_ETFS, type MacroChartData, type MacroEtfInputs, type MacroAllDailyData, macroAllTotals, type MacroAllEtfData, type MacroCapitalData, type MacroEtfData, type MacroIndexData, type MacroDailyEtfData } from './market-macro.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
+import { isMacroRange } from './macro-range.ts'
+import type { MacroSeriesData } from './macro-series.ts'
 
-export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart'] as const
+export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
 
 export interface MarketPanelPayloads {
+  'macro.series': MacroSeriesData
   'macro.chart': MacroChartData
   'macro.etf.inputs': MacroEtfInputs
   'macro.etf.all.daily': MacroAllDailyData
@@ -94,6 +97,9 @@ function isCapitalReference(value: unknown, fetchedAt: string): boolean {
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
+  if (key === 'macro.series') return isMacroRange(value.range) && isMarketProviderMeta(value.meta)
+    && [['etfs', 'macro.etf'], ['index', 'macro.index'], ['daily', 'macro.etf.daily'], ['capital', 'macro.capital'], ['allEtfs', 'macro.etf.all.quarter'], ['allDaily', 'macro.etf.all.daily']]
+      .every(([field, panel]) => value[field!] === null || isMarketPanelPayload(panel!, value[field!]))
   if (key === 'macro.chart') return typeof value.date === 'string' && isMarketDate(value.date)
     && typeof value.generatedAt === 'string' && Number.isFinite(Date.parse(value.generatedAt)) && beijingMarketDate(Date.parse(value.generatedAt)) === value.date
     && isMarketProviderMeta(value.meta) && value.meta.sourceTimestamp === value.generatedAt && value.meta.fetchedAt === value.generatedAt

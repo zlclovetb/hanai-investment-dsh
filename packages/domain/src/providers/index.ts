@@ -1,3 +1,4 @@
+import type { MacroRange } from '../../../contracts/src/macro-range.ts'
 import type {
   DashboardData,
   KLinePeriod,
@@ -114,9 +115,9 @@ export class MarketDataService {
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
     this.macroInputs = new MarketMacroInputs(http, this.clock, this.circuit)
     this.macroAll = new MarketMacroAllProvider(http, this.clock, this.circuit)
-    this.macroCapital = new MarketMacroCapitalProvider(http, this.clock, this.circuit, new MarketMacroCapitalReferenceProvider(http, this.clock, this.circuit, () => this.macro.getIndex()))
-    this.macroDaily = new MarketMacroDailyProvider(http, this.clock, this.circuit, () => this.macro.getIndex(), this.macroInputs)
-    this.macroAllDaily = new MarketMacroAllDailyProvider(http, this.clock, this.circuit, this.macroAll, this.macroInputs, () => this.macro.getIndex())
+    this.macroCapital = new MarketMacroCapitalProvider(http, this.clock, this.circuit, new MarketMacroCapitalReferenceProvider(http, this.clock, this.circuit, range => this.macro.getIndex(range)))
+    this.macroDaily = new MarketMacroDailyProvider(http, this.clock, this.circuit, range => this.macro.getIndex(range), this.macroInputs)
+    this.macroAllDaily = new MarketMacroAllDailyProvider(http, this.clock, this.circuit, this.macroAll, this.macroInputs, range => this.macro.getIndex(range))
     this.macro = new MarketMacroProvider(http, this.clock, this.circuit, before => this.getKline('1.000300', 'daily', before))
     this.activity = new MarketActivityProvider(http, this.clock, this.circuit, () => this.getTrend('1.000001'))
     this.breadthCache = new ProviderCache(this.clock, () => {
@@ -182,13 +183,13 @@ export class MarketDataService {
     })), ...(['tencent', 'sina', 'eastmoney-push2'] as const).map(source => ({ source, sourceName: `${source}（海外指数）`, scope: 'indices' as const, ...this.globalIndices.circuit.snapshot(source) }))]
   }
 
-  getMacroAllEtfs() { return this.macroAll.get() }
-  getMacroCapital(previous: MacroCapitalData | null, retryMissing = false) { return this.macroCapital.get(previous, retryMissing) }
+  getMacroAllEtfs(range?: MacroRange) { return this.macroAll.get(range) }
+  getMacroCapital(previous: MacroCapitalData | null, retryMissing = false, range?: MacroRange) { return this.macroCapital.get(previous, retryMissing, range) }
   getMacroInputs() { return this.macroInputs.snapshot() }
-  getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing = false) { return this.macroAllDaily.get(previous, inputs, retryMissing) }
-  getMacroDaily(previous: MacroDailyEtfData | null, inputs: MacroEtfInputs | null = null) { return this.macroDaily.get(previous, inputs) }
-  getMacroEtfs() { return this.macro.getEtfs() }
-  getMacroIndex() { return this.macro.getIndex() }
+  getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing = false, range?: MacroRange) { return this.macroAllDaily.get(previous, inputs, retryMissing, range) }
+  getMacroDaily(previous: MacroDailyEtfData | null, inputs: MacroEtfInputs | null = null, range?: MacroRange) { return this.macroDaily.get(previous, inputs, range) }
+  getMacroEtfs(range?: MacroRange) { return this.macro.getEtfs(range) }
+  getMacroIndex(range?: MacroRange) { return this.macro.getIndex(range) }
   getGlobalIndices() { return this.globalIndices.get() }
   getMarketIntraday() { return this.activity.getIntraday() }
   getMarketSignals() { return this.activity.getSignals() }

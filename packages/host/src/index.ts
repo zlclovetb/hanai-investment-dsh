@@ -58,6 +58,8 @@ export function apply(ctx: Context, config: Config = {}): void {
     version: VERSION,
   })
 
+  service.startMacroUpdates()
+
   ctx.connection.rpc.handle('/hanai', async (endpoint, payload, signal) => {
     if (!isHanaiEndpoint(endpoint)) return badRequest(`未知 Hanai endpoint：${endpoint}`)
     try {

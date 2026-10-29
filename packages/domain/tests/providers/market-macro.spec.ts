@@ -13,6 +13,20 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
 afterEach(() => vi.useRealTimers())
 
 describe('macro public data', () => {
+  it('queries older short windows independently and never appends newer quotes beyond the selected end', async () => {
+    const clock = new FakeClock(NOW)
+    const http = new HandlerHttpClient(url => {
+      const date = new URL(url).searchParams.get('startDate')!
+      return jsonResponse({ code: 200, data: [{ indexCode: '000300', tradeDate: date, close: 3000 }] })
+    })
+    const recent = vi.fn(async () => ({ period: 'daily' as const, bars: [bar('2026-10-27')], meta, hasMore: false }))
+    const provider = new MarketMacroProvider(http, clock, new SourceCircuit({ clock }), recent)
+    expect((await provider.getIndex({ from: '2019-10-08', to: '2019-10-09' }))?.points).toEqual([{ date: '2019-10-08', close: 3000 }])
+    expect((await provider.getIndex({ from: '2020-10-08', to: '2020-10-09' }))?.points[0]?.date).toBe('2020-10-08')
+    expect(http.requests).toHaveLength(2)
+    expect(recent).toHaveBeenCalledWith('2019-10-10')
+    expect(http.requests[0]?.url).toContain('endDate=20191009')
+  })
   it('excludes intraday bars on fallback and rejects an exhausted but truncated history', async () => {
     const clock = new FakeClock(Date.parse('2026-10-27T10:00:00+08:00'))
     const unavailable = new HandlerHttpClient(() => ({ status: 503, body: '' }))

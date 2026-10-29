@@ -39,12 +39,12 @@ export function macroRatios(daily: MacroDailyEtfData | null, capital: MacroCapit
   })
 }
 
-export function buildMacroOption(etfs: MacroEtfData | null, index: MacroIndexData | null, palette: ChartPalette, endDate: string, daily: MacroDailyEtfData | null = null, capital: MacroCapitalData | null = null, allEtfs: MacroAllEtfData | null = null, allDaily: MacroAllDailyData | null = null): EChartsCoreOption {
+export function buildMacroOption(etfs: MacroEtfData | null, index: MacroIndexData | null, palette: ChartPalette, endDate: string, daily: MacroDailyEtfData | null = null, capital: MacroCapitalData | null = null, allEtfs: MacroAllEtfData | null = null, allDaily: MacroAllDailyData | null = null, startDate?: string): EChartsCoreOption {
   const stamp = (date: string) => Date.parse(`${date}T00:00:00+08:00`)
   const dailyAvailable = daily !== null || (allDaily?.points.length ?? 0) > 0
   const totals = dailyAvailable ? macroFourTotals(daily, allDaily) : macroTotals(etfs)
   const scaleName = dailyAvailable ? '四只沪深300ETF每日规模合计' : '四只ETF季末净资产合计（季度参考）'
-  const from = `${Number(endDate.slice(0, 4)) - 5}${endDate.slice(4)}`
+  const from = startDate ?? `${Number(endDate.slice(0, 4)) - 5}${endDate.slice(4)}`
   const assetsByDate = new Map(totals.map(point => [point.date, point.assets]))
   const caps = new Map(capital?.points.map(point => [point.date, point.floatCap]))
   const referenceCaps = new Map(capital?.reference?.points.filter(point => !caps.has(point.date)).map(point => [point.date, point.floatCap]))

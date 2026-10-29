@@ -1,3 +1,4 @@
+import { macroRangeThrough, type MacroRange } from '../../../contracts/src/macro-range.ts'
 import type { MacroCapitalData } from '../../../contracts/src/market-macro.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
 import { isoNow, type Clock, type HttpClient } from '../http.ts'
@@ -28,13 +29,19 @@ export class MarketMacroCapitalProvider {
     this.cache = new ProviderCache(clock, 60_000)
   }
 
-  async get(previous: MacroCapitalData | null, retryMissing = false): Promise<MacroCapitalData | null> {
-    const monthly = await this.monthly(previous === null ? null : { ...previous, meta: previous.officialMeta ?? previous.meta })
+  async get(previous: MacroCapitalData | null, retryMissing = false, range?: MacroRange): Promise<MacroCapitalData | null> {
+    const seed = previous === null ? null : { ...previous, meta: previous.officialMeta ?? previous.meta }
+    let monthly = await this.monthly(seed, range)
+    if (monthly === null && range !== undefined) {
+      const before = new Date(`${range.from.slice(0, 7)}-01T00:00:00Z`)
+      before.setUTCMonth(before.getUTCMonth() - 1)
+      monthly = await this.monthly(seed, { ...range, from: before.toISOString().slice(0, 10) })
+    }
     if (monthly === null) return null
     let result = monthly
     if (monthly.complete && monthly.meta.cacheState !== 'stale' && this.reference !== undefined) {
       try {
-        const reference = await this.reference.get(previous?.reference, monthly.points.at(-1)!.date, retryMissing)
+        const reference = await this.reference.get(previous?.reference, monthly.points.at(-1)!.date, retryMissing, range)
         result = { ...monthly, reference: reference.expectedDays === 0 ? undefined : reference, referenceError: undefined, complete: reference.complete }
       } catch (error) {
         result = { ...monthly, reference: previous?.reference, referenceError: error instanceof Error ? error.message : '重建参考不可用', complete: false }
@@ -46,9 +53,8 @@ export class MarketMacroCapitalProvider {
     return { ...result, officialMeta: result.meta, meta: { ...result.meta, providerId: 'macro-capital', sourceName: '上交所月报＋分母重建参考（分项来源另列）', sourceTimestamp, fetchedAt } }
   }
 
-  private async monthly(previous: MacroCapitalData | null): Promise<MacroCapitalData | null> {
-    const to = beijingMarketDate(this.clock.now())
-    const from = `${Number(to.slice(0, 4)) - 5}${to.slice(4)}`
+  private async monthly(previous: MacroCapitalData | null, range?: MacroRange): Promise<MacroCapitalData | null> {
+    const { from, to } = range ?? macroRangeThrough(beijingMarketDate(this.clock.now()))
     const months: string[] = []
     for (let year = Number(from.slice(0, 4)); year <= Number(to.slice(0, 4)); year += 1) {
       for (let month = 1; month <= 12; month += 1) {
@@ -59,6 +65,8 @@ export class MarketMacroCapitalProvider {
     const checked = new Set((previous?.checkedMonths ?? []).filter(month => months.includes(month)))
     const refresh = new Set((previous?.refreshMonths ?? []).filter(month => months.includes(month)))
     const points = new Map((previous?.points ?? []).filter(point => point.date >= from && point.date <= to).map(point => [point.date, point.floatCap]))
+    const anchor = previous?.points.filter(point => point.date < from).at(-1)
+    if (anchor !== undefined) { points.set(anchor.date, anchor.floatCap); checked.add(anchor.date.slice(0, 7).replace('-', '')) }
     let supplemented = false
     for (const report of SSE_LEGACY_CAPITAL_REPORTS) {
       if (!checked.has(report.month)) continue
@@ -82,7 +90,7 @@ export class MarketMacroCapitalProvider {
     const pending = months.filter(month => !checked.has(month) || refresh.has(month)).reverse().slice(0, 6)
     if (supplemented) return snapshot()
     if (pending.length === 0) return previous === null ? null : { ...previous, complete: true }
-    const result = await this.cache.get(`${to}:${[...checked].sort().join(',')}`, () => this.circuit.run('sse-statistics', async () => {
+    const result = await this.cache.get(`${from}:${to}:${[...checked].sort().join(',')}`, () => this.circuit.run('sse-statistics', async () => {
       for (const month of pending) {
         const report = SSE_LEGACY_CAPITAL_REPORTS.find(report => report.month === month)
         if (report !== undefined) {
