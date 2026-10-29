@@ -503,6 +503,35 @@ describe('HanaiWorkbench old-client parity', () => {
     } finally { cleanup(); vi.useRealTimers() }
   })
 
+  it('shows the lunch break on sector and ranking while preserving polling and source freshness', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-29T12:12:00+08:00'))
+    const source = { ...fresh, providerId: 'sina', sourceName: '新浪行情', sourceTimestamp: null }
+    const midday: DashboardData = { ...dashboard, overview: { ...dashboard.overview, marketStatus: 'break' },
+      industry: { ...dashboard.industry, meta: source }, concept: { ...dashboard.concept, meta: source },
+      rankSources: { gainers: source, losers: source, amount: source, turnover: source } }
+    const afternoon: DashboardData = { ...midday, overview: { ...midday.overview, marketStatus: 'trading' } }
+    const client = makeClient({ 'dashboard.get': () => new Date().getTime() >= Date.parse('2026-10-29T13:00:00+08:00') ? afternoon : midday,
+      'market.breadth': () => ({ ...dashboard.overview.breadth, qdate: '2026-10-29', meta: { ...source, providerId: 'legu-breadth', sourceName: '乐咕乐股' } }) })
+    try {
+      await act(async () => { renderAt('/dashboard', client) })
+      const header = (title: string) => screen.getByRole('heading', { name: title }).closest('header')!
+      for (const title of ['板块热力', '榜单']) {
+        expect(within(header(title)).getByText('午间休市')).toBeTruthy()
+        expect(within(header(title)).getByText(/新浪行情.*获取于/)).toBeTruthy()
+      }
+      expect(within(header('市场宽度')).getByText('午间休市')).toBeTruthy()
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+      expect(callsOf(client, 'dashboard.get')).toHaveLength(2)
+      await act(async () => { vi.setSystemTime(new Date('2026-10-29T13:00:00+08:00')); await vi.advanceTimersByTimeAsync(30_000) })
+      for (const title of ['板块热力', '榜单']) {
+        expect(within(header(title)).queryByText('午间休市')).toBeNull()
+        expect(within(header(title)).getByText('最新数据')).toBeTruthy()
+      }
+      expect(within(header('市场宽度')).getByText('最新数据')).toBeTruthy()
+    } finally { cleanup(); vi.useRealTimers() }
+  })
+
   it('keeps the complete breadth snapshot visible and marks it stale after an automatic refresh fails', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00'))

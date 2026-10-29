@@ -24,6 +24,18 @@ function setup(snapshot: MarketHistorySnapshot | null = null, historical = false
   return { call, props, ...render(<MarketActivityPanel {...props} />) }
 }
 describe('market activity panel', () => {
+  it('shows lunch status for fresh data and retains failure precedence', async () => {
+    vi.setSystemTime(new Date('2026-10-27T12:12:00+08:00'))
+    const { call, props, rerender } = setup()
+    rerender(<MarketActivityPanel {...props} marketStatus="break" />)
+    await act(async () => {})
+    expect(screen.getByText('午间休市')).toBeTruthy()
+    call.mockRejectedValue(new Error('offline'))
+    rerender(<MarketActivityPanel {...props} marketStatus="break" refreshVersion={1} />)
+    await act(async () => {})
+    expect(screen.getByText('刷新失败')).toBeTruthy()
+    expect(screen.queryByText('午间休市')).toBeNull()
+  })
   it('opens a page dialog, restores on button or Escape, and never refetches for resizing', async () => {
     const saved = {
       show: Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal'),
