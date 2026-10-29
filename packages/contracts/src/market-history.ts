@@ -4,6 +4,7 @@ import type { GlobalIndicesData } from './market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
 import { isMacroRange } from './macro-range.ts'
 import type { MacroSeriesData } from './macro-series.ts'
+import { MACRO_INDICATORS } from './macro-indicators.ts'
 
 export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
 
@@ -98,6 +99,14 @@ function isCapitalReference(value: unknown, fetchedAt: string): boolean {
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
   if (key === 'macro.series') return isMacroRange(value.range) && isMarketProviderMeta(value.meta)
+    && (value.indicators === undefined || (object(value.indicators) && Object.entries(value.indicators).every(([id, data]) => {
+      const definition = MACRO_INDICATORS.find(row => row.id === id)
+      return definition !== undefined && object(data) && data.id === id && isMacroRange(data.checkedRange) && isMarketProviderMeta(data.meta)
+        && Array.isArray(data.points) && data.points.every((point, i, rows) => object(point) && typeof point.date === 'string' && isMarketDate(point.date)
+          && isMacroRange(value.range) && point.date >= value.range.from && point.date <= value.range.to && (i === 0 || String(rows[i - 1].date) < point.date)
+          && object(point.values) && Object.keys(point.values).length === definition.columns.length
+          && definition.columns.every(column => object(point.values) && numberOrNull(point.values[column.key])))
+    })))
     && [['etfs', 'macro.etf'], ['index', 'macro.index'], ['daily', 'macro.etf.daily'], ['capital', 'macro.capital'], ['allEtfs', 'macro.etf.all.quarter'], ['allDaily', 'macro.etf.all.daily']]
       .every(([field, panel]) => value[field!] === null || isMarketPanelPayload(panel!, value[field!]))
   if (key === 'macro.chart') return typeof value.date === 'string' && isMarketDate(value.date)

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ThemeId } from '../../contracts/src/index.ts'
 import { MACRO_ETFS, macroAllTotals } from '../../contracts/src/market-macro.ts'
 import { beijingMarketDate } from '../../contracts/src/market-history.ts'
-import { defaultMacroRange, isMacroRange } from '../../contracts/src/macro-range.ts'
+import { defaultMacroRange, isMacroRange, type MacroRange } from '../../contracts/src/macro-range.ts'
+import { MACRO_TOPICS, type MacroTopic } from '../../contracts/src/macro-indicators.ts'
+import { MacroIndicatorPage } from './macro-indicators.tsx'
 import type { HanaiResponse } from '../../contracts/src/index.ts'
 import type { HanaiClient } from './api.ts'
 import { getChartPalette } from './chart-options.ts'
@@ -14,7 +16,27 @@ import { useRefreshCooldown } from './market-hours.ts'
 import styles from './styles.module.css'
 
 export function MacroPage({ client, theme }: { client: HanaiClient; theme: ThemeId }) {
-  const [range, setRange] = useState(() => defaultMacroRange())
+  const [topic, setTopic] = useState<MacroTopic>('funds')
+  const [ranges, setRanges] = useState<Record<MacroTopic, MacroRange>>(() => Object.fromEntries(MACRO_TOPICS.map(row => [row.id, defaultMacroRange()])) as Record<MacroTopic, MacroRange>)
+  const onRangeChange = (range: MacroRange) => setRanges(value => ({ ...value, [topic]: range }))
+  return <div className={styles['page']}>
+    <div className={styles['pageHeader']}><div><h1>宏观数据</h1><p>按主题观察资金与经济周期 · 每天后台更新 · 单次最长五年</p></div></div>
+    <div className={styles['macroTabs']} role="tablist" aria-label="宏观主题">
+      {MACRO_TOPICS.map((row, index) => <button key={row.id} id={`macro-tab-${row.id}`} role="tab" aria-selected={topic === row.id} aria-controls="macro-topic-panel" tabIndex={topic === row.id ? 0 : -1}
+        className={`${styles['button']} ${topic === row.id ? styles['buttonSelected'] : ''}`} onClick={() => setTopic(row.id)} onKeyDown={event => {
+          const next = event.key === 'ArrowRight' ? (index + 1) % MACRO_TOPICS.length : event.key === 'ArrowLeft' ? (index + MACRO_TOPICS.length - 1) % MACRO_TOPICS.length : event.key === 'Home' ? 0 : event.key === 'End' ? MACRO_TOPICS.length - 1 : null
+          if (next === null) return
+          event.preventDefault(); setTopic(MACRO_TOPICS[next]!.id); event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
+        }}>{row.title}</button>)}
+    </div>
+    <div id="macro-topic-panel" role="tabpanel" aria-labelledby={`macro-tab-${topic}`}>
+      {topic === 'funds' ? <MacroFundsPage client={client} theme={theme} range={ranges.funds} setRange={onRangeChange} />
+        : <MacroIndicatorPage key={topic} client={client} theme={theme} topic={topic} range={ranges[topic]} setRange={onRangeChange} />}
+    </div>
+  </div>
+}
+
+function MacroFundsPage({ client, theme, range, setRange }: { client: HanaiClient; theme: ThemeId; range: MacroRange; setRange: (range: MacroRange) => void }) {
   const [draft, setDraft] = useState(range)
   const [result, setResult] = useState<HanaiResponse<'market.macro.query'> | null>(null)
   const [errors, setErrors] = useState<string[]>([])
@@ -82,8 +104,7 @@ export function MacroPage({ client, theme }: { client: HanaiClient; theme: Theme
     if (group === undefined) sourceGroups.set(key, [source])
     else group.push(source)
   }
-  return <div className={styles['page']}>
-    <div className={styles['pageHeader']}><div><h1>宏观数据</h1><p>沪深300 ETF规模与指数走势 · 每天后台更新 · 单次最长五年</p></div></div>
+  return <div>
     <div className={styles['macroToolbar']}>
       <form className={styles['marketHistoryBar']} aria-label="宏观图表日期范围" onSubmit={event => { event.preventDefault(); if (!isMacroRange(draft)) { setErrors(['请选择有效日期范围，最长五年，结束日期不能晚于今天']); return } setErrors([]); setResult(null); setRange({ ...draft }) }}>
         <label>开始日期 <input aria-label="开始日期" type="date" value={draft.from} max={draft.to} onChange={event => setDraft(value => ({ ...value, from: event.target.value }))} /></label>{' '}

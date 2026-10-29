@@ -1,4 +1,6 @@
 import type { MacroRange } from '../../../contracts/src/macro-range.ts'
+import type { MacroIndicatorId } from '../../../contracts/src/macro-indicators.ts'
+import { MacroIndicatorProvider } from './macro-indicators.ts'
 import type {
   DashboardData,
   KLinePeriod,
@@ -86,6 +88,8 @@ async function optional<T>(promise: Promise<T>): Promise<T | null> {
 
 /** Facade consumed by the Host; all external transport and time are injectable for deterministic tests. */
 export class MarketDataService {
+  private readonly macroIndicators: MacroIndicatorProvider
+  getMacroIndicator(id: MacroIndicatorId, range: MacroRange, signal?: AbortSignal) { return this.macroIndicators.get(id, range, signal) }
   readonly macroInputs: MarketMacroInputs
   readonly macroAllDaily: MarketMacroAllDailyProvider
   readonly macroAll: MarketMacroAllProvider
@@ -114,6 +118,7 @@ export class MarketDataService {
     this.clock = options.clock ?? systemClock
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
     this.macroInputs = new MarketMacroInputs(http, this.clock, this.circuit)
+    this.macroIndicators = new MacroIndicatorProvider(http, this.clock, this.circuit)
     this.macroAll = new MarketMacroAllProvider(http, this.clock, this.circuit)
     this.macroCapital = new MarketMacroCapitalProvider(http, this.clock, this.circuit, new MarketMacroCapitalReferenceProvider(http, this.clock, this.circuit, range => this.macro.getIndex(range)))
     this.macroDaily = new MarketMacroDailyProvider(http, this.clock, this.circuit, range => this.macro.getIndex(range), this.macroInputs)
@@ -174,6 +179,8 @@ export class MarketDataService {
       ['sse-etf', '上交所ETF日份额', 'market'],
       ['szse-etf', '深交所ETF日份额', 'market'],
       ['eastmoney-fund', '东方财富基金规模', 'market'],
+      ['eastmoney-macro', '东方财富宏观经济与国债', 'market'],
+      ['mofcom-macro', '商务部社融（原始来源：人民银行）', 'market'],
       ['ths-news', '同花顺板块异动快讯', 'market'],
       ['eastmoney-push2ex', '东方财富 push2ex（兜底）', 'breadth'],
     ] as const

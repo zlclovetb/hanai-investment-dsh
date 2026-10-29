@@ -921,6 +921,10 @@
 }
 
 .macroToolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.macroTabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.macroIndicatorGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 16px; }
+.macroIndicatorGrid > section { min-width: 0; }
+.macroEmpty { min-height: 260px; display: grid; place-items: center; padding: 20px; color: var(--muted); }
 .macroNotice { padding: 8px 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .macroNotice p { margin: 4px 0; }
 .macroDetails { border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; }

@@ -16,6 +16,7 @@ const schemas = {
   'market.breadth': empty,
   'market.indices': empty,
   'market.macro.query': z.object({ range: z.object({ from: tradingDate, to: tradingDate }).strict().refine(value => isMacroRange(value), '日期范围最长五年且不能晚于今天'), refresh: z.boolean().optional() }).strict(),
+  'market.macro.indicators': z.object({ topic: z.enum(['credit', 'activity', 'prices']), range: z.object({ from: tradingDate, to: tradingDate }).strict().refine(value => isMacroRange(value), '日期范围最长五年且不能晚于今天'), refresh: z.boolean().optional() }).strict(),
   'market.macro.generate': empty,
   'market.macro.generation': empty,
   'market.macro.allDaily': z.object({ retryMissing: z.boolean().optional() }).strict(),

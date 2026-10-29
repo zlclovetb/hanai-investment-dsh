@@ -35,7 +35,8 @@ export class MacroSeries {
   private disposed = false
 
   constructor(private readonly market: MarketFacade, private readonly history: MarketHistoryStore,
-    private readonly settings: Pick<HanaiDatabase, 'getSetting' | 'setSetting'>) {
+    private readonly settings: Pick<HanaiDatabase, 'getSetting' | 'setSetting'>,
+    private readonly tickIndicators: (slot: string) => void = () => {}) {
     try {
       const saved: unknown = JSON.parse(settings.getSetting(STATE_KEY) ?? 'null')
       if (saved !== null && typeof saved === 'object' && 'queue' in saved && Array.isArray(saved.queue)) this.queue = saved.queue.filter(row => isMacroRange(row))
@@ -120,6 +121,7 @@ export class MacroSeries {
     if (this.disposed) return
     const bj = new Date(Date.now() + 8 * 3_600_000)
     const slot = beijingMarketDate(Date.now() - (bj.getUTCHours() < 20 ? 86_400_000 : 0))
+    this.tickIndicators(slot)
     if (slot !== this.slot) {
       this.slot = slot
       const current = defaultMacroRange()

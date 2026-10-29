@@ -24,6 +24,8 @@ export const SOURCE_PRIORITY = [
   'eastmoney-push2',
   'eastmoney-push2ex',
   'gurufocus',
+  'eastmoney-macro',
+  'mofcom-macro',
 ] as const
 
 export type SourceId = (typeof SOURCE_PRIORITY)[number]

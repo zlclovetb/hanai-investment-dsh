@@ -29,6 +29,24 @@ function setup() {
 }
 
 describe('daily market panel history', () => {
+  it('lists only market dates and market capture times while retaining all macro history internally', () => {
+    const { store } = setup()
+    const macro = { points: [{ date: '2026-10-26', close: 4000 }], meta }
+    const early = '2026-10-27T01:00:00Z', later = '2026-10-27T02:00:00Z'
+    store.save('macro.index', macro, meta, '2026-10-01', later)
+    store.save('macro.index', macro, meta, '2026-10-27', later)
+    store.save('breadth', breadth, meta, '2026-10-27', early)
+    store.save('global.indices', { indices: [{ code: 'HSI', name: '恒生指数', price: 20000, change: 0, changePct: 0, amount: null, marketDate: '2026-10-26', meta }], meta }, meta, '2026-10-26', early)
+    store.save('sector:BK0001', { stocks: [], meta }, meta, '2026-10-25', early)
+    expect(store.list('market')).toEqual([
+      { date: '2026-10-27', capturedAt: early, panels: ['breadth'] },
+      { date: '2026-10-26', capturedAt: early, panels: ['global.indices'] },
+      { date: '2026-10-25', capturedAt: early, panels: ['sector:BK0001'] },
+    ])
+    expect(store.list()).toHaveLength(4)
+    expect(marketHistoryPanel(store.get('2026-10-01'), 'macro.index')).toEqual(macro)
+    expect(store.get('2026-10-27')?.panels).toEqual(['breadth', 'macro.index'])
+  })
   it('merges overseas rows by source time without replacing saved quotes with missing or older results', () => {
     const { store } = setup()
     const batch = { ...meta, sourceTimestamp: null }

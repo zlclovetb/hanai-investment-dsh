@@ -1,5 +1,7 @@
 import { defaultMacroRange, type MacroRange } from '../../contracts/src/macro-range.ts'
 import { MacroSeries } from './macro-series.ts'
+import { MacroIndicators } from './macro-indicators.ts'
+import type { MacroIndicatorData, MacroIndicatorId } from '../../contracts/src/macro-indicators.ts'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import {
@@ -58,6 +60,7 @@ const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableA
 const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
+  getMacroIndicator?(id: MacroIndicatorId, range: MacroRange, signal?: AbortSignal): Promise<MacroIndicatorData>
   getMacroInputs(): MacroEtfInputs | null
   getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing?: boolean, range?: MacroRange): Promise<MacroAllDailyData | null>
   getMacroAllEtfs(range?: MacroRange): Promise<MacroAllEtfData | null>
@@ -128,10 +131,11 @@ export class HanaiService {
   private readonly marketHistory: MarketHistoryStore
   private marketDateContext: { date: string; observedOn: string } | null = null
   private readonly macroSeries: MacroSeries
+  private readonly macroIndicators: MacroIndicators
   startMacroUpdates(): void { this.macroSeries.start() }
 
   private disposed = false
-  dispose(): void { this.disposed = true; this.macroSeries.dispose() }
+  dispose(): void { this.disposed = true; this.macroSeries.dispose(); this.macroIndicators.dispose() }
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
@@ -142,7 +146,11 @@ export class HanaiService {
     this.sessions = options.sessions
     this.defaultModel = options.defaultModel
     this.market = options.market
-    this.macroSeries = new MacroSeries(this.market, this.marketHistory, this.database)
+    this.macroIndicators = new MacroIndicators((id, range, signal) => {
+      if (!this.market.getMacroIndicator) return Promise.reject(new Error('当前行情服务未提供宏观经济指标能力'))
+      return this.market.getMacroIndicator(id, range, signal)
+    }, this.marketHistory, this.database)
+    this.macroSeries = new MacroSeries(this.market, this.marketHistory, this.database, slot => this.macroIndicators.tick(slot))
     this.version = options.version
     this.openDirectory = options.openDirectory ?? openDirectoryWithSystem
   }
@@ -271,7 +279,11 @@ export class HanaiService {
         if (result !== null) this.archiveMarketPanel('breadth', result, result.meta, result.qdate)
         return result
       }
-      case 'market.history.list': return { snapshots: this.marketHistory.list() }
+      case 'market.history.list': return { snapshots: this.marketHistory.list('market') }
+      case 'market.macro.indicators': {
+        const { topic, range, refresh } = request as HanaiRequest<'market.macro.indicators'>
+        return this.macroIndicators.query(topic, range, refresh)
+      }
       case 'market.macro.query': {
         const { range, refresh } = request as HanaiRequest<'market.macro.query'>
         return this.macroSeries.query(range, refresh)

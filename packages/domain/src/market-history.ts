@@ -101,9 +101,10 @@ export class MarketHistoryStore {
     return { date, panels, capturedAt: Object.values(records).map(panel => panel.capturedAt).sort().at(-1)!, records }
   }
 
-  list(): MarketHistorySummary[] {
+  list(scope: 'all' | 'market' = 'all'): MarketHistorySummary[] {
     const rows = this.sqlite.prepare(`SELECT date, MAX(captured_at) AS captured_at, GROUP_CONCAT(panel_key) AS panels
-      FROM market_panel_snapshots GROUP BY date ORDER BY date DESC`).all() as unknown as Array<{ date: string; captured_at: string; panels: string }>
+      FROM market_panel_snapshots WHERE (? = 'all' OR panel_key NOT LIKE 'macro.%')
+      GROUP BY date ORDER BY date DESC`).all(scope) as unknown as Array<{ date: string; captured_at: string; panels: string }>
     return rows.map(row => ({ date: row.date, capturedAt: row.captured_at, panels: row.panels.split(',') }))
   }
 }

@@ -1,10 +1,12 @@
 import type { ProviderMeta } from './index.ts'
 import { macroAllTotals, type MacroAllEtfData, type MacroChartData } from './market-macro.ts'
 import type { MacroRange } from './macro-range.ts'
+import { selectMacroIndicators, type MacroIndicatorMap } from './macro-indicators.ts'
 
 export type MacroSeriesData = Pick<MacroChartData, 'etfs' | 'index' | 'daily' | 'capital' | 'allEtfs' | 'allDaily'> & {
   range: MacroRange
   meta: ProviderMeta
+  indicators?: MacroIndicatorMap
 }
 
 /** Merge observations, oldest acquisition first; a new request never deletes cached dates. */
@@ -38,6 +40,7 @@ export function selectMacroSeries(records: MacroSeriesData[], range: MacroRange)
     return { ...last, funds: mergedFunds, meta: sourceMeta(last.meta, common.at(-1)?.date) }
   }
   return {
+    indicators: selectMacroIndicators(ordered.map(record => record.indicators ?? {}), range),
     range, meta: ordered.at(-1)?.meta ?? { providerId: 'macro-series', sourceName: '本地宏观时间序列', sourceTimestamp: null, fetchedAt: new Date().toISOString(), cacheState: 'unavailable' },
     etfs: quarters('etfs') as MacroSeriesData['etfs'], allEtfs: quarters('allEtfs') as MacroSeriesData['allEtfs'],
     index: index === null || indexPoints.length === 0 ? null : { ...index, points: indexPoints, meta: { ...index.meta, sourceTimestamp: indexPoints.at(-1)?.date ?? null } },

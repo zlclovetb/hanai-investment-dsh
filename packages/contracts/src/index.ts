@@ -1,5 +1,6 @@
 import type { MacroRange } from './macro-range.ts'
 import type { MacroSeriesData } from './macro-series.ts'
+import type { EconomicTopic, MacroIndicatorQuery } from './macro-indicators.ts'
 /** JSON-safe contracts shared by the Hanai Host and browser client. */
 import type { MarketHistorySnapshot, MarketHistorySummary } from './market-history.ts'
 import type { MacroGenerationStatus, MacroAllDailyData, MacroAllEtfData, MacroCapitalData, MacroEtfData, MacroIndexData, MacroDailyEtfData } from './market-macro.ts'
@@ -462,6 +463,7 @@ export interface HanaiEndpointMap {
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
   'market.indices': { request: Record<string, never>; response: GlobalIndicesData }
   'market.macro.query': { request: { range: MacroRange; refresh?: boolean }; response: { data: MacroSeriesData; task: MacroGenerationStatus; taskRange: MacroRange | null; activeRange: MacroRange | null; queued: MacroRange[] } }
+  'market.macro.indicators': { request: { topic: EconomicTopic; range: MacroRange; refresh?: boolean }; response: MacroIndicatorQuery }
   'market.macro.generate': { request: Record<string, never>; response: MacroGenerationStatus }
   'market.macro.generation': { request: Record<string, never>; response: MacroGenerationStatus }
   'market.macro.allDaily': { request: { retryMissing?: boolean }; response: MacroAllDailyData | null }
