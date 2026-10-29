@@ -35,6 +35,7 @@ import { MarketMacroInputs } from './market-macro-inputs.ts'
 import { MarketMacroAllDailyProvider } from './market-macro-all-daily.ts'
 import { MarketMacroAllProvider } from './market-macro-all.ts'
 import { MarketMacroCapitalProvider } from './market-macro-capital.ts'
+import { MarketMacroCapitalReferenceProvider } from './market-macro-capital-reference.ts'
 import { MarketMacroDailyProvider } from './market-macro-daily.ts'
 import type { MacroAllDailyData, MacroEtfInputs, MacroCapitalData, MacroDailyEtfData } from '../../../contracts/src/market-macro.ts'
 import { MarketMacroProvider } from './market-macro.ts'
@@ -113,7 +114,7 @@ export class MarketDataService {
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
     this.macroInputs = new MarketMacroInputs(http, this.clock, this.circuit)
     this.macroAll = new MarketMacroAllProvider(http, this.clock, this.circuit)
-    this.macroCapital = new MarketMacroCapitalProvider(http, this.clock, this.circuit)
+    this.macroCapital = new MarketMacroCapitalProvider(http, this.clock, this.circuit, new MarketMacroCapitalReferenceProvider(http, this.clock, this.circuit, () => this.macro.getIndex()))
     this.macroDaily = new MarketMacroDailyProvider(http, this.clock, this.circuit, () => this.macro.getIndex(), this.macroInputs)
     this.macroAllDaily = new MarketMacroAllDailyProvider(http, this.clock, this.circuit, this.macroAll, this.macroInputs, () => this.macro.getIndex())
     this.macro = new MarketMacroProvider(http, this.clock, this.circuit, before => this.getKline('1.000300', 'daily', before))
@@ -182,7 +183,7 @@ export class MarketDataService {
   }
 
   getMacroAllEtfs() { return this.macroAll.get() }
-  getMacroCapital(previous: MacroCapitalData | null) { return this.macroCapital.get(previous) }
+  getMacroCapital(previous: MacroCapitalData | null, retryMissing = false) { return this.macroCapital.get(previous, retryMissing) }
   getMacroInputs() { return this.macroInputs.snapshot() }
   getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing = false) { return this.macroAllDaily.get(previous, inputs, retryMissing) }
   getMacroDaily(previous: MacroDailyEtfData | null, inputs: MacroEtfInputs | null = null) { return this.macroDaily.get(previous, inputs) }

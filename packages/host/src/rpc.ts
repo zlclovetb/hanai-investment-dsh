@@ -18,7 +18,7 @@ const schemas = {
   'market.macro.generation': empty,
   'market.macro.allDaily': z.object({ retryMissing: z.boolean().optional() }).strict(),
   'market.macro.all': empty,
-  'market.macro.capital': empty,
+  'market.macro.capital': z.object({ retryMissing: z.boolean().optional() }).strict(),
   'market.macro.daily': empty,
   'market.macro.etf': empty,
   'market.macro.index': empty,

@@ -137,6 +137,48 @@ async function eventually(assertion: () => void): Promise<void> {
 }
 
 describe('HanaiService report lifecycle', () => {
+  it('freezes all chart inputs on generation day and preserves yesterday when source-date records update today', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T18:00:00+08:00'))
+    const f = fixture()
+    const { database, market, service } = f
+    const meta: ProviderMeta = { providerId: 'test', sourceName: '公开数据', sourceTimestamp: '2026-09-30', fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const cap = { points: [{ date: '2026-09-30', floatCap: 500000 }], checkedMonths: ['202609'], complete: true, meta }
+    const daily = { points: [{ date: '2026-10-27', assets: 400 }], expectedDays: 1, complete: true, meta: { ...meta, sourceTimestamp: '2026-10-27' } }
+    const capital = vi.spyOn(market, 'getMacroCapital').mockResolvedValue(cap)
+    const sizes = vi.spyOn(market, 'getMacroDaily').mockResolvedValue(daily)
+    const prices = vi.spyOn(market, 'getMacroIndex').mockResolvedValue({ points: [{ date: '2026-10-28', close: 4083 }], meta: { ...meta, sourceTimestamp: '2026-10-28' } })
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.macro.generate', {}, signal)
+      await vi.waitFor(async () => expect((await service.call('market.macro.generation', {}, signal)).state).toBe('partial'))
+      const yesterday = marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-28' }, signal), 'macro.chart')!
+      expect(yesterday).not.toBeNull()
+      expect(yesterday.date).toBe('2026-10-28')
+      expect(yesterday.capital).toEqual(cap)
+      expect(yesterday.daily).toEqual(daily)
+      expect(yesterday.meta.sourceTimestamp).toBe(yesterday.generatedAt)
+      vi.advanceTimersByTime(24 * 3_600_000)
+      capital.mockResolvedValue({ ...cap, points: [{ date: '2026-09-30', floatCap: 600000 }], meta: { ...meta, fetchedAt: new Date().toISOString() } })
+      sizes.mockResolvedValue({ ...daily, points: [{ date: '2026-10-28', assets: 550 }], meta: { ...meta, sourceTimestamp: '2026-10-28', fetchedAt: new Date().toISOString() } })
+      prices.mockResolvedValue({ points: [{ date: '2026-10-29', close: 4150 }], meta: { ...meta, sourceTimestamp: '2026-10-29', fetchedAt: new Date().toISOString() } })
+      await service.call('market.macro.generate', {}, signal)
+      await vi.waitFor(async () => expect((await service.call('market.macro.generation', {}, signal)).state).toBe('partial'))
+      const today = marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-29' }, signal), 'macro.chart')!
+      expect(today.daily?.points[0]?.assets).toBe(550)
+      expect(today.capital?.points[0]?.floatCap).toBe(600000)
+      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-28' }, signal), 'macro.chart')).toEqual(yesterday)
+      capital.mockResolvedValue(null); sizes.mockResolvedValue(null); prices.mockResolvedValue(null)
+      vi.advanceTimersByTime(61_000)
+      await service.call('market.macro.generate', {}, signal)
+      await vi.waitFor(async () => expect((await service.call('market.macro.generation', {}, signal)).state).toBe('failed'))
+      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-29' }, signal), 'macro.chart')).toEqual(today)
+      await service.call('cache.clear', { scope: 'market' }, signal)
+      const reloaded = new HanaiService({ ...f, version: 'test' })
+      expect(marketHistoryPanel(await reloaded.call('market.history.get', { date: '2026-10-28' }, signal), 'macro.chart')).toEqual(yesterday)
+      reloaded.dispose()
+    } finally { service.dispose(); database.close(); vi.useRealTimers() }
+  })
   it('keeps macro work in the host after the caller disconnects and archives subsequent batches', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-28T10:00:00+08:00'))
@@ -203,7 +245,7 @@ describe('HanaiService report lifecycle', () => {
       await service.call('market.history.list', {}, signal)
       expect(load).not.toHaveBeenCalled()
       await service.call('market.macro.capital', {}, signal)
-      expect(load).toHaveBeenLastCalledWith(null)
+      expect(load).toHaveBeenLastCalledWith(null, undefined)
       const snapshot = await service.call('market.history.get', { date: '2026-09-30' }, signal)
       expect(marketHistoryPanel(snapshot, 'macro.capital')).toEqual(first)
       expect(await service.call('market.history.get', { date: '2026-10-28' }, signal)).toBeNull()
@@ -211,7 +253,7 @@ describe('HanaiService report lifecycle', () => {
       const next = { ...first, checkedMonths: ['202608', ...first.checkedMonths], meta: { ...meta, fetchedAt: new Date().toISOString() } }
       load.mockResolvedValue(next)
       await service.call('market.macro.capital', {}, signal)
-      expect(load).toHaveBeenLastCalledWith(first)
+      expect(load).toHaveBeenLastCalledWith(first, undefined)
       const saved = await service.call('market.history.get', { date: '2026-09-30' }, signal)
       expect(marketHistoryPanel(saved, 'macro.capital')).toEqual(next)
       load.mockResolvedValue(null)
@@ -219,6 +261,27 @@ describe('HanaiService report lifecycle', () => {
       await service.call('cache.clear', { scope: 'market' }, signal)
       expect(await service.call('market.history.get', { date: '2026-09-30' }, signal)).toEqual(saved)
     } finally { database.close(); vi.useRealTimers() }
+  })
+  it('persists composite cap provenance at the latest source date and reads it without reconstruction requests', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-29T10:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const fetchedAt = new Date().toISOString()
+    const officialMeta: ProviderMeta = { providerId: 'sse-statistics', sourceName: '上交所月报', sourceTimestamp: '2026-09-30', fetchedAt: '2026-10-28T02:00:00Z', cacheState: 'fresh' }
+    const capital = { points: [{ date: '2026-09-30', floatCap: 500000 }], checkedMonths: ['202609'], complete: true, officialMeta,
+      reference: { points: [{ date: '2026-10-28', floatCap: 487032.31, membershipDate: '2026-10-26' }], checkedDates: ['2026-10-28'], missingDates: [], expectedDays: 1, complete: true,
+        meta: { ...officialMeta, providerId: 'baostock-eastmoney', sourceName: '重建参考', sourceTimestamp: '2026-10-28', fetchedAt } },
+      meta: { ...officialMeta, providerId: 'macro-capital', sourceName: '月报＋重建参考', sourceTimestamp: '2026-10-28', fetchedAt } }
+    const load = vi.spyOn(market, 'getMacroCapital').mockResolvedValue(capital)
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.macro.capital', { retryMissing: true }, signal)
+      expect(load).toHaveBeenLastCalledWith(null, true)
+      expect(await service.call('market.history.get', { date: '2026-09-30' }, signal)).toBeNull()
+      await service.call('cache.clear', { scope: 'market' }, signal)
+      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-28' }, signal), 'macro.capital')).toEqual(capital)
+      expect(load).toHaveBeenCalledOnce()
+    } finally { service.dispose(); database.close(); vi.useRealTimers() }
   })
   it('persists incremental daily ETF history and passes saved progress back to the provider without changing its source date', async () => {
     vi.useFakeTimers()
@@ -400,7 +463,7 @@ describe('HanaiService report lifecycle', () => {
       await service.call('dashboard.get', { refresh: false }, signal)
       await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
       const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
-      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !['global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily'].includes(key)), 'sector:SINA:new_blhy']))
+      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !key.startsWith('macro.') && !['global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily'].includes(key)), 'sector:SINA:new_blhy']))
       expect(marketHistoryPanel(snapshot, 'overview')).toMatchObject({ indices: [{ ...data.overview.indices[0], meta }], meta })
       expect(marketHistoryPanel(snapshot, 'breadth')).toEqual(width)
       expect(marketHistoryPanel(snapshot, 'industry')).toEqual(data.industry)

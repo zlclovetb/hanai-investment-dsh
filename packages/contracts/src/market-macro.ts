@@ -14,6 +14,7 @@ export interface MacroGenerationStatus {
   startedAt: string | null
   finishedAt: string | null
   availableAt: number
+  archiveError?: string
   panels: Array<{ endpoint: typeof MACRO_GENERATION_PANELS[number]['endpoint']; label: string;
     state: 'pending' | 'running' | 'completed' | 'partial' | 'failed'; checked: number; total: number; missing: number; error: string | null }>
 }
@@ -39,7 +40,35 @@ export interface MacroCapitalData {
   /** SSE monthly report daily tradable market cap, in CNY 100 million. */
   points: Array<{ date: string; floatCap: number }>
   checkedMonths: string[]
+  refreshMonths?: string[]
   complete: boolean
+  reference?: MacroCapitalReference | undefined
+  referenceError?: string | undefined
+  officialMeta?: ProviderMeta
+  meta: ProviderMeta
+}
+
+export interface MacroCapitalReference {
+  /** Rebuilt from historical weekly constituents and same-day per-stock tradable caps, not SSE observations. */
+  points: Array<{ date: string; floatCap: number; membershipDate: string }>
+  checkedDates: string[]
+  missingDates: Array<{ date: string; reason: string }>
+  expectedDays: number
+  complete: boolean
+  meta: ProviderMeta
+}
+
+/** An observation saved on generation day; each component retains its original source date. */
+export interface MacroChartData {
+  date: string
+  generatedAt: string
+  etfs: MacroEtfData | null
+  index: MacroIndexData | null
+  daily: MacroDailyEtfData | null
+  capital: MacroCapitalData | null
+  allEtfs: MacroAllEtfData | null
+  allDaily: MacroAllDailyData | null
+  task: MacroGenerationStatus
   meta: ProviderMeta
 }
 

@@ -67,7 +67,7 @@ const BRAND_NAME = 'Hanai Worth · 值见'
 
 const NAV: ReadonlyArray<{ page: TopPage; path: string; icon: string; label: string }> = [
   { page: 'dashboard', path: '/dashboard', icon: '◈', label: '今日市场' },
-  { page: 'macro', path: '/dashboard/macro', icon: '↳', label: '宏观数据' },
+  { page: 'macro', path: '/dashboard/macro', icon: '▥', label: '宏观数据' },
   { page: 'watch', path: '/watch', icon: '☆', label: '自选与发现' },
   { page: 'judgements', path: '/judgements', icon: '研', label: '大师研判' },
   { page: 'expert-chats', path: '/expert-chats', icon: '聊', label: '专家对谈' },
@@ -180,7 +180,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
           {NAV.map(item => (
             <button
               key={item.page}
-              className={`${activePage === item.page ? styles['navActive'] : ''} ${item.page === 'macro' ? styles['navChild'] : ''}`}
+              className={activePage === item.page ? styles['navActive'] : ''}
               onClick={() => navigate(item.path)}
               aria-current={activePage === item.page ? 'page' : undefined}
             >

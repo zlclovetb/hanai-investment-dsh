@@ -3,12 +3,44 @@ import { MarketMacroCapitalProvider, parseMacroCapital } from '../../src/provide
 import { SourceCircuit } from '../../src/providers/source-circuit.ts'
 import { FakeClock, HandlerHttpClient, jsonResponse } from '../helpers.ts'
 import { isMarketPanelPayload } from '../../../contracts/src/market-history.ts'
+import type { MacroCapitalData } from '../../../contracts/src/market-macro.ts'
 
 const NOW = Date.parse('2026-10-28T10:00:00+08:00')
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
 afterEach(() => vi.useRealTimers())
 
 describe('SSE CSI300 tradable market cap', () => {
+  it('supplements archives already marked complete from verified legacy reports without refetching or inventing recent values', async () => {
+    const clock = new FakeClock(NOW)
+    const http = new HandlerHttpClient(() => { throw new Error('must not fetch') })
+    const checkedMonths = Array.from({ length: 61 }, (_, i) => { const date = new Date(Date.UTC(2021, 9 + i, 1)); return date.toISOString().slice(0, 7).replace('-', '') })
+    const previous: MacroCapitalData = { points: [{ date: '2021-12-01', floatCap: 378027.78 }, { date: '2026-09-30', floatCap: 504119.48 }], checkedMonths, complete: true,
+      meta: { providerId: 'sse-statistics', sourceName: '上交所统计月报', sourceTimestamp: '2026-09-30', fetchedAt: new Date(NOW - 1000).toISOString(), cacheState: 'fresh' } }
+    const provider = new MarketMacroCapitalProvider(http, clock, new SourceCircuit({ clock }))
+    const result = (await provider.get(previous))!
+    expect(result.points).toHaveLength(26)
+    expect(result.points[0]).toEqual({ date: '2021-10-28', floatCap: 379575.33 })
+    expect(result.points.find(point => point.date === '2021-11-30')?.floatCap).toBe(376494.44)
+    expect(result.points.at(-1)).toEqual(previous.points.at(-1))
+    expect(result.meta.sourceName).toContain('PDF')
+    expect(isMarketPanelPayload('macro.capital', result)).toBe(true)
+    expect(await provider.get(result)).toEqual(result)
+    expect(http.requests).toHaveLength(0)
+    const partial = { ...previous, checkedMonths: checkedMonths.filter(month => month !== '202110' && month !== '202111'), complete: false }
+    expect((await provider.get(partial))?.points).toEqual(result.points)
+    expect(http.requests).toHaveLength(0)
+    const corrected = { ...previous, points: [{ date: '2021-10-28', floatCap: 379575.34 }, ...previous.points] }
+    expect((await provider.get(corrected))?.points[0]?.floatCap).toBe(379575.34)
+    clock.advance(6 * 3_600_000 + 1)
+    const enrichedBeforeRefresh = (await provider.get(previous))!
+    expect(enrichedBeforeRefresh.points).toEqual(result.points)
+    expect(enrichedBeforeRefresh.complete).toBe(false)
+    expect(enrichedBeforeRefresh.refreshMonths).toEqual(['202609', '202610'])
+    expect(enrichedBeforeRefresh.checkedMonths).toEqual(checkedMonths)
+    expect(isMarketPanelPayload('macro.capital', enrichedBeforeRefresh)).toBe(true)
+    expect(http.requests).toHaveLength(0)
+    expect((await provider.get(enrichedBeforeRefresh))?.points).toEqual(result.points)
+  })
   it('reads the explicit tradable cap field in hundred million yuan and rejects wrong dates, duplicates and substituted fields', () => {
     const row = { MDATE: '20260901', CPT_NGT: '527896.32', CLS: '4611.44' }
     expect(parseMacroCapital({ result: [row] }, '202609')).toEqual([{ date: '2026-09-01', floatCap: 527896.32 }])

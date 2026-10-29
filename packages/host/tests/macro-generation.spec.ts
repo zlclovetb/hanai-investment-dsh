@@ -10,6 +10,29 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-28T10:
 afterEach(() => vi.useRealTimers())
 
 describe('host macro background generation', () => {
+  it('continues reference-day progress after all months are checked and finishes partial on real gaps', async () => {
+    let calls = 0
+    const reference = { points: [], checkedDates: ['2026-10-26'], missingDates: [{ date: '2026-10-26', reason: 'missing one stock' }], expectedDays: 2, complete: false, meta }
+    const load = vi.fn(async (endpoint: string) => {
+      if (endpoint !== 'market.macro.capital') return daily
+      calls++
+      return { points: [{ date: '2026-09-30', floatCap: 500000 }], checkedMonths: ['202609', '202610'], complete: calls > 1,
+        reference: calls === 1 ? reference : { ...reference, checkedDates: [...reference.checkedDates, '2026-10-27'], complete: true }, meta }
+    })
+    const job = new MacroGeneration(load)
+    job.start()
+    await vi.waitFor(() => expect(job.get().state).toBe('partial'))
+    expect(calls).toBe(2)
+    expect(job.get().panels.find(panel => panel.endpoint === 'market.macro.capital')).toMatchObject({ state: 'partial', checked: 4, total: 4, missing: 1 })
+  })
+  it('reports chart snapshot write failures instead of reporting a successful generation', async () => {
+    const finish = vi.fn(() => { throw new Error('snapshot write failed') })
+    const job = new MacroGeneration(async () => daily, finish)
+    job.start()
+    await vi.waitFor(() => expect(job.get().state).toBe('partial'))
+    expect(job.get().archiveError).toBe('snapshot write failed')
+    expect(finish).toHaveBeenCalledTimes(1)
+  })
   it('returns immediately, deduplicates starts, continues batches without a browser, then stays idle', async () => {
     let release!: (value: typeof all) => void
     let batches = 0

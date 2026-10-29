@@ -1,11 +1,12 @@
 import type { MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, SectorBoard, StockQuote } from './index.ts'
-import { MACRO_ETFS, type MacroEtfInputs, type MacroAllDailyData, macroAllTotals, type MacroAllEtfData, type MacroCapitalData, type MacroEtfData, type MacroIndexData, type MacroDailyEtfData } from './market-macro.ts'
+import { MACRO_GENERATION_PANELS, MACRO_ETFS, type MacroChartData, type MacroEtfInputs, type MacroAllDailyData, macroAllTotals, type MacroAllEtfData, type MacroCapitalData, type MacroEtfData, type MacroIndexData, type MacroDailyEtfData } from './market-macro.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
 
-export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily'] as const
+export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart'] as const
 
 export interface MarketPanelPayloads {
+  'macro.chart': MacroChartData
   'macro.etf.inputs': MacroEtfInputs
   'macro.etf.all.daily': MacroAllDailyData
   'macro.etf.all.quarter': MacroAllEtfData
@@ -73,9 +74,43 @@ export function isMarketProviderMeta(value: unknown): value is ProviderMeta {
     && ['fresh', 'cached', 'stale', 'unavailable'].includes(String(value.cacheState))
 }
 
+function isCapitalReference(value: unknown, fetchedAt: string): boolean {
+  if (!object(value) || !isMarketProviderMeta(value.meta) || !Array.isArray(value.points) || !Array.isArray(value.checkedDates) || !Array.isArray(value.missingDates)
+    || !Number.isSafeInteger(value.expectedDays) || Number(value.expectedDays) < value.checkedDates.length || typeof value.complete !== 'boolean'
+    || value.complete !== (value.checkedDates.length === value.expectedDays) || Date.parse(value.meta.fetchedAt) > Date.parse(fetchedAt)) return false
+  const checked: unknown[] = value.checkedDates
+  const fetchedDate = beijingMarketDate(Date.parse(value.meta.fetchedAt))
+  return checked.every((date, i) => typeof date === 'string' && isMarketDate(date) && date <= fetchedDate && (i === 0 || String(checked[i - 1]) < date))
+    && value.points.every((point, i, rows) => object(point) && typeof point.date === 'string' && checked.includes(point.date)
+      && (i === 0 || (object(rows[i - 1]) && String(rows[i - 1].date) < point.date))
+      && typeof point.floatCap === 'number' && Number.isFinite(point.floatCap) && point.floatCap > 0
+      && typeof point.membershipDate === 'string' && isMarketDate(point.membershipDate) && point.membershipDate <= point.date && Date.parse(point.date) - Date.parse(point.membershipDate) <= 7 * 86_400_000)
+    && value.missingDates.every((row, i, rows) => object(row) && typeof row.date === 'string' && checked.includes(row.date) && typeof row.reason === 'string' && row.reason.length > 0
+      && (i === 0 || (object(rows[i - 1]) && String(rows[i - 1].date) < row.date)) && !(value.points as unknown[]).some(point => object(point) && point.date === row.date))
+    && checked.length === value.points.length + value.missingDates.length
+    && value.meta.sourceTimestamp === (value.points.length === 0 ? null : (value.points.at(-1) as { date: string }).date)
+}
+
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
+  if (key === 'macro.chart') return typeof value.date === 'string' && isMarketDate(value.date)
+    && typeof value.generatedAt === 'string' && Number.isFinite(Date.parse(value.generatedAt)) && beijingMarketDate(Date.parse(value.generatedAt)) === value.date
+    && isMarketProviderMeta(value.meta) && value.meta.sourceTimestamp === value.generatedAt && value.meta.fetchedAt === value.generatedAt
+    && object(value.task) && ['completed', 'partial'].includes(String(value.task.state)) && value.task.finishedAt === value.generatedAt
+    && typeof value.task.startedAt === 'string' && Number.isFinite(Date.parse(value.task.startedAt)) && Date.parse(value.task.startedAt) <= Date.parse(value.generatedAt)
+    && typeof value.task.availableAt === 'number' && Number.isFinite(value.task.availableAt)
+    && (value.task.archiveError === undefined || typeof value.task.archiveError === 'string')
+    && Array.isArray(value.task.panels) && value.task.panels.length === MACRO_GENERATION_PANELS.length
+    && MACRO_GENERATION_PANELS.every(expected => (value.task as { panels: unknown[] }).panels.filter(panel => object(panel) && panel.endpoint === expected.endpoint).length === 1)
+    && value.task.panels.every(panel => object(panel) && typeof panel.label === 'string' && ['completed', 'partial', 'failed'].includes(String(panel.state))
+      && [panel.checked, panel.total, panel.missing].every(n => Number.isSafeInteger(n) && Number(n) >= 0)
+      && (panel.error === null || typeof panel.error === 'string'))
+    && [['etfs', 'macro.etf'], ['index', 'macro.index'], ['daily', 'macro.etf.daily'], ['capital', 'macro.capital'], ['allEtfs', 'macro.etf.all.quarter'], ['allDaily', 'macro.etf.all.daily']]
+      .every(([field, panel]) => value[field!] === null || (isMarketPanelPayload(panel!, value[field!])
+        && marketDateFromMeta((value[field!] as { meta: ProviderMeta }).meta)! <= String(value.date)
+        && Date.parse((value[field!] as { meta: ProviderMeta }).meta.fetchedAt) <= Date.parse(String(value.generatedAt))))
+    && [value.etfs, value.index, value.daily, value.capital, value.allEtfs, value.allDaily].some(panel => panel !== null)
   if (key === 'macro.etf.inputs') return isMarketProviderMeta(value.meta) && Array.isArray(value.funds) && value.funds.length > 0 && value.funds.length <= 100
     && value.funds.every((fund, i, funds) => object(fund) && typeof fund.code === 'string' && /^\d{6}$/.test(fund.code)
       && !funds.slice(0, i).some(previous => object(previous) && previous.code === fund.code)
@@ -119,9 +154,17 @@ export function isMarketPanelPayload(key: string, value: unknown): boolean {
         && typeof point.assets === 'number' && Number.isFinite(point.assets) && point.assets > 0))
     && macroAllTotals(value as unknown as MacroAllEtfData).at(-1)?.date === value.meta.sourceTimestamp
   if (key === 'macro.capital') return isMarketProviderMeta(value.meta) && Array.isArray(value.points) && value.points.length > 0
+    && (value.reference === undefined || (isCapitalReference(value.reference, value.meta.fetchedAt) && (!value.complete || (object(value.reference) && value.reference.complete === true))))
+    && (value.referenceError === undefined || (typeof value.referenceError === 'string' && value.complete === false))
+    && (value.officialMeta === undefined || (isMarketProviderMeta(value.officialMeta) && object(value.points.at(-1))
+      && value.officialMeta.sourceTimestamp === value.points.at(-1).date && Date.parse(value.officialMeta.fetchedAt) <= Date.parse(value.meta.fetchedAt)))
     && typeof value.complete === 'boolean' && Array.isArray(value.checkedMonths)
     && value.checkedMonths.every((month, i, months) => typeof month === 'string' && /^\d{4}(0[1-9]|1[0-2])$/.test(month) && (i === 0 || String(months[i - 1]) < month))
-    && object(value.points.at(-1)) && value.meta.sourceTimestamp === value.points.at(-1).date
+    && (value.refreshMonths === undefined || (Array.isArray(value.refreshMonths)
+      && value.refreshMonths.every((month, i, months) => typeof month === 'string' && /^\d{4}(0[1-9]|1[0-2])$/.test(month) && (i === 0 || String(months[i - 1]) < month))
+      && (!value.complete || value.refreshMonths.length === 0)))
+    && object(value.points.at(-1)) && value.meta.sourceTimestamp === (value.officialMeta === undefined ? value.points.at(-1).date
+      : [String(value.points.at(-1).date), object(value.reference) && Array.isArray(value.reference.points) && object(value.reference.points.at(-1)) ? String(value.reference.points.at(-1).date) : ''].sort().at(-1))
     && value.points.every((point, i, points) => object(point) && typeof point.date === 'string' && isMarketDate(point.date)
       && (value.checkedMonths as unknown[]).includes(point.date.slice(0, 7).replace('-', ''))
       && (i === 0 || (object(points[i - 1]) && String(points[i - 1].date) < point.date))

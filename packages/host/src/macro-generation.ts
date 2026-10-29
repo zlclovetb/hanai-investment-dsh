@@ -8,7 +8,8 @@ export class MacroGeneration {
   private status: MacroGenerationStatus = { state: 'idle', startedAt: null, finishedAt: null, availableAt: 0, panels: [] }
   private controller = new AbortController()
   private disposed = false
-  constructor(private readonly load: (endpoint: Endpoint, first: boolean, signal: AbortSignal) => Promise<Result>) {}
+  constructor(private readonly load: (endpoint: Endpoint, first: boolean, signal: AbortSignal) => Promise<Result>,
+    private readonly finish: (status: MacroGenerationStatus) => void = () => {}) {}
 
   get(): MacroGenerationStatus { return structuredClone(this.status) }
 
@@ -31,9 +32,10 @@ export class MacroGeneration {
           const result = await this.load(panel.endpoint, count === -1, this.controller.signal)
           this.controller.signal.throwIfAborted()
           if (result === null || ['stale', 'unavailable'].includes(result.meta.cacheState)) throw new Error('取数失败，保留已保存记录；再次手动生成可续传')
-          panel.checked = 'checkedMonths' in result ? result.checkedMonths.length : 'expectedDays' in result ? result.points.length + ('missingDates' in result ? result.missingDates.length : 0) : 1
-          panel.total = 'expectedDays' in result ? result.expectedDays : 'checkedMonths' in result ? Math.max(panel.checked, result.complete ? panel.checked : panel.checked + 1) : 1
-          panel.missing = 'missingDates' in result ? result.missingDates.length : 0
+          panel.checked = 'checkedMonths' in result ? result.checkedMonths.length + (result.reference?.checkedDates.length ?? 0) : 'expectedDays' in result ? result.points.length + ('missingDates' in result ? result.missingDates.length : 0) : 1
+          panel.total = 'expectedDays' in result ? result.expectedDays : 'checkedMonths' in result ? Math.max(panel.checked, result.checkedMonths.length + (result.reference?.expectedDays ?? 0), result.complete ? panel.checked : panel.checked + 1) : 1
+          panel.missing = 'checkedMonths' in result ? result.reference?.missingDates.length ?? 0 : 'missingDates' in result ? result.missingDates.length : 0
+          if ('referenceError' in result && result.referenceError) throw new Error(result.referenceError)
           if (!('complete' in result) || result.complete || ('expectedDays' in result && panel.checked >= result.expectedDays)) {
             panel.state = panel.missing > 0 ? 'partial' : 'completed'
             return
@@ -50,6 +52,10 @@ export class MacroGeneration {
     this.status.state = this.status.panels.every(panel => panel.state === 'completed') ? 'completed'
       : this.status.panels.every(panel => panel.state === 'failed') ? 'failed' : 'partial'
     this.status.finishedAt = new Date().toISOString()
+    try { this.finish(this.get()) } catch (error) {
+      this.status.state = 'partial'
+      this.status.archiveError = error instanceof Error ? error.message : '整图快照保存失败'
+    }
   }
 
   dispose(): void { this.disposed = true; this.controller.abort() }

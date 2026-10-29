@@ -463,7 +463,7 @@ export interface HanaiEndpointMap {
   'market.macro.generation': { request: Record<string, never>; response: MacroGenerationStatus }
   'market.macro.allDaily': { request: { retryMissing?: boolean }; response: MacroAllDailyData | null }
   'market.macro.all': { request: Record<string, never>; response: MacroAllEtfData | null }
-  'market.macro.capital': { request: Record<string, never>; response: MacroCapitalData | null }
+  'market.macro.capital': { request: { retryMissing?: boolean }; response: MacroCapitalData | null }
   'market.macro.daily': { request: Record<string, never>; response: MacroDailyEtfData | null }
   'market.macro.etf': { request: Record<string, never>; response: MacroEtfData | null }
   'market.macro.index': { request: Record<string, never>; response: MacroIndexData | null }

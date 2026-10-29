@@ -920,7 +920,6 @@
   .expertChatExpertGrid { grid-template-columns: 1fr; }
 }
 
-.nav .navChild { padding-left: 30px; font-size: 12px; }
 .macroToolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .macroNotice { padding: 8px 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .macroNotice p { margin: 4px 0; }

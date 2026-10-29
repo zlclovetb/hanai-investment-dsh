@@ -16,6 +16,8 @@ export const SOURCE_PRIORITY = [
   'csi-products',
   'csi-index',
   'sse-statistics',
+  'baostock',
+  'eastmoney-valuation',
   'sse-etf',
   'szse-etf',
   'eastmoney-push2his',

@@ -1,13 +1,47 @@
 import { describe, expect, it } from 'vitest'
 import { MACRO_ETFS, type MacroEtfData } from '../../contracts/src/market-macro.ts'
 import { isMarketPanelPayload } from '../../contracts/src/market-history.ts'
-import { macroTotals, macroRatios, buildMacroOption } from '../src/macro-chart.ts'
+import { macroTotals, macroRatios, buildMacroOption, macroTooltip } from '../src/macro-chart.ts'
 import { getChartPalette } from '../src/chart-options.ts'
 
 const data: MacroEtfData = { funds: MACRO_ETFS.map(fund => ({ code: fund.code, points: [{ date: '2026-06-30', assets: 100 }] })),
   meta: { providerId: 'eastmoney-fund', sourceName: '公开季报', sourceTimestamp: '2026-06-30', fetchedAt: '2026-10-27T08:00:00Z', cacheState: 'fresh' } }
 
 describe('macro chart', () => {
+  it('extends both upper ratios with separately labeled reference segments and always prefers official values', () => {
+    const daily = { points: [{ date: '2026-09-30', assets: 2000 }, { date: '2026-10-28', assets: 3500 }], expectedDays: 2, complete: true, meta: data.meta }
+    const allDaily = { points: daily.points.map(point => ({ ...point, fourAssets: point.assets, otherAssets: 500, assets: point.assets + 500 })), funds: [], missingDates: [], expectedDays: 2, complete: true, universeAsOf: '2026-10-28', meta: data.meta }
+    const reference = { points: [{ date: '2026-09-30', floatCap: 1, membershipDate: '2026-09-28' }, { date: '2026-10-28', floatCap: 500000, membershipDate: '2026-10-26' }], checkedDates: ['2026-09-30', '2026-10-28'], missingDates: [], expectedDays: 2, complete: true, meta: data.meta }
+    const capital = { points: [{ date: '2026-09-30', floatCap: 500000 }], checkedMonths: ['202609'], complete: true, reference, meta: data.meta }
+    expect(macroRatios(daily, capital, allDaily)[0]?.ratio).toBeCloseTo(0.4)
+    expect(macroRatios(daily, capital, allDaily)[1]?.ratio).toBeCloseTo(0.7)
+    const option = buildMacroOption(null, null, getChartPalette('light'), '2026-10-28', daily, capital, null, allDaily)
+    const series = option.series as Array<{ name: string; lineStyle: { type?: string }; data: unknown[][] }>
+    const rebuilt = series.filter(row => row.name.includes('分母重建参考'))
+    expect(rebuilt).toHaveLength(2)
+    expect(rebuilt.map(row => row.data[0]?.[1])).toEqual([0.4, 0.5])
+    expect(rebuilt[0]?.data[1]?.[1]).toBeCloseTo(0.7)
+    expect(rebuilt[1]?.data[1]?.[1]).toBeCloseTo(0.8)
+    expect(rebuilt.map(row => row.lineStyle.type)).toEqual(['dashed', 'dotted'])
+    const published = { ...capital, points: [...capital.points, { date: '2026-10-28', floatCap: 400000 }] }
+    expect(macroRatios(daily, published).at(-1)?.ratio).toBeCloseTo(0.875)
+    expect((buildMacroOption(null, null, getChartPalette('light'), '2026-10-28', daily, published, null, allDaily).series as Array<{ name: string }>).some(row => row.name.includes('分母重建参考'))).toBe(false)
+  })
+  it('hides empty series and duplicate boundary anchors in the tooltip while retaining two decimal places', () => {
+    const timestamp = Date.parse('2026-09-30T00:00:00+08:00')
+    const row = (seriesName: string, value: number | null) => ({ seriesName, value: [timestamp, value], marker: '' })
+    const text = macroTooltip([row('头部四只沪深300ETF占比（左轴）', 0.455348), row('四只ETF占比（分母重建参考）', 0.455348), row('在列ETF占比（分母重建参考）', null)])
+    expect(text).toContain('2026-09-30')
+    expect(text).toContain('0.46')
+    expect(text).not.toContain('分母重建参考')
+    expect(macroTooltip([row('四只ETF占比（分母重建参考）', 0.711289)])).toContain('0.71')
+  })
+  it('does not bridge over an actual missing trading-day observation', () => {
+    const daily = { points: ['2026-09-30', '2026-10-08', '2026-10-09'].map(date => ({ date, assets: 2000 })), expectedDays: 3, complete: true, meta: data.meta }
+    const capital = { points: [{ date: '2026-09-30', floatCap: 500000 }], checkedMonths: ['202609'], complete: true, reference: { points: [{ date: '2026-10-09', floatCap: 490000, membershipDate: '2026-10-05' }], checkedDates: ['2026-10-08', '2026-10-09'], missingDates: [{ date: '2026-10-08', reason: 'missing' }], expectedDays: 2, complete: true, meta: data.meta }, meta: data.meta }
+    const series = buildMacroOption(null, null, getChartPalette('light'), '2026-10-09', daily, capital).series as Array<{ name: string; data: unknown[][] }>
+    expect(series.find(row => row.name.includes('分母重建参考'))?.data.slice(0, 2).map(point => point[1])).toEqual([null, null])
+  })
   it('draws the accepted blue dashed quarter reference only at complete quarter observations with matching caps', () => {
     const all = { ...data, universeAsOf: '2026-10-28', funds: data.funds.map(fund => ({ ...fund, name: fund.code, inceptionDate: '2013-01-01' })) }
     const capital = { points: [{ date: '2026-06-30', floatCap: 500000 }], checkedMonths: ['202606'], complete: false, meta: data.meta }
