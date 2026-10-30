@@ -16,6 +16,7 @@ export type ScanMetric = keyof typeof SCAN_FIELDS
 export type ScanSort = ScanMetric | 'code' | 'price' | 'changePct'
 export interface MarketScanQuery {
   search: string
+  industries?: string[]
   page: number
   ranges: Partial<Record<ScanMetric, { min?: number; max?: number }>>
   sort: ScanSort
@@ -59,6 +60,7 @@ export interface MarketScanData {
 export interface MarketScanResult { data: MarketScanData | null; error: string | null; historical: boolean }
 
 export function scanQueryError(query: MarketScanQuery): string | null {
+  if (query.industries && (query.industries.length > 20 || query.industries.some(value => typeof value !== 'string' || !value.trim() || value.length > 40 || /[,\x00-\x1f]/.test(value)))) return '行业条件无效'
   if (!Number.isSafeInteger(query.page) || query.page < 1 || query.page > 1000) return '页码无效'
   if (query.search.length > 80 || !['asc', 'desc'].includes(query.order) || ![...Object.keys(SCAN_FIELDS), 'code', 'price', 'changePct'].includes(query.sort)) return '查询、排序或方向无效'
   for (const [field, range] of Object.entries(query.ranges)) {
@@ -72,7 +74,7 @@ export function scanQueryError(query: MarketScanQuery): string | null {
 }
 
 export function normalizeScanQuery(query: MarketScanQuery): MarketScanQuery {
-  return { search: query.search.trim(), page: query.page, ranges: Object.fromEntries(Object.keys(SCAN_FIELDS).flatMap(key => {
+  return { search: query.search.trim(), ...(query.industries?.length ? { industries: [...new Set(query.industries.map(value => value.trim()))].sort() } : {}), page: query.page, ranges: Object.fromEntries(Object.keys(SCAN_FIELDS).flatMap(key => {
     const range = query.ranges[key as ScanMetric]
     return range ? [[key, { ...(range.min === undefined ? {} : { min: range.min }), ...(range.max === undefined ? {} : { max: range.max }) }]] : []
   })), sort: query.sort, order: query.order }
@@ -81,6 +83,7 @@ export function normalizeScanQuery(query: MarketScanQuery): MarketScanQuery {
 export function isMarketScanData(value: unknown): value is MarketScanData {
   const object = (item: unknown): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item)
   if (!object(value) || !object(value.query) || typeof value.query.search !== 'string' || !object(value.query.ranges) || typeof value.query.sort !== 'string' || typeof value.query.order !== 'string') return false
+  if (value.query.industries !== undefined && (!Array.isArray(value.query.industries) || value.query.industries.some(item => typeof item !== 'string'))) return false
   for (const range of Object.values(value.query.ranges)) if (!object(range) || Object.keys(range).some(key => !['min', 'max'].includes(key)) || Object.values(range).some(item => typeof item !== 'number')) return false
   if (scanQueryError(value.query as unknown as MarketScanQuery) !== null || !Number.isSafeInteger(value.total) || Number(value.total) < 0 || !Array.isArray(value.stocks) || value.stocks.length > 100 || typeof value.collectedOn !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.collectedOn)) return false
   if (value.snapshotDate !== null && (typeof value.snapshotDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.snapshotDate))) return false
@@ -88,9 +91,12 @@ export function isMarketScanData(value: unknown): value is MarketScanData {
   if (!validDate(value.collectedOn) || (typeof value.snapshotDate === 'string' && !validDate(value.snapshotDate))) return false
   if (value.stocks.length !== Math.min(100, Math.max(0, Number(value.total) - (Number(value.query.page) - 1) * 100))) return false
   const codes = new Set<string>()
+  const query = value.query as unknown as MarketScanQuery
   return value.stocks.every(row => {
     if (!object(row) || typeof row.code !== 'string' || !/^\d{6}$/.test(row.code) || codes.has(row.code) || row.secId !== `${row.code.startsWith('6') ? '1' : '0'}.${row.code}` || typeof row.name !== 'string' || !row.name || (row.industry !== null && typeof row.industry !== 'string')) return false
     codes.add(row.code)
     return [...Object.keys(SCAN_FIELDS), 'price', 'changePct'].every(key => row[key] === null || (typeof row[key] === 'number' && Number.isFinite(row[key])))
+      && (!query.industries?.length || (typeof row.industry === 'string' && query.industries.includes(row.industry)))
+      && Object.entries(query.ranges).every(([key, range]) => { const actual = row[key]; return typeof actual === 'number' && (range.min === undefined || actual >= range.min - 1e-8) && (range.max === undefined || actual <= range.max + 1e-8) })
   })
 }

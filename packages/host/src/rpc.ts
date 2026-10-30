@@ -12,7 +12,7 @@ const groupName = z.string().trim().min(1).max(20)
 const tradingDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 const scanValue = z.number().finite().min(-1e12).max(1e12)
 const scanQuery = z.object({
-  search: z.string().trim().max(80), page: z.number().int().min(1).max(1000),
+  search: z.string().trim().max(80), industries: z.array(z.string().trim().min(1).max(40)).max(20).optional(), page: z.number().int().min(1).max(1000),
   ranges: z.object(Object.fromEntries(Object.entries(SCAN_FIELDS).map(([key, field]) => [key, z.object(field.maximum ? { min: scanValue.optional(), max: scanValue.optional() } : { min: scanValue.optional() }).strict().optional()]))).strict(),
   sort: z.enum(['code', 'price', 'changePct', ...Object.keys(SCAN_FIELDS)]), order: z.enum(['asc', 'desc']),
 }).strict().refine(value => scanQueryError(value as MarketScanQuery) === null, '筛选范围或排序无效')
@@ -74,6 +74,8 @@ const schemas = {
   'judgement.revise': z.object({ id: identifier, instruction: z.string().trim().min(1).max(4000) }).strict(),
   'judgement.remove': z.object({ id: identifier }).strict(),
   'screener.list': empty,
+  'screener.result': z.object({ id: identifier }).strict(),
+  'screener.execute': z.object({ id: identifier }).strict(),
   'screener.get': z.object({ id: identifier }).strict(),
   'screener.remove': z.object({ id: identifier }).strict(),
   'screener.rename': z.object({ id: identifier, title: z.string().trim().min(1).max(80) }).strict(),

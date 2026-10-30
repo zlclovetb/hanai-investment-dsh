@@ -1,3 +1,4 @@
+import { AiScreener } from './ai-screener.ts'
 import { MarketScanService } from './market-scan.ts'
 import type { MarketScanData, MarketScanQuery } from '../../contracts/src/market-scan.ts'
 import { AI_SCREENER_ID } from '../../contracts/src/ai-screener.ts'
@@ -143,13 +144,14 @@ export class HanaiService {
   private securitySyncInProgress = false
   private readonly marketHistory: MarketHistoryStore
   private marketDateContext: { date: string; observedOn: string } | null = null
+  private readonly screener: AiScreener
   private readonly scan: MarketScanService
   private readonly macroSeries: MacroSeries
   private readonly macroIndicators: MacroIndicators
   startMacroUpdates(): void { this.macroSeries.start() }
 
   private disposed = false
-  dispose(): void { this.disposed = true; this.macroSeries.dispose(); this.macroIndicators.dispose() }
+  dispose(): void { this.disposed = true; this.screener.dispose(); this.macroSeries.dispose(); this.macroIndicators.dispose() }
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
@@ -161,6 +163,7 @@ export class HanaiService {
     this.defaultModel = options.defaultModel
     this.market = options.market
     this.scan = new MarketScanService((query, refresh) => this.market.getMarketScan?.(query, refresh) ?? Promise.resolve(null), this.marketHistory, this.database)
+    this.screener = new AiScreener(this.database, new ResearchWorkspace(this.paths), this.scan)
     this.macroIndicators = new MacroIndicators((id, range, signal) => {
       if (!this.market.getMacroIndicator) return Promise.reject(new Error('当前行情服务未提供宏观经济指标能力'))
       return this.market.getMacroIndicator(id, range, signal)
@@ -213,10 +216,20 @@ export class HanaiService {
           errorCode: 'recovery-session-missing',
           errorMessage: '上次启动在 DSH Session 完成绑定前中断，请删除后重新发起对谈。',
         })
+        if (chat.masterId === AI_SCREENER_ID && this.screener.has(chat.id)) {
+          try { this.screener.fail(chat.id, '上次解析在DSH会话绑定前中断，请重新发起选股') }
+          catch (cause) { this.database.updateExpertChat(chat.id, { errorCode: 'screening-recovery-failed', errorMessage: messageOf(cause) }) }
+        }
         continue
       }
       if (await this.sessions.isRunning(chat.dshSessionId)) {
         this.database.updateExpertChat(chat.id, { turnStatus: 'running', errorCode: null, errorMessage: null })
+      } else if (chat.masterId === AI_SCREENER_ID && this.screener.has(chat.id)) {
+        try {
+          const run = this.screener.get(chat.id)
+          this.database.updateExpertChat(chat.id, { turnStatus: 'idle' })
+          if (run && ['parsing', 'scanning'].includes(run.status)) this.finishScreening(chat.id)
+        } catch (cause) { this.database.updateExpertChat(chat.id, { turnStatus: 'failed', errorCode: 'screening-recovery-failed', errorMessage: messageOf(cause) }) }
       } else if (chat.turnStatus === 'queued' || chat.turnStatus === 'running' || chat.turnStatus === 'cancelling') {
         this.database.updateExpertChat(chat.id, { turnStatus: 'idle', errorCode: null, errorMessage: null })
       }
@@ -266,6 +279,12 @@ export class HanaiService {
         ? { errorCode: 'chat-turn-error', errorMessage: event.data.reason.error.message }
         : { errorCode: null, errorMessage: null }),
     })
+    if (chat.masterId === AI_SCREENER_ID && this.screener.has(chat.id)) {
+      try {
+        if (event.data.reason.kind === 'completed') this.finishScreening(chat.id)
+        else if (this.screener.get(chat.id)?.status === 'parsing') this.screener.fail(chat.id, `解析回合未完成：${event.data.reason.kind}`)
+      } catch (cause) { this.database.updateExpertChat(chat.id, { turnStatus: 'failed', errorCode: 'screening-result-failed', errorMessage: messageOf(cause) }) }
+    }
   }
 
   private async dispatch(
@@ -502,6 +521,8 @@ export class HanaiService {
       case 'judgement.remove': return this.removeJudgement(
         (request as HanaiRequest<'judgement.remove'>).id,
       )
+      case 'screener.result': { const { id } = request as HanaiRequest<'screener.result'>; this.getExpertChat(id, 'screener'); return this.screener.get(id) }
+      case 'screener.execute': { const { id } = request as HanaiRequest<'screener.execute'>; this.getExpertChat(id, 'screener'); return this.screener.execute(id) }
       case 'screener.list': return this.listConversations('screener')
       case 'screener.create': return this.createExpertChat({ ...(request as HanaiRequest<'screener.create'>), masterId: AI_SCREENER_ID }, 'screener')
       case 'screener.get': return this.getExpertChat((request as HanaiRequest<'screener.get'>).id, 'screener')
@@ -842,6 +863,7 @@ export class HanaiService {
         const context = snapshot && records ? { ...snapshot, records, panels: Object.keys(records), capturedAt: Object.values(records).map(row => row.capturedAt).sort().at(-1) ?? snapshot.capturedAt } : null
         workspace = new ResearchWorkspace(this.paths).prepare(id, context, kind === 'screener' ? { securities: this.database.screeningUniverse(), note: '仅代码名称参考，不含财务指标；不是全市场筛选结果' } : undefined)
       } else workspace = this.expertChats.prepareWorkspace(id, master).workspace
+      if (kind === 'screener' && input.openingMessage) this.screener.start(id, input.openingMessage)
       const sessionId = await this.sessions.create(`chat-${id}`, workspace, input.model)
       createdSessionId = sessionId
       chat = this.database.updateExpertChat(id, {
@@ -865,6 +887,7 @@ export class HanaiService {
           )
         }
       }
+      if (kind === 'screener') this.screener.fail(chat.id, messageOf(failure))
       this.database.updateExpertChat(chat.id, {
         turnStatus: 'failed',
         errorCode: `${kind}-chat-start-failed`,
@@ -872,6 +895,10 @@ export class HanaiService {
       })
       throw failure
     }
+  }
+
+  private finishScreening(id: string): void {
+    void this.screener.complete(id).catch(cause => { if (!this.disposed) this.database.updateExpertChat(id, { turnStatus: 'failed', errorCode: 'screening-result-failed', errorMessage: messageOf(cause) }) })
   }
 
   private conversationKind(chat: ExpertChat): 'expert' | 'research' | 'screener' {
@@ -890,12 +917,15 @@ export class HanaiService {
 
   private async removeExpertChat(id: string, kind: 'expert' | 'research' | 'screener' = 'expert'): Promise<HanaiResponse<'expert-chat.remove'>> {
     const chat = this.getExpertChat(id, kind)
+    if (this.screener.busy(id)) throw new Error('候选扫描正在进行，暂时不能删除')
     if (chat.dshSessionId !== null) {
       if (await this.sessions.isRunning(chat.dshSessionId)) throw new Error('会话正在回答，暂时不能删除')
       await this.sessions.archive(chat.dshSessionId)
     }
+    if (this.screener.busy(id)) throw new Error('候选扫描正在进行，暂时不能删除')
     this.expertChats.remove(id)
     this.database.removeExpertChat(id)
+    if (kind === 'screener') this.screener.remove(id)
     return this.listConversations(kind)
   }
 

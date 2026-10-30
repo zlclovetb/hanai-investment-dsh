@@ -18,6 +18,7 @@ export function scanParameters(input: MarketScanQuery): URLSearchParams {
   const query = normalizeScanQuery(input)
   const params = new URLSearchParams({ sort_by: sortFields[query.sort], sort_order: query.order, limit: '100', offset: String((query.page - 1) * 100) })
   if (query.search) params.set('search', query.search)
+  if (query.industries?.length) params.set('industries', query.industries.join(','))
   for (const [key, range] of Object.entries(query.ranges)) for (const side of ['min', 'max'] as const) {
     if (range[side] !== undefined) params.set(`${side}_${fields[key as ScanMetric]}`, String(range[side]! * (key === 'marketCap' ? 1e8 : key === 'netInflow5d' ? 1e4 : 1)))
   }
@@ -42,6 +43,7 @@ export function parseMarketScan(raw: unknown, query: MarketScanQuery, clock: Clo
       const actual = stock[key as ScanMetric]
       if (actual === null || (range.min !== undefined && actual < range.min - 1e-8) || (range.max !== undefined && actual > range.max + 1e-8)) throw new Error('88AI 返回了不满足筛选条件的记录')
     }
+    if (query.industries?.length && (stock.industry === null || !query.industries.includes(stock.industry))) throw new Error('88AI 返回了不满足行业条件的记录')
     return stock
   })
   return { query: normalizeScanQuery(query), total: Number(raw.total), stocks, collectedOn, snapshotDate: date as string | null,

@@ -276,6 +276,8 @@ export class HanaiDatabase {
     return row?.value ?? null
   }
 
+  removeSetting(key: string): void { this.sqlite.prepare('DELETE FROM app_settings WHERE key = ?').run(key) }
+
   setSetting(key: string, value: string): void {
     this.sqlite.prepare(`
       INSERT INTO app_settings(key, value, updated_at) VALUES(?, ?, ?)

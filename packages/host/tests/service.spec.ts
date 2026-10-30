@@ -614,6 +614,40 @@ describe('HanaiService report lifecycle', () => {
       expect(database.getExpertChat(expert.id)).not.toBeNull()
     } finally { database.close() }
   })
+  it('turns a completed DSH screening plan into a frozen source-backed result and blocks deletion while scanning', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-30T10:00:00+08:00'))
+    const { database, service, market, paths } = fixture()
+    const signal = new AbortController().signal
+    let release: (value: import('../../contracts/src/market-scan.ts').MarketScanData) => void = () => {}
+    let requested: import('../../contracts/src/market-scan.ts').MarketScanQuery | undefined
+    market.getMarketScan = vi.fn(query => { requested = query; return new Promise<import('../../contracts/src/market-scan.ts').MarketScanData>(resolve => { release = resolve }) })
+    try {
+      const question = '市值100亿元以上，ROE不低于15%'
+      const chat = await service.call('screener.create', { openingMessage: question }, signal)
+      expect((await service.call('screener.result', { id: chat.id }, signal))?.status).toBe('parsing')
+      writeFileSync(join(paths.expertChatsDir, chat.id, 'workspace', 'screening-plan.json'), JSON.stringify({ question, interpretation: '按市值和ROE查询', query: { search: '', page: 1, ranges: { marketCap: { min: 100 }, roe: { min: 15 } }, sort: 'marketCap', order: 'desc' }, assumptions: [], unsupported: [] }))
+      service.handleSessionEvent(chat.dshSessionId!, completed())
+      await expect(service.call('screener.remove', { id: chat.id }, signal)).rejects.toThrow('扫描正在进行')
+      release({ query: requested!, total: 0, stocks: [], snapshotDate: '2026-10-30', collectedOn: '2026-10-30', meta: { providerId: 'fake', sourceName: 'test', sourceTimestamp: '2026-10-30', fetchedAt: new Date().toISOString(), cacheState: 'fresh' } })
+      await vi.advanceTimersByTimeAsync(1)
+      const result = await service.call('screener.result', { id: chat.id }, signal)
+      expect(result?.status).toBe('ready'); expect(result?.result?.data?.query.ranges).toEqual({ roe: { min: 15 }, marketCap: { min: 100 } })
+      expect(market.getMarketScan).toHaveBeenCalledTimes(1)
+      await service.call('screener.remove', { id: chat.id }, signal)
+      expect(database.getSetting(`ai-screener.run.${chat.id}`)).toBeNull()
+    } finally { database.close(); vi.useRealTimers() }
+  })
+  it('marks a screening task interrupted before session binding as failed instead of polling forever', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-30T10:00:00+08:00'))
+    const { database, service } = fixture()
+    try {
+      const chat = database.createExpertChat({ id: 'unbound-screen', title: '解析中断', masterId: 'ai-stock-screener', masterName: 'AI选股', masterVersion: '1' })
+      database.setSetting(`ai-screener.run.${chat.id}`, JSON.stringify({ question: 'ROE不低于15%', status: 'parsing', plan: null, result: null, error: null, startedAt: new Date().toISOString(), finishedAt: null }))
+      await service.recover()
+      const run = await service.call('screener.result', { id: chat.id }, new AbortController().signal)
+      expect(run?.status).toBe('failed'); expect(run?.error).toContain('会话绑定前中断')
+    } finally { database.close(); vi.useRealTimers() }
+  })
   it('retains a failed screening query in its own history when model creation fails', async () => {
     const { database, service, sessions } = fixture()
     const signal = new AbortController().signal

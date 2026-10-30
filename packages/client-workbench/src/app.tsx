@@ -1,3 +1,4 @@
+import { AiScreenerPage } from './ai-screener.tsx'
 import { MarketScanPage } from './market-scan.tsx'
 import { ResearchAssistantPage } from './research-assistant.tsx'
 import { MarketLadderPanels, useMarketLadder } from './market-ladder.tsx'
@@ -259,7 +260,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
             <JudgementDetailPage client={client} id={route.judgementId} onBack={() => navigate('/judgements')} onRetry={(stock, masterId) => { setLaunchRequest({ key: Date.now(), stock, masterId }); navigate('/judgements') }} notify={notify} />
           )}
           {route.page === 'market-scan' && <MarketScanPage client={client} onStock={openStock} />}
-          {(route.page === 'screener' || route.page === 'screener-detail') && <ResearchAssistantPage key="screener" screening client={client} selectedId={route.page === 'screener-detail' ? route.chatId : null} onOpen={id => navigate(`/screener/${encodeURIComponent(id)}`)} onHome={() => navigate('/screener')} />}
+          {(route.page === 'screener' || route.page === 'screener-detail') && <AiScreenerPage groups={bootstrap.groups} onGroups={setGroups} onStock={openStock} client={client} selectedId={route.page === 'screener-detail' ? route.chatId : null} onOpen={id => navigate(`/screener/${encodeURIComponent(id)}`)} onHome={() => navigate('/screener')} />}
           {(route.page === 'research' || route.page === 'research-detail') && <ResearchAssistantPage key="research" client={client} selectedId={route.page === 'research-detail' ? route.chatId : null} onOpen={id => navigate(`/research/${encodeURIComponent(id)}`)} onHome={() => navigate('/research')} />}
           {(route.page === 'expert-chats' || route.page === 'expert-chat-detail') && (
             <ExpertChatsPage

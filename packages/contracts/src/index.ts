@@ -1,4 +1,5 @@
 import type { ResearchAttachment } from './research-assistant.ts'
+import type { ScreeningRun } from './ai-screener.ts'
 import type { MarketScanQuery, MarketScanResult } from './market-scan.ts'
 import type { MarketLadderData } from './market-ladder.ts'
 import type { MacroRange } from './macro-range.ts'
@@ -517,6 +518,8 @@ export interface HanaiEndpointMap {
   'judgement.remove': { request: { id: string }; response: Judgement[] }
   'research-chat.list': { request: Record<string, never>; response: ExpertChat[] }
   'screener.list': { request: Record<string, never>; response: ExpertChat[] }
+  'screener.result': { request: { id: string }; response: ScreeningRun | null }
+  'screener.execute': { request: { id: string }; response: ScreeningRun }
   'screener.create': { request: Omit<CreateExpertChatInput, 'masterId'>; response: ExpertChat }
   'screener.get': { request: { id: string }; response: ExpertChat }
   'screener.remove': { request: { id: string }; response: ExpertChat[] }

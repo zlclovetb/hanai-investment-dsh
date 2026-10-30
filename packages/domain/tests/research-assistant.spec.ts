@@ -49,3 +49,9 @@ it('rejects an attachment-directory junction rather than writing outside the wor
   expect(() => store.upload('r', 'notes.txt', Buffer.from('text').toString('base64'))).toThrow('符号链接')
   expect(existsSync(join(outside, 'notes.txt'))).toBe(false)
 })
+it('rejects a screening plan symlink instead of treating outside files as model output', () => {
+  const { store, root } = fixture(); const workspace = store.prepare('r', null)
+  const target = join(root, 'outside-plan.json'); mkdirSync(target)
+  symlinkSync(target, join(workspace, 'screening-plan.json'), 'junction')
+  expect(() => store.readScreeningPlan('r')).toThrow('受管 JSON')
+})

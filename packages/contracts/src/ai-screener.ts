@@ -1,4 +1,22 @@
 export const AI_SCREENER_ID = 'ai-stock-screener'
+import type { MarketScanQuery, MarketScanResult } from './market-scan.ts'
+
+export interface ScreeningPlan {
+  question: string
+  interpretation: string
+  query: MarketScanQuery
+  assumptions: string[]
+  unsupported: string[]
+}
+export interface ScreeningRun {
+  question: string
+  status: 'parsing' | 'needs-confirmation' | 'scanning' | 'ready' | 'failed'
+  plan: ScreeningPlan | null
+  result: MarketScanResult | null
+  error: string | null
+  startedAt: string
+  finishedAt: string | null
+}
 export const SCREENER_STARTERS = [
   { title: '低估值高分红', icon: '息', question: '筛选低估值、高分红的银行股，核实股息率口径、分红持续性与资产质量。' },
   { title: '半导体盈利改善', icon: '芯', question: '寻找半导体行业毛利率持续改善的公司，列出最近三期数据和原始财报依据。' },
