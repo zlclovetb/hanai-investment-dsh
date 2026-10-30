@@ -34,7 +34,7 @@ export function buildMarketActivityOption(trend: MarketIntradayData | null, sign
       itemStyle: { color }, label: { show: true, formatter: () => signal.name, color, fontSize: 10, position: signal.direction === 'up' ? 'top' : 'bottom', distance: 8 },
       tooltip: { formatter: () => `${signal.time} ${signal.title}`.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') } }]
   })
-  return { ...option, series: [...option.series, { type: 'scatter', name: '板块异动', data, symbolSize: 6, z: 10,
+  return { ...option, series: [...option.series.map((series, index) => ({ ...series, id: ['price', 'average', 'volume'][index] })), { id: 'signals', type: 'scatter', name: '板块异动', data, symbolSize: 6, z: 10,
     label: { show: true },
     // Explicit positions let ECharts retain its overlap shifts instead of reattaching labels to symbols.
     labelLayout: ({ labelRect }: { labelRect: { x: number; y: number; width: number } }) => ({ x: labelRect.x + labelRect.width / 2, y: labelRect.y,
@@ -131,7 +131,7 @@ export function MarketActivityPanel({ client, snapshot, historical, marketStatus
       </span>} />
   const content = <>
     {option === null ? <div className={styles['activityEmpty']}>{historical ? '该日期未保存大盘分时' : trendLoading ? '正在加载上证分时…' : '上证分时暂不可用'}</div>
-      : <EChart option={option} className={styles['activityChart']!} ariaLabel="大盘异动分时走势图" />}
+      : <EChart option={option} mergeKey={`${historical ? 'history' : 'live'}:${trend?.date}:${trend?.prevClose}:${palette.tooltipBackground}`} className={styles['activityChart']!} ariaLabel="大盘异动分时走势图" />}
     {(signals === null || signals.date !== trend?.date || signals.signals.length === 0) && <div className={styles['activityNotice']}>{historical && signals === null ? '该日期未保存板块异动' : signalsLoading ? '正在读取异动快讯…' : signals === null || signals.date !== trend?.date ? '板块异动暂不可用' : '当日暂无匹配的板块异动快讯'}</div>}
   </>
   return <>

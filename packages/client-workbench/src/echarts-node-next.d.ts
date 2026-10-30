@@ -9,7 +9,7 @@ declare module 'echarts/core' {
   export interface ECharts {
     on(event: 'click', handler: (params: unknown) => void): void
     off(event: 'click', handler: (params: unknown) => void): void
-    setOption(option: EChartsCoreOption, options?: { notMerge?: boolean }): void
+    setOption(option: EChartsCoreOption, options?: { notMerge?: boolean; replaceMerge?: string[]; lazyUpdate?: boolean }): void
     clear(): void
     resize(): void
     dispose(): void
