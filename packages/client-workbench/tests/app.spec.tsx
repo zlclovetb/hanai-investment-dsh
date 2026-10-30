@@ -458,27 +458,27 @@ describe('HanaiWorkbench old-client parity', () => {
   it.each([
     ['legu-breadth', '乐咕统计口径 · AKShare 同源'],
     ['eastmoney-breadth', '东方财富统计口径 · 沪深北非 ST'],
-  ])('labels the actual breadth scope for %s rather than hardcoding Eastmoney', async (providerId, hint) => {
+  ])('hides successful provenance for %s in the breadth header', async (providerId, hint) => {
     renderAt('/dashboard', makeClient({ 'market.breadth': () => ({ ...dashboard.overview.breadth,
       qdate: '2026-10-27', meta: { ...fresh, providerId },
     }) }))
-    expect(await screen.findByText(hint)).not.toBeNull()
-    if (providerId === 'legu-breadth') {
-      const card = screen.getByRole('heading', { name: '市场宽度' }).closest('article')!
-      expect(within(card).getByText('最新数据')).not.toBeNull()
-      expect(within(card).queryByText('实时')).toBeNull()
-    }
+    const heading = await screen.findByRole('heading', { name: '市场宽度' })
+    await act(async () => {})
+    const header = heading.closest('header')!
+    expect(within(header).queryByText(hint)).toBeNull()
+    expect(header.textContent).not.toMatch(/最新数据|实时|获取于|数据时间|来源/)
   })
 
-  it('shows breadth trading date separately from the actual acquisition time for a valid cache', async () => {
+  it('hides cache provenance during the active session without changing breadth values', async () => {
     const fetchedAt = '2026-10-27T06:13:58.176Z'
     renderAt('/dashboard', makeClient({ 'market.breadth': () => ({ ...dashboard.overview.breadth,
       qdate: '2026-10-27', meta: { ...fresh, providerId: 'legu-breadth',
         sourceTimestamp: '2026-10-27', fetchedAt, cacheState: 'cached' },
     }) }))
     const card = (await screen.findByRole('heading', { name: '市场宽度' })).closest('article')!
-    expect(within(card).getByText('缓存复用')).not.toBeNull()
-    expect(within(card).getByText(/交易日 2026-10-27 · 获取于/).textContent).toContain(new Date(fetchedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }))
+    await act(async () => {})
+    expect(within(card).getByLabelText('涨停、上涨、平盘、下跌、跌停分布')).toBeTruthy()
+    expect(card.querySelector('header')?.textContent).not.toMatch(/缓存复用|获取于|交易日|数据时间/)
     expect(within(card).queryByText(/数据.*08:00/)).toBeNull()
   })
 
@@ -517,18 +517,18 @@ describe('HanaiWorkbench old-client parity', () => {
       await act(async () => { renderAt('/dashboard', client) })
       const header = (title: string) => screen.getByRole('heading', { name: title }).closest('header')!
       for (const title of ['板块热力', '榜单']) {
-        expect(within(header(title)).getByText('午间休市')).toBeTruthy()
-        expect(within(header(title)).getByText(/新浪行情.*获取于/)).toBeTruthy()
+        expect(within(header(title)).getByText('休市缓存')).toBeTruthy()
+        expect(header(title).textContent).not.toMatch(/新浪行情|获取于/)
       }
-      expect(within(header('市场宽度')).getByText('午间休市')).toBeTruthy()
+      expect(within(header('市场宽度')).getByText('休市缓存')).toBeTruthy()
       await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
       expect(callsOf(client, 'dashboard.get')).toHaveLength(2)
       await act(async () => { vi.setSystemTime(new Date('2026-10-29T13:00:00+08:00')); await vi.advanceTimersByTimeAsync(30_000) })
       for (const title of ['板块热力', '榜单']) {
         expect(within(header(title)).queryByText('午间休市')).toBeNull()
-        expect(within(header(title)).getByText('最新数据')).toBeTruthy()
+        expect(header(title).textContent).not.toMatch(/最新数据|实时|休市缓存/)
       }
-      expect(within(header('市场宽度')).getByText('最新数据')).toBeTruthy()
+      expect(header('市场宽度').textContent).not.toMatch(/最新数据|实时|休市缓存/)
     } finally { cleanup(); vi.useRealTimers() }
   })
 
@@ -549,7 +549,7 @@ describe('HanaiWorkbench old-client parity', () => {
       expect(requests).toBe(2)
       expect(within(card).getByLabelText('涨停、上涨、平盘、下跌、跌停分布')).not.toBeNull()
       expect(within(card).getByText('30')).not.toBeNull()
-      expect(within(card).getByText('更新失败，沿用最近成功的完整宽度快照')).not.toBeNull()
+      expect(within(card).getByText(/涨跌家数：更新失败，沿用缓存/)).not.toBeNull()
       expect(within(card).getByText('刷新失败')).not.toBeNull()
       expect(within(card).queryByText('暂无涨跌分布数据')).toBeNull()
     } finally { cleanup(); vi.useRealTimers() }
@@ -1471,7 +1471,7 @@ describe('whole-page market history', () => {
     await act(async () => {})
     await selectDate(snapshot.date)
     expect(screen.getByLabelText('成交额版阿姆氏指标').textContent).toContain('0.33')
-    expect(screen.getByText('88AI投 · 含 ST', { exact: false })).toBeTruthy()
+    expect(screen.queryByText('88AI投 · 含 ST', { exact: false })).toBeNull()
     expect(callsOf(client, 'market.arms')).toHaveLength(1)
     await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
     expect(callsOf(client, 'market.arms')).toHaveLength(1)
@@ -1483,7 +1483,7 @@ describe('whole-page market history', () => {
     const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot })
     const view = renderAt('/dashboard', client)
     await act(async () => {})
-    expect(screen.getByText('休市快照 · 2026-10-27')).toBeTruthy()
+    expect(screen.getByText('休市缓存 · 2026-10-27')).toBeTruthy()
     expect(screen.queryByText(/历史记录不完整/)).toBeNull()
     view.unmount()
     delete snapshot.records['rank.amount']
@@ -1502,7 +1502,7 @@ describe('whole-page market history', () => {
       'market.history.get': request => (request as { date: string }).date === macro.date ? macro : previous })
     renderAt('/dashboard', client)
     await act(async () => {})
-    expect(screen.getByText('休市快照 · 2026-10-27')).toBeTruthy()
+    expect(screen.getByText('休市缓存 · 2026-10-27')).toBeTruthy()
     expect(screen.queryByText(/历史记录不完整/)).toBeNull()
   })
 
@@ -1536,7 +1536,7 @@ describe('whole-page market history', () => {
     await act(async () => {})
     const panel = screen.getByRole('region', { name: '指数行情' })
     expect(within(panel).getByRole('heading', { name: '指数行情' })).toBeTruthy()
-    expect(within(panel).getByText(/来源：.*数据时间：/)).toBeTruthy()
+    expect(within(panel).queryByText(/来源：.*数据时间：/)).toBeNull()
     const primary = within(panel).getByRole('group', { name: '主要指数' })
     expect(primary.querySelectorAll('article')).toHaveLength(6)
     expect(within(panel).queryByRole('group', { name: '更多指数' })).toBeNull()
@@ -1557,31 +1557,30 @@ describe('whole-page market history', () => {
     expect(['dashboard.get', 'market.breadth', 'market.indices'].map(endpoint => callsOf(client, endpoint).length)).toEqual(before)
   })
 
-  it('places dashboard provenance and snapshot states inside panel headers', async () => {
+  it('keeps successful dashboard headers free of source, time and live-state labels', async () => {
     const { container } = renderAt('/dashboard')
     await act(async () => {})
-    const provenance = [...container.querySelectorAll('article [class*="dataSource"], article [data-data-status]')]
-    expect(provenance.length).toBeGreaterThan(3)
-    expect(provenance.every(element => element.closest('header[data-panel-head]') !== null)).toBe(true)
+    expect(container.querySelectorAll('article [class*="dataSource"]')).toHaveLength(0)
     for (const title of ['指数行情', '大盘异动', '市场宽度', '板块热力', '榜单']) {
       expect(screen.getByRole('heading', { name: title }).closest('header')?.hasAttribute('data-panel-head')).toBe(true)
+      expect(screen.getByRole('heading', { name: title }).closest('header')?.textContent).not.toMatch(/获取于|数据时间|来源：|腾讯|新浪|同花顺|AKShare|88AI|最新数据|实时|刷新失败/)
     }
   })
 
-  it('polls overseas during US hours without polling the closed A-share panels', async () => {
+  it('keeps overseas archives cached during US hours while A shares are resting', async () => {
     vi.setSystemTime(new Date('2026-10-27T22:00:00+08:00'))
     const snapshot = historyFixture('2026-10-27')
     const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot })
     renderAt('/dashboard', client)
     await act(async () => {})
     const indexHeader = screen.getByRole('heading', { name: '指数行情' }).closest('header')!
-    expect(within(indexHeader).getByText('休市快照')).toBeTruthy()
-    expect(within(indexHeader).getByText('最新数据')).toBeTruthy()
-    for (const title of ['市场宽度', '板块热力', '榜单']) expect(within(screen.getByRole('heading', { name: title }).closest('header')!).getByText('休市快照')).toBeTruthy()
+    expect(within(indexHeader).getByText('休市缓存')).toBeTruthy()
+    expect(within(indexHeader).queryByText('最新数据')).toBeNull()
+    for (const title of ['市场宽度', '板块热力', '榜单']) expect(within(screen.getByRole('heading', { name: title }).closest('header')!).getByText('休市缓存')).toBeTruthy()
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
-    expect(callsOf(client, 'market.indices')).toHaveLength(1)
+    expect(callsOf(client, 'market.indices')).toHaveLength(0)
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
-    expect(callsOf(client, 'market.indices')).toHaveLength(2)
+    expect(callsOf(client, 'market.indices')).toHaveLength(0)
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
     expect(callsOf(client, 'market.breadth')).toHaveLength(0)
   })
@@ -1596,7 +1595,7 @@ describe('whole-page market history', () => {
       'market.history.get': request => (request as { date: string }).date === overnight.date ? overnight : friday })
     renderAt('/dashboard', client)
     await act(async () => {})
-    expect(screen.getByText('休市快照 · 2026-10-30')).toBeTruthy()
+    expect(screen.getByText('休市缓存 · 2026-10-30')).toBeTruthy()
     expect(screen.getByText('历史指数 2026-10-30')).toBeTruthy()
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
     expect(callsOf(client, 'market.breadth')).toHaveLength(0)
@@ -1608,7 +1607,7 @@ describe('whole-page market history', () => {
     const client = makeClient({ 'market.history.list': () => ({ snapshots: [{ ...snapshot, date: '2026-11-01' }, snapshot] }), 'market.history.get': () => snapshot })
     renderAt('/dashboard', client)
     await act(async () => {})
-    expect(screen.getByText('休市快照 · 2026-10-30')).toBeTruthy()
+    expect(screen.getByText('休市缓存 · 2026-10-30')).toBeTruthy()
     expect(screen.getByText('历史指数 2026-10-30')).toBeTruthy()
     expect(callsOf(client, 'market.history.get').map(call => call[1])).toEqual([{ date: '2026-10-30' }])
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
@@ -1618,13 +1617,15 @@ describe('whole-page market history', () => {
     expect(callsOf(client, 'sector.stocks')).toHaveLength(0)
     await act(async () => { await vi.advanceTimersByTimeAsync(65_000) })
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
-    expect(screen.getAllByText(/获取于 10\/30 15:06/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/获取于 10\/30 15:06/)).toBeNull()
+    expect(snapshot.records.overview!.meta.fetchedAt).toBe('2026-10-30T15:06:00+08:00')
     fireEvent.click(screen.getByRole('button', { name: '手动刷新今日市场' }))
     await act(async () => {})
     expect(callsOf(client, 'dashboard.get').map(call => call[1])).toEqual([{ refresh: true }])
     expect(callsOf(client, 'market.breadth')).toHaveLength(1)
+      expect(callsOf(client, 'market.indices')).toHaveLength(1)
     expect(screen.getByText('上证指数')).toBeTruthy()
-    expect(screen.queryByText('休市快照 · 2026-10-30')).toBeNull()
+    expect(screen.queryByText('休市缓存 · 2026-10-30')).toBeNull()
     expect((screen.getByRole('button', { name: '手动刷新今日市场' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -1634,13 +1635,13 @@ describe('whole-page market history', () => {
     const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot })
     renderAt('/dashboard', client)
     await act(async () => {})
-    expect(screen.getByText('休市快照 · 2026-10-26')).toBeTruthy()
+    expect(screen.getByText('休市缓存 · 2026-10-26')).toBeTruthy()
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
     expect(callsOf(client, 'dashboard.get')).toHaveLength(1)
     expect(callsOf(client, 'market.breadth')).toHaveLength(1)
     expect(screen.getByText('上证指数')).toBeTruthy()
-    expect(screen.queryByText('休市快照 · 2026-10-26')).toBeNull()
+    expect(screen.queryByText('休市缓存 · 2026-10-26')).toBeNull()
   })
 
   it.each(['previous-day', 'intraday', 'one-old-panel', 'one-old-index'])('automatically refreshes an outdated %s archive without starting manual cooldown', async reason => {
@@ -1673,7 +1674,7 @@ describe('whole-page market history', () => {
     renderAt('/dashboard', client)
     await act(async () => {})
     expect(screen.getByText('历史指数 2026-10-26')).toBeTruthy()
-    expect(screen.getByText('休市快照 · 2026-10-26')).toBeTruthy()
+    expect(screen.queryByText('休市缓存 · 2026-10-26')).toBeNull()
     expect(screen.getAllByText('行情源不可用').length).toBeGreaterThan(0)
     for (const title of ['指数行情', '市场宽度', '板块热力', '榜单']) expect(within(screen.getByRole('heading', { name: title }).closest('header')!).getByText('刷新失败')).toBeTruthy()
     expect(callsOf(client, 'dashboard.get')).toHaveLength(1)
@@ -1690,8 +1691,8 @@ describe('whole-page market history', () => {
     fireEvent.click(screen.getByRole('button', { name: '手动刷新今日市场' }))
     await act(async () => {})
     const header = screen.getByRole('heading', { name: '市场宽度' }).closest('header')!
-    expect(within(header).queryByText('休市快照')).toBeNull()
-    expect(within(header).getByText('已收盘')).toBeTruthy()
+    expect(within(header).getByText('休市缓存')).toBeTruthy()
+    expect(header.textContent).not.toMatch(/已收盘|实时|获取于|最新数据/)
   })
 
   it('retains the archive when the RPC succeeds but every dashboard provider is unavailable', async () => {
@@ -1708,7 +1709,7 @@ describe('whole-page market history', () => {
     renderAt('/dashboard', client)
     await act(async () => {})
     expect(screen.getByText('历史指数 2026-10-26')).toBeTruthy()
-    expect(screen.getByText('休市快照 · 2026-10-26')).toBeTruthy()
+    expect(screen.queryByText('休市缓存 · 2026-10-26')).toBeNull()
     expect(screen.getAllByText('所有首页行情源均不可用，保留最近成功快照').length).toBeGreaterThan(0)
   })
 
@@ -1737,7 +1738,7 @@ describe('whole-page market history', () => {
     const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot })
     renderAt('/dashboard', client)
     await act(async () => {})
-    expect(screen.getByText('休市快照 · 2026-10-27')).toBeTruthy()
+    expect(screen.getByText('休市缓存 · 2026-10-27')).toBeTruthy()
     expect(callsOf(client, 'dashboard.get')).toHaveLength(0)
     expect(callsOf(client, 'market.breadth')).toHaveLength(0)
     snapshot.records.industry!.meta = { ...snapshot.records.industry!.meta, sourceTimestamp: null }
@@ -1912,6 +1913,10 @@ function makeClient(overrides: Record<string, CallOverride> = {}): HanaiClient {
       case 'diagnostics.get': return bootstrap.diagnostics
       case 'dashboard.get': return dashboard
       case 'market.breadth': return { ...dashboard.overview.breadth, qdate: '2026-10-27', meta: fresh }
+      case 'market.arms': return { meta: fresh, point: { date: '2026-10-27', time: '10:00', upCount: 100, downCount: 200, flatCount: 3, upAmount: 300, downAmount: 200, trin: 1 / 3, adRatio: 0.5, amountRatio: 1.5, estimated: false } }
+      case 'market.distribution': return { total: 9, counts: { down10: 1, down5: 1, down2: 1, down0: 1, flat: 1, up0: 1, up2: 1, up5: 1, up10: 1 }, meta: fresh }
+      case 'market.intraday': return { date: '2026-10-27', prevClose: 3600, points: [{ time: '10:00', price: 3601, avgPrice: null, volume: 10 }], meta: fresh }
+      case 'market.signals': return { date: '2026-10-27', method: 'ths-sector-events-v2', signals: [], meta: fresh }
       case 'market.indices': return { indices: GLOBAL_INDICES.map(item => ({ ...dashboard.overview.indices[0]!, code: item.code, name: item.name, marketDate: '2026-10-27', meta: fresh })), meta: fresh }
       case 'market.history.list': return { snapshots: [] }
       case 'market.history.get': return null

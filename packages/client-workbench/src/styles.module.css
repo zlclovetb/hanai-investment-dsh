@@ -272,6 +272,11 @@
   .panelActions { grid-column: 2; }
   .panelMetadata { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
 }
+/* A lone status badge wraps by available space rather than the provenance breakpoint. */
+.panelHeadLayout:has(> .panelMetadata > [data-data-status]:only-child) { display: flex; flex-wrap: wrap; }
+.panelHeadLayout:has(> .panelMetadata > [data-data-status]:only-child) > .panelHeading,
+.panelHeadLayout:has(> .panelMetadata > [data-data-status]:only-child) > .panelActions { flex: 0 0 auto; }
+.panelHeadLayout:has(> .panelMetadata > [data-data-status]:only-child) > .panelMetadata { flex: 1 0 max-content; justify-content: center; }
 .panelHead h2 { margin: 0; color: var(--text); font-size: 13px; font-weight: 650; }
 .panelHeading > span { color: var(--faint); font-size: 10px; overflow-wrap: anywhere; }
 
@@ -329,23 +334,29 @@
 .activityDialog { position: fixed; margin: 0; padding: 0; transform: translateY(-50%); max-width: calc(100vw - 32px); overflow: auto; border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text); background: var(--panel); box-shadow: var(--shadow); }
 .activityDialog::backdrop { background: rgba(0, 0, 0, .35); }
 .activityDialog .activityChart { height: auto; aspect-ratio: 16 / 7; max-height: calc(var(--activity-dialog-height) - 100px); }
-.breadthBar { display: flex; height: 12px; gap: 2px; margin: 14px 16px 10px; overflow: hidden; border-radius: 999px; background: var(--bg-soft); }
+.breadthBar { display: flex; height: 10px; gap: 2px; margin: 10px 14px 8px; overflow: hidden; border-radius: 999px; background: var(--bg-soft); }
 .breadthBar i { display: block; height: 100%; }
 .breadthLimitUp { background: #c43142; }
 .breadthUp { background: #df4b5b; }
 .breadthFlat { background: #697183; }
 .breadthDown { background: #309c70; }
 .breadthLimitDown { background: #1e7b56; }
-.breadthStats { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; padding: 0 16px 14px; font-size: 11px; }
+.breadthStats { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 0 14px 9px; font-size: 11px; }
 .breadthStats b { margin-left: 3px; font: 650 12px ui-monospace, monospace; }
-.armsSummary { container-type: inline-size; margin: 0 16px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-soft); }
-.armsMetrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 12px 14px; }
+.breadthSection, .armsSummary { margin: 0 16px 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-soft); }
+.breadthSection:first-of-type { margin-top: 10px; }
+.breadthSection { min-width: 0; overflow: hidden; }
+.armsSummary { container-type: inline-size; }
+.armsMetrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 8px 14px; }
 .armsMetrics > div { min-width: 0; }
 .armsMetrics dt { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; }
 .armsMetrics dt small { padding: 1px 4px; border-radius: 3px; background: var(--hover); font-size: 9px; font-weight: 400; }
-.armsMetrics dd { margin: 5px 0 0; color: var(--text); font-size: 21px; line-height: 1.2; font-weight: 650; font-variant-numeric: tabular-nums; }
+.armsMetrics dd { margin: 4px 0 0; color: var(--text); font-size: 19px; line-height: 1.2; font-weight: 650; font-variant-numeric: tabular-nums; }
 .armsMetrics > div:first-child dd { color: var(--gold-strong); }
-.armsFlows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; padding: 10px 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.turnoverMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--border); }
+.turnoverMetrics > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.turnoverMetrics dd { margin: 0; font-size: 17px; }
+.armsFlows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; padding: 7px 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .armsFlows > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 8px; }
 .armsFlows b { color: var(--text); font-weight: 600; }
 .armsFlows small { color: var(--muted); font-size: 10px; font-weight: 400; }

@@ -9,7 +9,8 @@ import { isClosingPanelCurrent } from './market-history.tsx'
 import { isMarketOpen } from './market-hours.ts'
 import { EChart } from './echarts.tsx'
 import { number } from './format.ts'
-import { PanelHead, PanelDataMeta } from './panel-head.tsx'
+import { PanelHead } from './panel-head.tsx'
+import { MarketPanelStatus } from './market-panel-status.tsx'
 import styles from './styles.module.css'
 
 function latestTrend(previous: MarketIntradayData | null, incoming: MarketIntradayData): MarketIntradayData {
@@ -122,9 +123,11 @@ export function MarketActivityPanel({ client, snapshot, historical, marketStatus
     return () => { controller.abort(); window.clearInterval(timer) }
   }, [client, snapshot, historical, refreshVersion, onArchived])
   const option = useMemo(() => buildMarketActivityOption(trend, signals, palette), [trend, signals, palette])
-  const header = (zoomed: boolean) => <PanelHead title="大盘异动" hint="上证分时 · 同花顺快讯标注" meta={<>
-      {trend !== null && <PanelDataMeta meta={trend.meta} history={historical} resting={!historical && liveTrend?.archived === true} {...(marketStatus === 'break' ? { marketStatus: 'break' as const } : {})} liveCapable={false} refreshFailed={!historical && failed.trend} />}
-      {!historical && (failed.trend || failed.signals) && <small>部分更新失败，保留已有数据</small>}
+  const header = (zoomed: boolean) => <PanelHead title="大盘异动" hint="上证分时 · 板块异动" meta={<>
+      <MarketPanelStatus historical={historical} items={[
+        { label: '上证分时', meta: trend?.meta, failed: !historical && failed.trend },
+        { label: '异动快讯', meta: signals?.meta, failed: !historical && failed.signals },
+      ]} />
       {signals?.method !== 'ths-sector-events-v2' && signals !== null && <small>{historical ? '旧版异动快照，仅保存了部分事件' : '旧版异动数据，正在更新'}</small>}
     </>} extra={<span className={`${styles['metaText']} ${styles['activityActions']}`}>昨收 {number(trend?.prevClose ?? null)}
         <button className={styles['button']} aria-label={zoomed ? '缩小大盘异动' : '放大大盘异动'} aria-pressed={zoomed} autoFocus={zoomed} onClick={() => setExpanded(!zoomed)}>{zoomed ? '缩小' : '放大'}</button>
