@@ -320,7 +320,9 @@
 
 .marketContextGrid { margin-bottom: 12px; }
 .activityCard, .breadthCard { min-width: 0; }
-.activityCard .activityChart { height: 300px; }
+.activityCard { display: flex; flex-direction: column; }
+.activityCard > header { flex-shrink: 0; }
+.activityCard .activityChart { flex: 1; min-height: 300px; }
 .activityEmpty { min-height: 230px; display: grid; place-items: center; color: var(--muted); }
 .activityNotice { padding: 4px 16px 12px; font-size: 11px; color: var(--muted); }
 .activityActions { display: flex; align-items: center; gap: 10px; }
@@ -336,6 +338,21 @@
 .breadthLimitDown { background: #1e7b56; }
 .breadthStats { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; padding: 0 16px 14px; font-size: 11px; }
 .breadthStats b { margin-left: 3px; font: 650 12px ui-monospace, monospace; }
+.armsSummary { container-type: inline-size; margin: 0 16px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel-soft); }
+.armsMetrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 12px 14px; }
+.armsMetrics > div { min-width: 0; }
+.armsMetrics dt { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; }
+.armsMetrics dt small { padding: 1px 4px; border-radius: 3px; background: var(--hover); font-size: 9px; font-weight: 400; }
+.armsMetrics dd { margin: 5px 0 0; color: var(--text); font-size: 21px; line-height: 1.2; font-weight: 650; font-variant-numeric: tabular-nums; }
+.armsMetrics > div:first-child dd { color: var(--gold-strong); }
+.armsFlows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; padding: 10px 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.armsFlows > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 8px; }
+.armsFlows b { color: var(--text); font-weight: 600; }
+.armsFlows small { color: var(--muted); font-size: 10px; font-weight: 400; }
+@container (max-width: 360px) {
+  .armsMetrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .armsFlows { grid-template-columns: 1fr; }
+}
 
 .dashboardMainGrid { display: grid; grid-template-columns: minmax(0, 1.72fr) minmax(330px, 1fr); gap: 14px; }
 .treemapCard,

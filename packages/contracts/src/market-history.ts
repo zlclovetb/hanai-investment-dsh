@@ -6,10 +6,12 @@ import { isMacroRange } from './macro-range.ts'
 import type { MacroSeriesData } from './macro-series.ts'
 import { MACRO_INDICATORS } from './macro-indicators.ts'
 import type { MarketArmsData } from './market-arms.ts'
+import { DISTRIBUTION_BINS, type MarketDistributionData } from './market-distribution.ts'
 
-export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'arms', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
+export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'arms', 'distribution', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
 
 export interface MarketPanelPayloads {
+  distribution: MarketDistributionData
   arms: MarketArmsData
   'macro.series': MacroSeriesData
   'macro.chart': MacroChartData
@@ -100,6 +102,10 @@ function isCapitalReference(value: unknown, fetchedAt: string): boolean {
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
+  if (key === 'distribution') return isMarketProviderMeta(value.meta) && object(value.counts)
+    && Number.isSafeInteger(value.total) && Number(value.total) > 0
+    && DISTRIBUTION_BINS.every(([key]) => Number.isSafeInteger((value.counts as Record<string, unknown>)[key]) && Number((value.counts as Record<string, unknown>)[key]) >= 0)
+    && DISTRIBUTION_BINS.reduce((sum, [key]) => sum + Number((value.counts as Record<string, unknown>)[key]), 0) === value.total
   if (key === 'arms') {
     const point = value.point
     return isMarketProviderMeta(value.meta) && object(point)

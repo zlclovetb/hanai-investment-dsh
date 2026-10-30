@@ -465,7 +465,7 @@ describe('HanaiService report lifecycle', () => {
       store.save('macro.index', { points: [{ date: '2026-10-01', close: 4000 }], meta: summaryMeta }, summaryMeta, '2026-10-01')
       store.save('macro.index', { points: [{ date: '2026-10-26', close: 4000 }], meta: summaryMeta }, summaryMeta, '2026-10-26')
       const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
-      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !key.startsWith('macro.') && !['global.indices', 'intraday', 'signals', 'arms'].includes(key)), 'sector:SINA:new_blhy']))
+      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !key.startsWith('macro.') && !['global.indices', 'intraday', 'signals', 'arms', 'distribution'].includes(key)), 'sector:SINA:new_blhy']))
       expect(marketHistoryPanel(snapshot, 'overview')).toMatchObject({ indices: [{ ...data.overview.indices[0], meta }], meta })
       expect(marketHistoryPanel(snapshot, 'breadth')).toEqual(width)
       expect(marketHistoryPanel(snapshot, 'industry')).toEqual(data.industry)
@@ -502,6 +502,33 @@ describe('HanaiService report lifecycle', () => {
       await service.call('market.arms', {}, signal)
       const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
       expect(marketHistoryPanel(snapshot, 'arms')).toEqual(arms)
+    } finally { database.close(); vi.useRealTimers() }
+  })
+
+  it('archives undated distribution only after confirming the market date and preserves it on failure', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-30T16:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'sina-distribution', sourceName: '新浪涨跌分布', sourceTimestamp: null, fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
+    const data = { total: 9, counts: { down10: 1, down5: 1, down2: 1, down0: 1, flat: 1, up0: 1, up2: 1, up5: 1, up10: 1 }, meta }
+    const read = vi.fn().mockResolvedValue(data)
+    market.getMarketDistribution = read
+    const overviewMeta = { ...meta, sourceTimestamp: '2026-10-30T15:00:00+08:00' }
+    market.getDashboard = vi.fn().mockResolvedValue({
+      overview: { indices: [{ code: '000001', name: '上证', price: 3500, change: 0, changePct: 0, amount: 10, upCount: null, downCount: null, flatCount: null }], breadth: { totalAmount: 10 }, marketStatus: 'closed', meta: overviewMeta },
+      industry: { type: 'industry', sectors: [], meta }, concept: { type: 'concept', sectors: [], meta }, ranks: { gainers: [], losers: [], amount: [], turnover: [] },
+    })
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.distribution', {}, signal)
+      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-30' }, signal), 'distribution')).toBeNull()
+      await service.call('dashboard.get', {}, signal)
+      await service.call('market.distribution', {}, signal)
+      const saved = marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-30' }, signal), 'distribution')
+      expect(saved).toEqual(data)
+      read.mockResolvedValue(null)
+      await service.call('market.distribution', {}, signal)
+      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-30' }, signal), 'distribution')).toEqual(saved)
     } finally { database.close(); vi.useRealTimers() }
   })
 

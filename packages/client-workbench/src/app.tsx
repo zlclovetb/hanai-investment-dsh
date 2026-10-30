@@ -35,6 +35,7 @@ import type { MarketArmsData } from '../../contracts/src/market-arms.ts'
 import { DOMESTIC_INDICES, GLOBAL_INDICES, isGlobalMarketOpen, isGlobalSnapshotCurrent, type GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import { MacroPage } from './market-macro.tsx'
 import { MarketActivityPanel } from './market-activity.tsx'
+import { DistributionChart, useMarketDistribution } from './market-distribution.tsx'
 import {
   buildKlineOption,
   buildRadarOption,
@@ -324,6 +325,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const [rank, setRank] = useState<keyof DashboardData['ranks']>('gainers')
   const [sectorType, setSectorType] = useState<'industry' | 'concept'>('industry')
   const [sectorLoading, setSectorLoading] = useState(false)
+  const distribution = useMarketDistribution(client, historical ? history.snapshot : restingSnapshot, historical, liveData !== null, activityRefreshVersion, history.reloadIndex)
   const [drill, setDrill] = useState<{ code: string; name: string; stocks: StockQuote[] | null; meta: ProviderMeta | null } | null>(null)
   const drillGeneration = useRef(0)
   const drillController = useRef<AbortController | null>(null)
@@ -520,7 +522,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     history.selectDate(date)
   }
   const dateBar = <MarketHistoryBar history={history} onSelect={selectDate} />
-  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.') && key !== 'arms') : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals', 'arms'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
+  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.') && !['arms', 'distribution'].includes(key)) : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals', 'arms', 'distribution'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
   if ((historical ? history.loading : loading) && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><PageSkeleton cards={6} /></Page>
   if (historical && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title={history.error === null ? '该日期暂无历史记录' : '历史记录读取失败'} detail={history.error ?? '历史从成功归档的数据积累；未保存的日期无法还原，页面不会补入实时数据。'} action={<button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取</button>} /></Page>
   if (data === null) {
@@ -603,6 +605,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
         {!archived && (breadthMeta.cacheState === 'stale' || breadthFailed) && <small>更新失败，沿用最近成功的完整宽度快照</small>}
         </>}
         {arms && <><DataStateBadge meta={arms.meta} history={historical} resting={!historical && arms === savedArms} refreshFailed={armsFailed} /><DataSourceText meta={arms.meta} /></>}
+        {distribution.data && <><DataStateBadge meta={distribution.data.meta} history={historical} resting={distribution.resting} marketStatus={data.overview.marketStatus} liveCapable={false} refreshFailed={distribution.failed || distribution.data.meta.cacheState === 'stale'} /><DataSourceText meta={distribution.data.meta} /></>}
       </>} />
       {breadthTotal > 0 ? <>
         <div className={styles['breadthBar']} aria-label="涨停、上涨、平盘、下跌、跌停分布">
@@ -623,12 +626,20 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
         </div>
       </> : breadthLoading ? <div className={styles['breadthStats']} aria-label="市场宽度加载中"><span className={styles['cellSkeleton']} /></div>
         : <Empty compact title={archived ? '该日期未保存市场宽度' : '市场宽度暂不可用'} detail={archived ? '历史视图不会调用实时接口补齐。' : '行情源尚未返回市场宽度。'} />}
-      <div className={styles['breadthStats']} aria-label="成交额版阿姆氏指标">
-        <span>TRIN 公式1 <b>{arms?.point.trin == null ? '—' : arms.point.trin.toFixed(2)}</b></span>
-        <span>公式2 <b>{arms?.point.trin == null ? '—' : arms.point.trin.toFixed(2)}</b>（等价）</span>
-        <span>涨跌比 <b>{arms?.point.adRatio == null ? '—' : arms.point.adRatio.toFixed(2)}</b></span>
-        <span>成交额比 <b>{arms?.point.amountRatio == null ? '—' : arms.point.amountRatio.toFixed(2)}</b></span>
-        <span>{arms ? `上涨 ${arms.point.upCount} / ${money(arms.point.upAmount)} · 下跌 ${arms.point.downCount} / ${money(arms.point.downAmount)}${arms.point.estimated ? ' · 估算' : ''}` : historical ? '该日期未保存' : armsPending ? '加载中' : '数据不可用'}</span>
+      {distribution.data ? <DistributionChart data={distribution.data} theme={theme} />
+        : <Empty compact title={historical ? '该日期未保存涨跌分布' : distribution.pending ? '涨跌分布加载中' : '涨跌分布暂不可用'} detail="A 股含 ST · 九档涨跌幅区间，不代表涨跌停家数。" />}
+      <div className={styles['armsSummary']} aria-label="成交额版阿姆氏指标">
+        <dl className={styles['armsMetrics']}>
+          <div><dt>TRIN · 公式1</dt><dd>{arms?.point.trin == null ? '—' : arms.point.trin.toFixed(2)}</dd></div>
+          <div><dt>公式2 <small>等价</small></dt><dd>{arms?.point.trin == null ? '—' : arms.point.trin.toFixed(2)}</dd></div>
+          <div><dt>涨跌比</dt><dd>{arms?.point.adRatio == null ? '—' : arms.point.adRatio.toFixed(2)}</dd></div>
+          <div><dt>成交额比</dt><dd>{arms?.point.amountRatio == null ? '—' : arms.point.amountRatio.toFixed(2)}</dd></div>
+        </dl>
+        {arms ? <div className={styles['armsFlows']}>
+          <span><span className={styles['up']}>上涨</span><b>{arms.point.upCount.toLocaleString('zh-CN')}<small> 家</small></b><span>{money(arms.point.upAmount)}</span></span>
+          <span><span className={styles['down']}>下跌</span><b>{arms.point.downCount.toLocaleString('zh-CN')}<small> 家</small></b><span>{money(arms.point.downAmount)}</span></span>
+          {arms.point.estimated && <small>成交额含估算值</small>}
+        </div> : <div className={styles['armsFlows']}>{historical ? '该日期未保存' : armsPending ? '加载中' : '数据不可用'}</div>}
       </div>
     </article>
     </div>

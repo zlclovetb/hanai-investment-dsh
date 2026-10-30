@@ -31,7 +31,7 @@ export function isClosingSnapshotCurrent(snapshot: MarketHistorySnapshot, now = 
   if (snapshot.date !== latestClosingDate(now)) return false
   const current = (meta: ProviderMeta) => isClosingPanelCurrent(meta, now)
   for (const key of MARKET_HISTORY_PANELS) {
-    if (key.startsWith('macro.') || ['global.indices', 'intraday', 'signals', 'arms'].includes(key)) continue
+    if (key.startsWith('macro.') || ['global.indices', 'intraday', 'signals', 'arms', 'distribution'].includes(key)) continue
     const record = snapshot.records[key]
     if (record === undefined || marketHistoryPanel(snapshot, key) === null || !current(record.meta)) return false
   }

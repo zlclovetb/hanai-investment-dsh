@@ -2,6 +2,8 @@ import type { MacroRange } from '../../../contracts/src/macro-range.ts'
 import type { MacroIndicatorId } from '../../../contracts/src/macro-indicators.ts'
 import { MacroIndicatorProvider } from './macro-indicators.ts'
 import { fetchArms } from './market-arms.ts'
+import { fetchDistribution } from './market-distribution.ts'
+import type { MarketDistributionData } from '../../../contracts/src/market-distribution.ts'
 import type { MarketArmsData } from '../../../contracts/src/market-arms.ts'
 import type {
   DashboardData,
@@ -110,6 +112,7 @@ export class MarketDataService {
   private readonly securitiesCircuit: SourceCircuit
   private readonly breadthCache: ProviderCache<BreadthSnapshot>
   private readonly armsCache: ProviderCache<MarketArmsData>
+  private readonly distributionCache: ProviderCache<MarketDistributionData>
   private readonly http: HttpClient
   private readonly breadthTimeoutMs: number
 
@@ -134,11 +137,13 @@ export class MarketDataService {
       const open = beijing.getUTCDay() > 0 && beijing.getUTCDay() < 6 && minutes >= 565 && minutes <= 905
       return open ? 25_000 : 6 * 60 * 60_000
     })
-    this.armsCache = new ProviderCache(this.clock, () => {
+    const domesticTtl = () => {
       const bj = new Date(this.clock.now() + 8 * 3_600_000)
       const minutes = bj.getUTCHours() * 60 + bj.getUTCMinutes()
       return bj.getUTCDay() > 0 && bj.getUTCDay() < 6 && minutes >= 565 && minutes <= 905 ? 25_000 : 6 * 3_600_000
-    })
+    }
+    this.armsCache = new ProviderCache(this.clock, domesticTtl)
+    this.distributionCache = new ProviderCache(this.clock, domesticTtl)
     // 行情成功不能重置主数据列表的失败次数。
     this.securitiesCircuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
     this.tencent = new TencentProvider(http, this.clock, options.timeoutMs ?? 10_000)
@@ -185,6 +190,9 @@ export class MarketDataService {
       ['sina', '新浪', 'security'], ['eastmoney-push2', '东方财富', 'security'],
       ['legu', '乐咕乐股（AKShare 同源）', 'breadth'],
       ['88ai-arms', '88AI投（成交额版阿姆氏指标）', 'breadth'],
+      ['sina', '新浪涨跌分布', 'breadth'],
+      ['tencent', '腾讯涨跌分布', 'breadth'],
+      ['eastmoney-push2', '东方财富涨跌分布（兜底）', 'breadth'],
       ['sse-etf', '上交所ETF日份额', 'market'],
       ['szse-etf', '深交所ETF日份额', 'market'],
       ['eastmoney-fund', '东方财富基金规模', 'market'],
@@ -217,6 +225,18 @@ export class MarketDataService {
       const fallback = await this.callSource('eastmoney-push2ex', () => this.eastmoney.getBreadth())
       if (fallback === null) throw new Error('完整市场宽度数据源均不可用')
       return fallback
+    })
+  }
+
+  getMarketDistribution(): Promise<MarketDistributionData | null> {
+    return this.distributionCache.get('market', async () => {
+      const result = await this.circuit.first([
+        { source: 'tencent', run: () => fetchDistribution(this.http, this.clock, 'tencent', this.breadthTimeoutMs) },
+        { source: 'sina', run: () => fetchDistribution(this.http, this.clock, 'sina', this.breadthTimeoutMs) },
+        { source: 'eastmoney-push2', run: () => fetchDistribution(this.http, this.clock, 'eastmoney', this.breadthTimeoutMs) },
+      ])
+      if (result === null) throw new Error('涨跌分布来源均不可用')
+      return result
     })
   }
 
@@ -411,7 +431,7 @@ export class MarketDataService {
   }
 
   clearMarketCache(): number {
-    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
+    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.distributionCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
   }
 
   async syncSecurities(
