@@ -373,24 +373,38 @@ describe('HanaiService report lifecycle', () => {
   })
   it('archives independent overseas indices by observation date without rewriting their market dates', async () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
+    vi.setSystemTime(new Date('2026-10-27T14:00:00+08:00'))
     const { database, market, service } = fixture()
     const meta: ProviderMeta = { providerId: 'global-indices', sourceName: '海外指数汇总', sourceTimestamp: null, fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
     const data = { meta, indices: GLOBAL_INDICES.map(item => ({ code: item.code, name: item.name, price: 100, change: 0, changePct: 0, amount: null, upCount: null, downCount: null, flatCount: null,
-      marketDate: item.code === 'IXIC' ? '2026-10-26' : '2026-10-27', meta: { ...meta, sourceTimestamp: item.code === 'IXIC' ? '2026-10-26T20:00:00Z' : '2026-10-27T07:00:00Z' } })) }
-    vi.spyOn(market, 'getGlobalIndices').mockResolvedValue(data)
+      marketDate: item.code === 'IXIC' ? '2026-10-26' : '2026-10-27', meta: { ...meta, sourceTimestamp: item.code === 'IXIC' ? '2026-10-26T20:00:00Z' : '2026-10-27T05:59:00Z' } })) }
+    const fetchIndices = vi.spyOn(market, 'getGlobalIndices').mockResolvedValue(data)
     const dashboard = vi.spyOn(market, 'getDashboard')
     const signal = new AbortController().signal
     try {
       expect(await service.call('market.indices', {}, signal)).toEqual(data)
+      expect(fetchIndices).toHaveBeenCalledWith(false)
       expect(dashboard).not.toHaveBeenCalled()
       const record = await service.call('market.history.get', { date: '2026-10-27' }, signal)
       expect(marketHistoryPanel(record, 'global.indices')).toEqual(data)
       expect(await service.call('market.history.get', { date: '2026-10-26' }, signal)).toBeNull()
       vi.setSystemTime(new Date('2026-10-28T00:01:00+08:00'))
       vi.spyOn(market, 'getGlobalIndices').mockResolvedValue({ ...data, meta: { ...meta, cacheState: 'cached' } })
-      await service.call('market.indices', {}, signal)
+      const cached = await service.call('market.indices', {}, signal)
+      expect(cached.meta.cacheState).toBe('cached')
+      expect(cached.meta.fetchedAt).toBe(meta.fetchedAt)
+      expect(fetchIndices).toHaveBeenCalledTimes(1)
       expect(await service.call('market.history.get', { date: '2026-10-28' }, signal)).toBeNull()
+    } finally { database.close(); vi.useRealTimers() }
+  })
+  it('requests only memory cache for overseas indices when resting without an archive', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-28T00:01:00+08:00'))
+    const { database, market, service } = fixture()
+    const fetchIndices = vi.spyOn(market, 'getGlobalIndices')
+    try {
+      await service.call('market.indices', {}, new AbortController().signal)
+      expect(fetchIndices).toHaveBeenCalledWith(true)
     } finally { database.close(); vi.useRealTimers() }
   })
   it('never rebinds undated boards, ranks or sector caches to a different market day', async () => {

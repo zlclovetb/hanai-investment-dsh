@@ -51,6 +51,7 @@ import type { MacroAllDailyData, MacroEtfInputs, MacroAllEtfData, MacroCapitalDa
 import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
 import type { MarketArmsData } from '../../contracts/src/market-arms.ts'
+import { isMarketResting } from '../../contracts/src/market-hours.ts'
 import type { MarketDistributionData } from '../../contracts/src/market-distribution.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
@@ -72,7 +73,7 @@ export interface MarketFacade {
   getMacroIndex(range?: MacroRange): Promise<MacroIndexData | null>
   getMarketIntraday(): Promise<MarketIntradayData | null>
   getMarketSignals(): Promise<MarketSignalsData | null>
-  getGlobalIndices(): Promise<GlobalIndicesData>
+  getGlobalIndices(cacheOnly?: boolean): Promise<GlobalIndicesData>
   getDashboard(refresh?: boolean): Promise<DashboardData>
   getMarketBreadth(): Promise<MarketBreadthData | null>
   getMarketArms?(): Promise<MarketArmsData | null>
@@ -362,7 +363,15 @@ export class HanaiService {
         return result
       }
       case 'market.indices': {
-        const result = await this.market.getGlobalIndices()
+        const resting = isMarketResting()
+        if (resting) {
+          for (const entry of this.marketHistory.list('market')) {
+            if (entry.date > beijingMarketDate() || !entry.panels.includes('global.indices')) continue
+            const saved = marketHistoryPanel(this.marketHistory.get(entry.date), 'global.indices')
+            if (saved !== null) return { ...saved, meta: { ...saved.meta, cacheState: 'cached' }, indices: saved.indices.map(index => ({ ...index, meta: { ...index.meta, cacheState: index.meta.cacheState === 'fresh' ? 'cached' : index.meta.cacheState } })) }
+          }
+        }
+        const result = await this.market.getGlobalIndices(resting)
         this.recordProviderSuccess(GLOBAL_SUCCESS_SETTING, result.indices.map(item => item.meta))
         if (result.meta.cacheState !== 'unavailable' && result.meta.cacheState !== 'stale') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
         // The record is the Beijing-day observation; every overseas row retains its own market date.

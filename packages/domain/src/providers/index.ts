@@ -214,7 +214,7 @@ export class MarketDataService {
   getMacroDaily(previous: MacroDailyEtfData | null, inputs: MacroEtfInputs | null = null, range?: MacroRange) { return this.macroDaily.get(previous, inputs, range) }
   getMacroEtfs(range?: MacroRange) { return this.macro.getEtfs(range) }
   getMacroIndex(range?: MacroRange) { return this.macro.getIndex(range) }
-  getGlobalIndices() { return this.globalIndices.get() }
+  getGlobalIndices(cacheOnly = false) { return this.globalIndices.get(cacheOnly) }
   getMarketIntraday() { return this.activity.getIntraday() }
   getMarketSignals() { return this.activity.getSignals() }
 

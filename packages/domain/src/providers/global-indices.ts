@@ -115,8 +115,8 @@ export class GlobalIndexProvider {
     })
   }
 
-  async get(): Promise<GlobalIndicesData> {
-    const value = await this.cache.get('global', async () => {
+  async get(cacheOnly = false): Promise<GlobalIndicesData> {
+    const value = cacheOnly ? this.cache.peek('global') : await this.cache.get('global', async () => {
       const found = new Map<string, GlobalIndexQuote>()
       for (const source of ['tencent', 'sina', 'eastmoney-push2'] as const) {
         const codes = GLOBAL_INDICES.filter(item => !found.has(item.code) && (source !== 'tencent' || QQ[item.code] !== undefined)).map(item => item.code)

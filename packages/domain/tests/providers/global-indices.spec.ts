@@ -15,6 +15,23 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
 afterEach(() => vi.useRealTimers())
 
 describe('independent global index batches', () => {
+  it('returns cached quotes without HTTP even after their TTL expires, and does not fetch on an empty cache-only read', async () => {
+    const clock = new FakeClock(NOW)
+    const http = new HandlerHttpClient(url => ({ status: 200, body: url.includes('qt.gtimg') ? tencent : sina }))
+    const provider = new GlobalIndexProvider(http, clock)
+    expect((await provider.get(true)).meta.cacheState).toBe('unavailable')
+    expect(http.requests).toHaveLength(0)
+    const initial = await provider.get()
+    const calls = http.requests.length
+    clock.advance(24 * 3_600_000)
+    const cached = await provider.get(true)
+    expect(http.requests).toHaveLength(calls)
+    expect(cached.meta.cacheState).toBe('cached')
+    expect(cached.meta.fetchedAt).toBe(initial.meta.fetchedAt)
+    expect(cached.indices.map(row => row.meta.sourceTimestamp)).toEqual(initial.indices.map(row => row.meta.sourceTimestamp))
+    await provider.get()
+    expect(http.requests.length).toBeGreaterThan(calls)
+  })
   it('loads five exact cash indices in two requests and preserves market dates and New York DST', async () => {
     const clock = new FakeClock(NOW)
     const http = new HandlerHttpClient(url => ({ status: 200, body: url.includes('qt.gtimg') ? tencent : sina }))
