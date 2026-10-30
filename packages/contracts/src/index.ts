@@ -1,3 +1,4 @@
+import type { ResearchAttachment } from './research-assistant.ts'
 import type { MarketLadderData } from './market-ladder.ts'
 import type { MacroRange } from './macro-range.ts'
 import type { MacroSeriesData } from './macro-series.ts'
@@ -511,6 +512,12 @@ export interface HanaiEndpointMap {
   'judgement.get': { request: { id: string }; response: JudgementDetail }
   'judgement.revise': { request: { id: string; instruction: string }; response: Judgement }
   'judgement.remove': { request: { id: string }; response: Judgement[] }
+  'research-chat.list': { request: Record<string, never>; response: ExpertChat[] }
+  'research-chat.create': { request: Omit<CreateExpertChatInput, 'masterId'>; response: ExpertChat }
+  'research-chat.get': { request: { id: string }; response: ExpertChat }
+  'research-chat.remove': { request: { id: string }; response: ExpertChat[] }
+  'research-chat.rename': { request: { id: string; title: string }; response: ExpertChat }
+  'research-chat.upload': { request: { id: string; name: string; data: string }; response: ResearchAttachment }
   'expert-chat.list': { request: Record<string, never>; response: ExpertChat[] }
   'expert-chat.create': { request: CreateExpertChatInput; response: ExpertChat }
   'expert-chat.get': { request: { id: string }; response: ExpertChat }

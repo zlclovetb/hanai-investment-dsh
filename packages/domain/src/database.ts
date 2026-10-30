@@ -107,6 +107,7 @@ export interface CreateExpertChatRecord {
 }
 
 export interface ExpertChatUpdate {
+  title?: string
   dshSessionId?: string | null
   turnStatus?: TurnStatus
   errorCode?: string | null
@@ -620,6 +621,7 @@ export class HanaiDatabase {
       fields.push(`${column} = ?`)
       values.push(value)
     }
+    if (update.title !== undefined) add('title', update.title)
     if ('dshSessionId' in update) add('dsh_session_id', update.dshSessionId ?? null)
     if ('turnStatus' in update) add('turn_status', update.turnStatus)
     if ('errorCode' in update) add('error_code', update.errorCode ?? null)

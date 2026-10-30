@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { parseHanaiRequest } from '../src/rpc.ts'
 
 describe('Hanai RPC request validation', () => {
+  it('bounds research requests and keeps their conversation scope separate', () => {
+    expect(parseHanaiRequest('research-chat.create', { openingMessage: ' 研究现金流 ' })).toEqual({ openingMessage: '研究现金流' })
+    expect(parseHanaiRequest('research-chat.upload', { id: 'chat-1', name: '报告.txt', data: 'YWJj' })).toEqual({ id: 'chat-1', name: '报告.txt', data: 'YWJj' })
+    expect(() => parseHanaiRequest('research-chat.create', { masterId: 'some-master' })).toThrow()
+    expect(() => parseHanaiRequest('research-chat.remove', { id: '../chat-1' })).toThrow()
+    expect(() => parseHanaiRequest('research-chat.upload', { id: 'chat-1', name: '报告.txt', data: 'a'.repeat(6990509) })).toThrow()
+    expect(() => parseHanaiRequest('research-chat.rename', { id: 'chat-1', title: ' ' })).toThrow()
+  })
   it('accepts only registered economic topics and bounded calendar ranges', () => {
     const range = { from: '2020-01-01', to: '2025-01-01' }
     expect(parseHanaiRequest('market.macro.indicators', { topic: 'credit', range, refresh: true })).toEqual({ topic: 'credit', range, refresh: true })

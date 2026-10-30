@@ -282,7 +282,7 @@ describe('HanaiWorkbench old-client parity', () => {
     expect(document.title).toBe('今日市场 — Hanai Worth · 值见')
     const nav = screen.getByRole('navigation', { name: '主导航' })
     expect(within(nav).getAllByRole('button').map(button => button.querySelector('span:last-child')?.textContent)).toEqual([
-      '今日市场', '宏观数据', '自选与发现', '大师研判', '专家对谈', '专家中心', '设置与诊断',
+      '今日市场', '宏观数据', '自选与发现', 'AI研究助手', '大师研判', '专家对谈', '专家中心', '设置与诊断',
     ])
     expect(container.querySelector('[data-theme="dark"]')).not.toBeNull()
     expect(screen.queryByText('市场全景')).toBeNull()

@@ -64,6 +64,15 @@ const schemas = {
   'judgement.get': z.object({ id: identifier }).strict(),
   'judgement.revise': z.object({ id: identifier, instruction: z.string().trim().min(1).max(4000) }).strict(),
   'judgement.remove': z.object({ id: identifier }).strict(),
+  'research-chat.list': empty,
+  'research-chat.get': z.object({ id: identifier }).strict(),
+  'research-chat.remove': z.object({ id: identifier }).strict(),
+  'research-chat.rename': z.object({ id: identifier, title: z.string().trim().min(1).max(80) }).strict(),
+  'research-chat.upload': z.object({ id: identifier, name: z.string().trim().min(1).max(180), data: z.string().min(4).max(6990508) }).strict(),
+  'research-chat.create': z.object({
+    openingMessage: z.string().trim().min(1).max(4000).optional(),
+    model: z.object({ provider: z.string().trim().min(1).max(100), model: z.string().trim().min(1).max(200), reasoningEffort: z.string().trim().min(1).max(50).optional() }).strict().optional(),
+  }).strict(),
   'expert-chat.list': empty,
   'expert-chat.create': z.object({
     masterId: identifier,

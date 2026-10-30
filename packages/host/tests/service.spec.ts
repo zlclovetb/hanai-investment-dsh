@@ -583,6 +583,36 @@ describe('HanaiService report lifecycle', () => {
     } finally { database.close() }
   })
 
+  it('creates an independent research assistant, scopes its endpoints, persists attachments, and removes its workspace', async () => {
+    const { database, paths, service, sessions } = fixture()
+    const signal = new AbortController().signal
+    try {
+      const chat = await service.call('research-chat.create', { openingMessage: '研究存储产业链', model: { provider: 'test', model: 'research-model' } }, signal)
+      expect(chat).toMatchObject({ masterId: 'ai-research-assistant', masterName: 'AI研究助手', title: '研究存储产业链', model: 'research-model', turnStatus: 'queued' })
+      expect(sessions.prompts.at(-1)?.text).toBe('研究存储产业链')
+      expect(await service.call('research-chat.list', {}, signal)).toEqual([chat])
+      expect(await service.call('expert-chat.list', {}, signal)).toEqual([])
+      expect((await service.call('bootstrap', {}, signal)).expertChats).toEqual([])
+      await expect(service.call('expert-chat.get', { id: chat.id }, signal)).rejects.toThrow('不存在')
+      const expert = await service.call('expert-chat.create', { masterId: 'sun-yuchen-perspective' }, signal)
+      await expect(service.call('research-chat.get', { id: expert.id }, signal)).rejects.toThrow('不存在')
+      await expect(service.call('research-chat.upload', { id: expert.id, name: 'x.txt', data: 'eA==' }, signal)).rejects.toThrow('不存在')
+      await expect(service.call('research-chat.rename', { id: expert.id, title: '不能跨类型改名' }, signal)).rejects.toThrow('不存在')
+      const workspace = join(paths.expertChatsDir, chat.id, 'workspace')
+      expect(readFileSync(join(workspace, 'AGENTS.md'), 'utf8')).toContain('AI研究助手')
+      expect(JSON.parse(readFileSync(join(workspace, 'market-context.json'), 'utf8'))).toBeNull()
+      const file = await service.call('research-chat.upload', { id: chat.id, name: '公告.txt', data: Buffer.from('公告原文').toString('base64') }, signal)
+      expect(readFileSync(join(workspace, file.path), 'utf8')).toBe('公告原文')
+      const renamed = await service.call('research-chat.rename', { id: chat.id, title: '新的研究标题' }, signal)
+      expect(renamed.title).toBe('新的研究标题')
+      sessions.running = true
+      await expect(service.call('research-chat.remove', { id: chat.id }, signal)).rejects.toThrow('正在回答')
+      sessions.running = false
+      expect(await service.call('research-chat.remove', { id: chat.id }, signal)).toEqual([])
+      expect(existsSync(workspace)).toBe(false)
+      expect(database.getExpertChat(expert.id)).not.toBeNull()
+    } finally { database.close() }
+  })
   it('creates a stock-independent expert chat, tracks DSH turns, and removes its workspace safely', async () => {
     const { database, paths, service, sessions } = fixture()
     const created = await service.call('expert-chat.create', {

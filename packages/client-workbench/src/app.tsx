@@ -1,3 +1,4 @@
+import { ResearchAssistantPage } from './research-assistant.tsx'
 import { MarketLadderPanels, useMarketLadder } from './market-ladder.tsx'
 import {
   useCallback,
@@ -59,12 +60,13 @@ import { DataSources } from './data-sources.tsx'
 import { classForChange, dateTime, money, number, percent, quantity, ratio } from './format.ts'
 import styles from './styles.module.css'
 
-type TopPage = 'macro' | 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
+type TopPage = 'research' | 'macro' | 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
 type AppRoute =
   | { page: TopPage }
   | { page: 'stock'; secId: string }
   | { page: 'judgement-detail'; judgementId: string }
   | { page: 'expert-chat-detail'; chatId: string }
+  | { page: 'research-detail'; chatId: string }
 type Notice = { id: number; kind: 'success' | 'error'; text: string }
 type JudgementLaunchRequest = { key: number; stock: SearchResult | null; masterId: string | null }
 
@@ -74,6 +76,7 @@ const NAV: ReadonlyArray<{ page: TopPage; path: string; icon: string; label: str
   { page: 'dashboard', path: '/dashboard', icon: '◈', label: '今日市场' },
   { page: 'macro', path: '/dashboard/macro', icon: '▥', label: '宏观数据' },
   { page: 'watch', path: '/watch', icon: '☆', label: '自选与发现' },
+  { page: 'research', path: '/research', icon: 'AI', label: 'AI研究助手' },
   { page: 'judgements', path: '/judgements', icon: '研', label: '大师研判' },
   { page: 'expert-chats', path: '/expert-chats', icon: '聊', label: '专家对谈' },
   { page: 'personas', path: '/personas', icon: '◉', label: '专家中心' },
@@ -172,7 +175,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
     ? 'judgements'
     : route.page === 'expert-chat-detail'
       ? 'expert-chats'
-      : route.page === 'stock' ? null : route.page
+      : route.page === 'research-detail' ? 'research' : route.page === 'stock' ? null : route.page
 
   return (
     <div className={styles['app']} data-theme={bootstrap.theme} data-hanai-root>
@@ -251,6 +254,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
           {route.page === 'judgement-detail' && (
             <JudgementDetailPage client={client} id={route.judgementId} onBack={() => navigate('/judgements')} onRetry={(stock, masterId) => { setLaunchRequest({ key: Date.now(), stock, masterId }); navigate('/judgements') }} notify={notify} />
           )}
+          {(route.page === 'research' || route.page === 'research-detail') && <ResearchAssistantPage client={client} selectedId={route.page === 'research-detail' ? route.chatId : null} onOpen={id => navigate(`/research/${encodeURIComponent(id)}`)} onHome={() => navigate('/research')} />}
           {(route.page === 'expert-chats' || route.page === 'expert-chat-detail') && (
             <ExpertChatsPage
               client={client}
@@ -2274,6 +2278,8 @@ function optionalToneMetric(label: string, value: number | null | undefined): { 
 
 function routeTitle(route: AppRoute): string {
   switch (route.page) {
+    case 'research':
+    case 'research-detail': return 'AI研究助手'
     case 'macro': return '宏观数据'
     case 'dashboard': return '今日市场'
     case 'watch': return '自选与发现'
@@ -2294,6 +2300,9 @@ function routeFromHash(hash: string): AppRoute {
   if (stock?.[1]) return { page: 'stock', secId: decodeURIComponent(stock[1]) }
   const judgement = /^\/judgements\/([^/]+)$/.exec(path)
   if (judgement?.[1]) return { page: 'judgement-detail', judgementId: decodeURIComponent(judgement[1]) }
+  const research = /^\/research\/([^/]+)$/.exec(path)
+  if (research?.[1]) return { page: 'research-detail', chatId: decodeURIComponent(research[1]) }
+  if (path === '/research') return { page: 'research' }
   const expertChat = /^\/expert-chats\/([^/]+)$/.exec(path)
   if (expertChat?.[1]) return { page: 'expert-chat-detail', chatId: decodeURIComponent(expertChat[1]) }
   if (path === '/dashboard/macro') return { page: 'macro' }
