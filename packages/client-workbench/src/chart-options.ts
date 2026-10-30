@@ -317,9 +317,9 @@ export function buildTrendOption(
         markLine: base !== null
           ? {
               symbol: 'none',
-              label: { show: false },
+              label: { show: true, formatter: `昨收 ${fmtNum(base)}`, position: 'insideEndTop', color: palette.axisLabel, fontSize: 10, backgroundColor: palette.tooltipBackground, padding: [2, 4] },
               lineStyle: { color: palette.axisLabel, type: 'dashed', width: 1 },
-              data: [{ yAxis: base }],
+              data: [{ name: '昨收', yAxis: base }],
             }
           : undefined,
       },
