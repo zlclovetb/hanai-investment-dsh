@@ -29,6 +29,10 @@ DeepSeek Harness（DSH）负责模型、Agent、工具、Session、流式事件�
 
 周期展望实际调用仓库内五个专家 Skill，但它们是同源的 **AI 方法论角色**。完成版先冻结2026-08-25市场解析快照与官方财报，补齐事实、机制、质量、估值和反证五门，再由 Round 4 的独立 `council_vote` 关闭会商门；[专家实际读取的前置输入](docs/research-data/a-share-cycle-outlook-pre-council-2026-08-25.json)与五份[原始输出、提示词及 Skill 哈希](docs/research-data/a-share-cycle-expert-runs-2026-08-25.json)分别保存并以 SHA 绑定。主题映射核对和股票门禁核对不是独立投票，具体模型与reasoning配置也未在产物中冻结；报告不提供未经校准的概率、目标价或收益承诺。
 
+## AI选股
+
+侧栏「AI选股」支持自然语言条件、六个可编辑示例和独立查询历史。候选逐项核实依赖 DSH 可用工具，不冒充全市场精确筛选；见 [AI选股说明](docs/ai-stock-screener.md)。
+
 ## AI研究助手
 
 侧栏新增「AI研究助手」：支持自然语言研究、快捷问题、独立历史记录、新对话模型选择和材料上传，复用 DSH 的流式会话、停止生成与审批。材料读取取决于当前模型和工具能力；用法与存储说明见 [AI研究助手](docs/ai-research-assistant.md)。
