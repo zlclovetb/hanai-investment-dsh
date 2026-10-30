@@ -15,6 +15,7 @@ const schemas = {
   'dashboard.get': z.object({ refresh: z.boolean().optional() }).strict(),
   'market.breadth': empty,
   'market.arms': empty,
+  'market.ladder': empty,
   'market.distribution': empty,
   'market.indices': empty,
   'market.macro.query': z.object({ range: z.object({ from: tradingDate, to: tradingDate }).strict().refine(value => isMacroRange(value), '日期范围最长五年且不能晚于今天'), refresh: z.boolean().optional() }).strict(),

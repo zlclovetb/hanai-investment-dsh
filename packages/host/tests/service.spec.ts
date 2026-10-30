@@ -371,6 +371,25 @@ describe('HanaiService report lifecycle', () => {
       expect(dashboard).not.toHaveBeenCalled()
     } finally { database.close(); vi.useRealTimers() }
   })
+  it('archives the independent ladder by its source date and preserves it on a failed retry', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-30T18:00:00+08:00'))
+    const { database, market, service } = fixture()
+    const meta: ProviderMeta = { providerId: 'ths-limit-reason', sourceName: '同花顺涨停池', sourceTimestamp: '2026-10-29', fetchedAt: '2026-10-30T08:00:00Z', cacheState: 'fresh' }
+    const data = { date: '2026-10-29', stocks: [], promotion: null, broken: null, issues: [], meta }
+    const fetch = vi.fn().mockResolvedValue(data)
+    market.getMarketLadder = fetch
+    const signal = new AbortController().signal
+    try {
+      await service.call('market.ladder', {}, signal)
+      const saved = await service.call('market.history.get', { date: data.date }, signal)
+      expect(marketHistoryPanel(saved, 'ladder')).toEqual(data)
+      expect(await service.call('market.history.get', { date: '2026-10-30' }, signal)).toBeNull()
+      fetch.mockResolvedValue({ ...data, meta: { ...meta, cacheState: 'stale' } })
+      await service.call('market.ladder', {}, signal)
+      expect(await service.call('market.history.get', { date: data.date }, signal)).toEqual(saved)
+    } finally { database.close(); vi.useRealTimers() }
+  })
   it('archives independent overseas indices by observation date without rewriting their market dates', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-27T14:00:00+08:00'))
@@ -479,7 +498,7 @@ describe('HanaiService report lifecycle', () => {
       store.save('macro.index', { points: [{ date: '2026-10-01', close: 4000 }], meta: summaryMeta }, summaryMeta, '2026-10-01')
       store.save('macro.index', { points: [{ date: '2026-10-26', close: 4000 }], meta: summaryMeta }, summaryMeta, '2026-10-26')
       const snapshot = await service.call('market.history.get', { date: '2026-10-26' }, signal)
-      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !key.startsWith('macro.') && !['global.indices', 'intraday', 'signals', 'arms', 'distribution'].includes(key)), 'sector:SINA:new_blhy']))
+      expect(snapshot?.panels).toEqual(expect.arrayContaining([...MARKET_HISTORY_PANELS.filter(key => !key.startsWith('macro.') && !['global.indices', 'intraday', 'signals', 'arms', 'distribution', 'ladder'].includes(key)), 'sector:SINA:new_blhy']))
       expect(marketHistoryPanel(snapshot, 'overview')).toMatchObject({ indices: [{ ...data.overview.indices[0], meta }], meta })
       expect(marketHistoryPanel(snapshot, 'breadth')).toEqual(width)
       expect(marketHistoryPanel(snapshot, 'industry')).toEqual(data.industry)

@@ -1444,6 +1444,7 @@ function historyFixture(date = '2026-10-26'): MarketHistorySnapshot {
   add('global.indices', { indices: GLOBAL_INDICES.map(item => ({ ...dashboard.overview.indices[0]!, code: item.code, name: item.name, marketDate: date, meta })), meta })
   add('intraday', { date, points: [{ time: '15:00', price: 3333, avgPrice: null, volume: 10 }], prevClose: 3340, meta })
   add('signals', { date, method: 'ths-sector-events-v2', signals: [], meta })
+  add('ladder', { date, stocks: [], promotion: null, broken: null, issues: [], meta })
   add('breadth', { up: 111, down: 222, flat: 3, limitUp: 4, limitDown: 5, qdate: date, meta })
   add('industry', { ...dashboard.industry, meta })
   add('concept', { ...dashboard.concept, sectors: dashboard.industry.sectors, meta })
@@ -1914,6 +1915,7 @@ function makeClient(overrides: Record<string, CallOverride> = {}): HanaiClient {
       case 'dashboard.get': return dashboard
       case 'market.breadth': return { ...dashboard.overview.breadth, qdate: '2026-10-27', meta: fresh }
       case 'market.arms': return { meta: fresh, point: { date: '2026-10-27', time: '10:00', upCount: 100, downCount: 200, flatCount: 3, upAmount: 300, downAmount: 200, trin: 1 / 3, adRatio: 0.5, amountRatio: 1.5, estimated: false } }
+      case 'market.ladder': return { date: '2026-10-27', stocks: [], promotion: null, broken: null, issues: [], meta: fresh }
       case 'market.distribution': return { total: 9, counts: { down10: 1, down5: 1, down2: 1, down0: 1, flat: 1, up0: 1, up2: 1, up5: 1, up10: 1 }, meta: fresh }
       case 'market.intraday': return { date: '2026-10-27', prevClose: 3600, points: [{ time: '10:00', price: 3601, avgPrice: null, volume: 10 }], meta: fresh }
       case 'market.signals': return { date: '2026-10-27', method: 'ths-sector-events-v2', signals: [], meta: fresh }

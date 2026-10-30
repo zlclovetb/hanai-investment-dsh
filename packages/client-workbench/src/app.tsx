@@ -1,3 +1,4 @@
+import { MarketLadderPanels, useMarketLadder } from './market-ladder.tsx'
 import {
   useCallback,
   useEffect,
@@ -328,6 +329,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const [sectorType, setSectorType] = useState<'industry' | 'concept'>('industry')
   const [sectorLoading, setSectorLoading] = useState(false)
   const distribution = useMarketDistribution(client, historical ? history.snapshot : restingSnapshot, historical, liveData !== null, activityRefreshVersion, history.reloadIndex)
+  const ladder = useMarketLadder(client, historical ? history.snapshot : restingSnapshot, historical, liveData !== null, activityRefreshVersion, history.reloadIndex)
   const previousTurnover = usePreviousTurnover(client, historical ? history.selectedDate : data === null ? null : marketDateFromMeta(data.overview.meta), history.snapshots, activityRefreshVersion)
   const [drill, setDrill] = useState<{ code: string; name: string; stocks: StockQuote[] | null; meta: ProviderMeta | null } | null>(null)
   const drillGeneration = useRef(0)
@@ -454,7 +456,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
               globalArchiveLoaded = true
             }
             // US trading can create a new Beijing-day record before the next A-share session.
-            if (snapshot.panels.every(key => key.startsWith('macro.') || ['global.indices', 'intraday', 'signals'].includes(key))) continue
+            if (snapshot.panels.every(key => key.startsWith('macro.') || ['global.indices', 'intraday', 'signals', 'ladder'].includes(key))) continue
             setData(snapshotDashboard(snapshot))
             const savedBreadth = marketHistoryPanel(snapshot, 'breadth')
             archivedBreadth.current = savedBreadth
@@ -526,7 +528,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     history.selectDate(date)
   }
   const dateBar = <MarketHistoryBar history={history} onSelect={selectDate} />
-  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.') && !['arms', 'distribution'].includes(key)) : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals', 'arms', 'distribution'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
+  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.') && !['arms', 'distribution'].includes(key)) : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals', 'arms', 'distribution', 'ladder'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
   if ((historical ? history.loading : loading) && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><PageSkeleton cards={6} /></Page>
   if (historical && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title={history.error === null ? '该日期暂无历史记录' : '历史记录读取失败'} detail={history.error ?? '历史从成功归档的数据积累；未保存的日期无法还原，页面不会补入实时数据。'} action={<button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取</button>} /></Page>
   if (data === null) {
@@ -649,6 +651,8 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
       </div>
     </article>
     </div>
+
+    <MarketLadderPanels data={ladder.data} historical={historical} failed={ladder.failed} pending={ladder.pending} onStock={onStock} />
 
     <div className={styles['dashboardMainGrid']}>
       <article className={`${styles['card']} ${styles['treemapCard']}`}>

@@ -1,3 +1,4 @@
+import { MarketLadderProvider } from './market-ladder.ts'
 import type { MacroRange } from '../../../contracts/src/macro-range.ts'
 import type { MacroIndicatorId } from '../../../contracts/src/macro-indicators.ts'
 import { MacroIndicatorProvider } from './macro-indicators.ts'
@@ -101,6 +102,7 @@ export class MarketDataService {
   readonly macroDaily: MarketMacroDailyProvider
   readonly macro: MarketMacroProvider
   readonly activity: MarketActivityProvider
+  readonly ladder: MarketLadderProvider
   readonly globalIndices: GlobalIndexProvider
   readonly eastmoney: EastmoneyProvider
   readonly tencent: TencentProvider
@@ -119,6 +121,7 @@ export class MarketDataService {
   constructor(options: MarketDataServiceOptions = {}) {
     const http = options.http ?? new NodeFetchHttpClient()
     this.http = http
+    this.ladder = new MarketLadderProvider(http, options.clock ?? systemClock, Math.min(options.timeoutMs ?? 5000, 5000), secIds => this.getQuotes(secIds))
     this.globalIndices = new GlobalIndexProvider(http, options.clock ?? systemClock, Math.min(options.timeoutMs ?? 5000, 5000), options.circuit)
     this.breadthTimeoutMs = options.timeoutMs ?? 10_000
     this.clock = options.clock ?? systemClock
@@ -204,7 +207,7 @@ export class MarketDataService {
     return [...sources.map(([source, sourceName, scope]) => ({
       source, sourceName, scope,
       ...(scope === 'security' ? this.securitiesCircuit : this.circuit).snapshot(source),
-    })), ...(['tencent', 'sina', 'eastmoney-push2'] as const).map(source => ({ source, sourceName: `${source}（海外指数）`, scope: 'indices' as const, ...this.globalIndices.circuit.snapshot(source) }))]
+    })), ...(['ths-limit-reason', 'ths-limit-previous', 'ths-hot-reason', 'eastmoney-limit-up', 'eastmoney-limit-previous', 'eastmoney-limit-broken'] as const).map(source => ({ source, sourceName: `${source}（涨停梯队）`, scope: 'market' as const, ...this.ladder.circuit.snapshot(source) })), ...(['tencent', 'sina', 'eastmoney-push2'] as const).map(source => ({ source, sourceName: `${source}（海外指数）`, scope: 'indices' as const, ...this.globalIndices.circuit.snapshot(source) }))]
   }
 
   getMacroAllEtfs(range?: MacroRange) { return this.macroAll.get(range) }
@@ -227,6 +230,8 @@ export class MarketDataService {
       return fallback
     })
   }
+
+  getMarketLadder(date?: string) { return this.ladder.get(date) }
 
   getMarketDistribution(): Promise<MarketDistributionData | null> {
     return this.distributionCache.get('market', async () => {
@@ -431,7 +436,7 @@ export class MarketDataService {
   }
 
   clearMarketCache(): number {
-    return this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.distributionCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
+    return this.ladder.clear() + this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.distributionCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
   }
 
   async syncSecurities(

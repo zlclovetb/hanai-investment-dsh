@@ -1,3 +1,4 @@
+import type { MarketLadderData } from '../../contracts/src/market-ladder.ts'
 import { defaultMacroRange, type MacroRange } from '../../contracts/src/macro-range.ts'
 import { MacroSeries } from './macro-series.ts'
 import { MacroIndicators } from './macro-indicators.ts'
@@ -77,6 +78,7 @@ export interface MarketFacade {
   getDashboard(refresh?: boolean): Promise<DashboardData>
   getMarketBreadth(): Promise<MarketBreadthData | null>
   getMarketArms?(): Promise<MarketArmsData | null>
+  getMarketLadder?(date?: string): Promise<MarketLadderData | null>
   getMarketDistribution?(): Promise<MarketDistributionData | null>
   getSectorStocks(sectorCode: string): Promise<{ stocks: StockQuote[]; meta: ProviderMeta }>
   getStockDetail(secId: string, security?: ReturnType<HanaiDatabase['getSecurity']>): Promise<StockDetail>
@@ -282,6 +284,12 @@ export class HanaiService {
         this.recordProviderSuccess(BREADTH_SUCCESS_SETTING, [result?.meta ?? null])
         if (result !== null && result.meta.cacheState !== 'unavailable') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
         if (result !== null) this.archiveMarketPanel('breadth', result, result.meta, result.qdate)
+        return result
+      }
+      case 'market.ladder': {
+        const date = this.marketDateContext?.observedOn === beijingMarketDate() ? this.marketDateContext.date : undefined
+        const result = await this.market.getMarketLadder?.(date) ?? null
+        if (result !== null) this.archiveMarketPanel('ladder', result, result.meta, result.date)
         return result
       }
       case 'market.distribution': {

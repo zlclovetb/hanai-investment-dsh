@@ -1,3 +1,4 @@
+import type { MarketLadderData } from './market-ladder.ts'
 import type { MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, SectorBoard, StockQuote } from './index.ts'
 import { MACRO_GENERATION_PANELS, MACRO_ETFS, type MacroChartData, type MacroEtfInputs, type MacroAllDailyData, macroAllTotals, type MacroAllEtfData, type MacroCapitalData, type MacroEtfData, type MacroIndexData, type MacroDailyEtfData } from './market-macro.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
@@ -8,9 +9,10 @@ import { MACRO_INDICATORS } from './macro-indicators.ts'
 import type { MarketArmsData } from './market-arms.ts'
 import { DISTRIBUTION_BINS, type MarketDistributionData } from './market-distribution.ts'
 
-export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'arms', 'distribution', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
+export const MARKET_HISTORY_PANELS = ['ladder', 'overview', 'breadth', 'arms', 'distribution', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
 
 export interface MarketPanelPayloads {
+  ladder: MarketLadderData
   distribution: MarketDistributionData
   arms: MarketArmsData
   'macro.series': MacroSeriesData
@@ -102,6 +104,26 @@ function isCapitalReference(value: unknown, fetchedAt: string): boolean {
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
+  if (key === 'ladder') return (value.method === undefined || value.method === 'source-board-types-v1') && isMarketProviderMeta(value.meta) && typeof value.date === 'string' && isMarketDate(value.date)
+    && (value.yesterdayPerformance === undefined || value.yesterdayPerformance === null || (object(value.yesterdayPerformance)
+      && isMarketProviderMeta(value.yesterdayPerformance.meta) && marketDateFromMeta(value.yesterdayPerformance.meta) === value.date
+      && ['sample', 'up', 'down', 'flat'].every(key => Number.isSafeInteger((value.yesterdayPerformance as Record<string, unknown>)[key]) && Number((value.yesterdayPerformance as Record<string, unknown>)[key]) >= 0)
+      && Number(value.yesterdayPerformance.up) + Number(value.yesterdayPerformance.down) + Number(value.yesterdayPerformance.flat) === value.yesterdayPerformance.sample
+      && ['average', 'median'].every(key => numberOrNull((value.yesterdayPerformance as Record<string, unknown>)[key]))
+      && (value.yesterdayPerformance.sample === 0 ? value.yesterdayPerformance.average === null && value.yesterdayPerformance.median === null : value.yesterdayPerformance.average !== null && value.yesterdayPerformance.median !== null)))
+    && marketDateFromMeta(value.meta) === value.date && Array.isArray(value.stocks) && value.stocks.length <= 10000
+    && value.stocks.every((row, i, rows) => object(row) && typeof row.code === 'string' && /^\d{6}$/.test(row.code)
+      && !rows.slice(0, i).some(previous => object(previous) && previous.code === row.code)
+      && ['reason', 'boardType'].every(key => row[key] === null || typeof row[key] === 'string')
+      && typeof row.name === 'string' && row.name.trim() !== '' && typeof row.industry === 'string' && row.industry.trim() !== ''
+      && Number.isSafeInteger(row.boards) && Number(row.boards) >= 1 && Number(row.boards) <= 100
+      && (row.breaks === null || (Number.isSafeInteger(row.breaks) && Number(row.breaks) >= 0))
+      && [row.firstSeal, row.lastSeal].every(time => typeof time === 'string' && /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(time))
+      && numberOrNull(row.turnover) && (row.turnover === null || Number(row.turnover) >= 0))
+    && (value.promotion === null || (object(value.promotion) && ['eligible', 'promoted'].every(key => Number.isSafeInteger((value.promotion as Record<string, unknown>)[key]) && Number((value.promotion as Record<string, unknown>)[key]) >= 0)
+      && Number(value.promotion.promoted) <= Number(value.promotion.eligible) && Number(value.promotion.promoted) <= value.stocks.length))
+    && (value.broken === null || (Number.isSafeInteger(value.broken) && Number(value.broken) >= 0))
+    && Array.isArray(value.issues) && value.issues.every(issue => typeof issue === 'string')
   if (key === 'distribution') return isMarketProviderMeta(value.meta) && object(value.counts)
     && Number.isSafeInteger(value.total) && Number(value.total) > 0
     && DISTRIBUTION_BINS.every(([key]) => Number.isSafeInteger((value.counts as Record<string, unknown>)[key]) && Number((value.counts as Record<string, unknown>)[key]) >= 0)
