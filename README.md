@@ -35,7 +35,7 @@ DeepSeek Harness（DSH）负责模型、Agent、工具、Session、流式事件�
 
 ## AI选股
 
-侧栏「AI选股」支持自然语言条件、六个可编辑示例和独立查询历史。候选逐项核实依赖 DSH 可用工具，不冒充全市场精确筛选；见 [AI选股说明](docs/ai-stock-screener.md)。
+侧栏「AI选股」由 DSH 解析条件，宿主校验后执行已授权的财务扫描，展示候选卡片、源数据依据、待核实项和冻结的查询历史；模糊阈值或无法执行的条件先确认，不静默忽略；见 [AI选股说明](docs/ai-stock-screener.md)。
 
 ## AI研究助手
 
