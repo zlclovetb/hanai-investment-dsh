@@ -345,6 +345,11 @@ export class HanaiDatabase {
     }))
   }
 
+  /** Identity reference only: the master does not contain financial screening metrics. */
+  screeningUniverse(): Array<{ secId: string; code: string; name: string; exchange: string; updatedAt: string }> {
+    return this.sqlite.prepare('SELECT sec_id AS secId, code, name, exchange, updated_at AS updatedAt FROM security_master ORDER BY code').all() as unknown as ReturnType<HanaiDatabase['screeningUniverse']>
+  }
+
   /** Replace the complete security snapshot atomically after the provider completeness gate. */
   replaceSecuritySnapshot(rows: readonly SecuritySnapshotRow[]): void {
     if (rows.length < 1000) throw new Error(`主数据拉取不完整（${rows.length} 条），保留现状待重试`)

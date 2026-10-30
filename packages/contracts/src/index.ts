@@ -513,6 +513,11 @@ export interface HanaiEndpointMap {
   'judgement.revise': { request: { id: string; instruction: string }; response: Judgement }
   'judgement.remove': { request: { id: string }; response: Judgement[] }
   'research-chat.list': { request: Record<string, never>; response: ExpertChat[] }
+  'screener.list': { request: Record<string, never>; response: ExpertChat[] }
+  'screener.create': { request: Omit<CreateExpertChatInput, 'masterId'>; response: ExpertChat }
+  'screener.get': { request: { id: string }; response: ExpertChat }
+  'screener.remove': { request: { id: string }; response: ExpertChat[] }
+  'screener.rename': { request: { id: string; title: string }; response: ExpertChat }
   'research-chat.create': { request: Omit<CreateExpertChatInput, 'masterId'>; response: ExpertChat }
   'research-chat.get': { request: { id: string }; response: ExpertChat }
   'research-chat.remove': { request: { id: string }; response: ExpertChat[] }

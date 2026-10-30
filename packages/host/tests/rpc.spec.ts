@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { parseHanaiRequest } from '../src/rpc.ts'
 
 describe('Hanai RPC request validation', () => {
+  it('accepts only bounded screening questions and scoped identifiers', () => {
+    expect(parseHanaiRequest('screener.create', { openingMessage: ' 银行股 ' })).toEqual({ openingMessage: '银行股' })
+    expect(() => parseHanaiRequest('screener.create', { masterId: 'some-master' })).toThrow()
+    expect(() => parseHanaiRequest('screener.create', { openingMessage: 'a'.repeat(4001) })).toThrow()
+    expect(() => parseHanaiRequest('screener.remove', { id: '../chat' })).toThrow()
+    expect(() => parseHanaiRequest('screener.list', { url: 'https://example.com' })).toThrow()
+    expect(() => parseHanaiRequest('screener.rename', { id: 'chat', title: '' })).toThrow()
+  })
   it('bounds research requests and keeps their conversation scope separate', () => {
     expect(parseHanaiRequest('research-chat.create', { openingMessage: ' 研究现金流 ' })).toEqual({ openingMessage: '研究现金流' })
     expect(parseHanaiRequest('research-chat.upload', { id: 'chat-1', name: '报告.txt', data: 'YWJj' })).toEqual({ id: 'chat-1', name: '报告.txt', data: 'YWJj' })

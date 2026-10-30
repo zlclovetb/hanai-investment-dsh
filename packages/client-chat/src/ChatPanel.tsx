@@ -47,7 +47,7 @@ const CODE_LABELS = {
 } as const
 const MARKDOWN_LABELS = { code: CODE_LABELS, footnotes: '脚注' } as const
 
-export type ChatPanelVariant = 'judgement' | 'open-chat' | 'research'
+export type ChatPanelVariant = 'judgement' | 'open-chat' | 'research' | 'screener'
 
 interface ChatPanelCopy {
   sectionLabel: string
@@ -125,6 +125,12 @@ interface MessagePreparation {
   initialDraft?: string
   prepareMessage?: (text: string) => Promise<PromptContentPart[]>
   onMessageSent?: (text: string) => void
+}
+
+const SCREENER_COPY: ChatPanelCopy = {
+  ...RESEARCH_COPY, sectionLabel: 'AI选股', recordLabel: '选股查询记录', participant: '选股助手',
+  participantRunning: '选股助手 · 思考中', participantOutput: '选股助手 · 输出中', runningStatus: '正在分析选股条件',
+  composerLabel: '补充选股条件', composerPlaceholder: '补充行业、财务、估值或量价条件，继续核实候选…',
 }
 
 const ChatCopyContext = createContext<ChatPanelCopy>(JUDGEMENT_COPY)
@@ -238,7 +244,7 @@ function DshChatPanelInstance({
   onClose,
 }: DshChatPanelProps) {
   const state = useDshChatSession({ sessions, sessionId })
-  const copy = variant === 'research' ? RESEARCH_COPY : variant === 'open-chat' ? OPEN_CHAT_COPY : JUDGEMENT_COPY
+  const copy = variant === 'screener' ? SCREENER_COPY : variant === 'research' ? RESEARCH_COPY : variant === 'open-chat' ? OPEN_CHAT_COPY : JUDGEMENT_COPY
   const rootClassName = [css.panel, compact ? css.compact : '', className ?? '']
     .filter(Boolean)
     .join(' ')

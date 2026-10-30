@@ -9,19 +9,46 @@ vi.mock('../../client-chat/src/index.tsx', () => ({ ChatPanel: ({ sessionId, var
 const chat: ExpertChat = { id: 'r1', title: '存储产业研究', masterId: 'ai-research-assistant', masterName: 'AI研究助手', masterVersion: '1', dshSessionId: 'session-r1', turnStatus: 'idle', modelProvider: null, model: null, reasoningEffort: null, createdAt: '2026-10-30T10:00:00Z', updatedAt: '2026-10-30T10:00:00Z', errorCode: null, errorMessage: null }
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-30T18:00:00+08:00')) })
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
-function setup(overrides: Record<string, () => unknown> = {}, selectedId: string | null = null) {
+function setup(overrides: Record<string, () => unknown> = {}, selectedId: string | null = null, screening = false) {
   const call = vi.fn(async (name: string) => {
     if (overrides[name]) return overrides[name]!()
-    if (name === 'research-chat.list') return [chat]
-    if (name === 'research-chat.create') return chat
-    if (name === 'research-chat.remove') return []
+    if (name === 'research-chat.list' || name === 'screener.list') return [chat]
+    if (name === 'research-chat.create' || name === 'screener.create') return chat
+    if (name === 'research-chat.remove' || name === 'screener.remove') return []
     return null
   })
   const models = vi.fn(async () => [{ id: 'provider', name: '研究模型', models: [{ id: 'model', name: '测试模型' }] }])
   const onOpen = vi.fn(), onHome = vi.fn()
-  render(<ResearchAssistantPage client={{ call, models } as unknown as HanaiClient} selectedId={selectedId} onOpen={onOpen} onHome={onHome} />)
+  render(<ResearchAssistantPage screening={screening} client={{ call, models } as unknown as HanaiClient} selectedId={selectedId} onOpen={onOpen} onHome={onHome} />)
   return { call, onOpen, onHome }
 }
+it('uses six editable screening starters and isolated screening endpoints', async () => {
+  const view = setup({}, null, true); await act(async () => {})
+  expect(screen.getByRole('heading', { name: 'AI选股' })).not.toBeNull()
+  expect(screen.queryByRole('button', { name: '上传材料' })).toBeNull()
+  expect(screen.getAllByRole('button').filter(button => button.querySelector('small') && button.querySelector('span'))).toHaveLength(6)
+  fireEvent.click(screen.getByRole('button', { name: /市值与 ROE/ }))
+  expect((screen.getByLabelText('选股条件') as HTMLTextAreaElement).value).toContain('100 亿元')
+  fireEvent.change(screen.getByLabelText('选股模型'), { target: { value: 'provider\0model' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '开始选股' })) })
+  expect(view.call).toHaveBeenCalledWith('screener.create', expect.objectContaining({ model: { provider: 'provider', model: 'model' } }))
+  expect(view.call.mock.calls.some(([name]) => name.startsWith('research-chat.'))).toBe(false)
+})
+it('restores screening history with the screening composer and confirms removal', async () => {
+  const view = setup({}, 'r1', true); await act(async () => {})
+  expect(screen.getByTestId('research-session').textContent).toBe('session-r1:screener')
+  fireEvent.click(screen.getByRole('button', { name: '删除选股查询：存储产业研究' }))
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '确认删除' })) })
+  expect(view.call).toHaveBeenCalledWith('screener.remove', { id: 'r1' })
+  expect(view.onHome).toHaveBeenCalledOnce()
+})
+it('retains screening conditions when session creation fails', async () => {
+  setup({ 'screener.create': () => { throw new Error('模型不可用') } }, null, true); await act(async () => {})
+  fireEvent.change(screen.getByLabelText('选股条件'), { target: { value: '现金流持续改善的银行股' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '开始选股' })) })
+  expect((screen.getByLabelText('选股条件') as HTMLTextAreaElement).value).toBe('现金流持续改善的银行股')
+  expect(screen.getByRole('alert').textContent).toContain('模型不可用')
+})
 it('shows starter prompts, lets the user edit them, and sends the selected new-chat model', async () => {
   const view = setup(); await act(async () => {})
   fireEvent.click(screen.getByRole('button', { name: /行业与产业链/ }))

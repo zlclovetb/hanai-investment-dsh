@@ -4,6 +4,12 @@ import { join, resolve, relative, sep, extname, isAbsolute } from 'node:path'
 import type { MasterPersona } from '../../contracts/src/index.ts'
 import { RESEARCH_ASSISTANT_ID, RESEARCH_FILE_MAX_BYTES, type ResearchAttachment } from '../../contracts/src/research-assistant.ts'
 import type { HanaiPaths } from './paths.ts'
+import { AI_SCREENER_ID } from '../../contracts/src/ai-screener.ts'
+
+export const AI_SCREENER: MasterPersona = {
+  id: AI_SCREENER_ID, name: 'AI选股', shortName: '选', version: '1', color: '#ad7a16',
+  description: '把自然语言条件整理为有证据的 A 股候选研究清单', roleTag: '选股研究', tags: ['条件', '候选', '核实'], defaultPrompt: '', chatOnly: true,
+}
 
 export const RESEARCH_ASSISTANT: MasterPersona = {
   id: RESEARCH_ASSISTANT_ID, name: 'AI研究助手', shortName: '研', version: '1', color: '#ad7a16',
@@ -40,11 +46,12 @@ export class ResearchWorkspace {
     return target
   }
 
-  prepare(id: string, context: unknown): string {
+  prepare(id: string, context: unknown, screeningUniverse?: unknown): string {
     const workspace = this.directory(id)
     mkdirSync(workspace, { recursive: true, mode: 0o700 })
-    writeFileSync(join(workspace, 'AGENTS.md'), instructions, { mode: 0o600, flag: 'wx' })
+    writeFileSync(join(workspace, 'AGENTS.md'), instructions + (screeningUniverse === undefined ? '' : screeningInstructions), { mode: 0o600, flag: 'wx' })
     writeFileSync(join(workspace, 'market-context.json'), JSON.stringify(context, null, 2), { mode: 0o600, flag: 'wx' })
+    if (screeningUniverse !== undefined) writeFileSync(join(workspace, 'candidate-universe.json'), JSON.stringify(screeningUniverse), { mode: 0o600, flag: 'wx' })
     return workspace
   }
 
@@ -79,3 +86,12 @@ export class ResearchWorkspace {
     return { id: attachmentId, name: safeName, path, bytes: bytes.length, mediaType: type[0] }
   }
 }
+
+const screeningInstructions = `
+## 当前会话：AI选股
+- 将自然语言翻译为行业/主题、财务、估值与量价条件，先列出条件、单位、比较窗口和日期；关键歧义先追问。后续追问仍按选股研究处理。
+- candidate-universe.json 是创建时的本地主数据代码参考，含名称、交易所及更新时间，不含估值、财务或历史量价。它不是筛选结果；缺失、为空或滞后时明确告知，不声称覆盖全市场。不得把代码参考当作指标数据。
+- 候选公司的代码与名称须核实，优先在代码参考中交叉检查。用可用的公开资料/行情工具核实每一项条件；不为得到结果而逐股扫描整个市场。工具不能取得数据时停止在条件解析和待核实清单，不凭记忆编造数值或命中结果。
+- 输出：①筛选条件与口径；②实际检索范围、来源与数据日期；③候选表（代码、名称、各条件的证据、符合/不符合/待核实、风险）；④未满足的条件与下一步。默认候选不超过10只，不能声称穷尽全市场。
+- 缺失指标不是0；待核实公司单独列出，不能混入已确认满足全部条件的名单。不捏造收益率、胜率、订单或财报；无已确认结果就明确说明，不强行推荐。仅为研究候选，不下单、不自动加入自选、不作外部写入。
+`

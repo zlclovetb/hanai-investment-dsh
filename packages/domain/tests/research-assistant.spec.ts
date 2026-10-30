@@ -22,6 +22,16 @@ it('keeps dated context, instructions and uploaded bytes in the conversation wor
   expect(file.path).toMatch(/^attachments\/[\w-]+\.txt$/)
   expect(readFileSync(join(paths.expertChatsDir, 'research-1', 'workspace', file.path), 'utf8')).toBe('营收增长，现金流待核实')
 })
+it('persists the screening universe without treating master identities as metric evidence', () => {
+  const { store } = fixture()
+  const universe = { securities: [{ code: '600000', name: '浦发银行', updatedAt: '2026-10-30' }] }
+  const workspace = store.prepare('screen-1', null, universe)
+  expect(JSON.parse(readFileSync(join(workspace, 'candidate-universe.json'), 'utf8'))).toEqual(universe)
+  const instructions = readFileSync(join(workspace, 'AGENTS.md'), 'utf8')
+  expect(instructions).toContain('当前会话：AI选股')
+  expect(instructions).toContain('不能混入已确认满足全部条件')
+  expect(instructions).toContain('工具不能取得数据时停止')
+})
 it('rejects traversal, unsupported extensions, mismatched file signatures and oversize input', () => {
   const { store } = fixture(); store.prepare('r', null)
   const data = Buffer.from('plain text').toString('base64')

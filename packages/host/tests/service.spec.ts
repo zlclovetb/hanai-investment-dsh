@@ -583,6 +583,50 @@ describe('HanaiService report lifecycle', () => {
     } finally { database.close() }
   })
 
+  it('keeps screening sessions, universe snapshots and deletion separate from research and experts', async () => {
+    const { database, paths, service, sessions } = fixture()
+    const signal = new AbortController().signal
+    try {
+      database.sqlite.prepare('INSERT INTO security_master VALUES (?, ?, ?, ?, ?, ?, ?)').run('1.600000', '600000', '浦发银行', 'SH', 'pufayinhang', 'pfyh', '2026-10-30T07:00:00Z')
+      const research = await service.call('research-chat.create', {}, signal)
+      const expert = await service.call('expert-chat.create', { masterId: 'sun-yuchen-perspective' }, signal)
+      const chat = await service.call('screener.create', { openingMessage: '低估值银行股', model: { provider: 'test', model: 'screen-model' } }, signal)
+      expect(chat).toMatchObject({ masterId: 'ai-stock-screener', masterName: 'AI选股', title: '低估值银行股', model: 'screen-model', turnStatus: 'queued' })
+      expect(sessions.prompts.at(-1)?.text).toBe('低估值银行股')
+      expect(await service.call('screener.list', {}, signal)).toEqual([chat])
+      expect(await service.call('research-chat.list', {}, signal)).toEqual([research])
+      expect(await service.call('expert-chat.list', {}, signal)).toEqual([expert])
+      const workspace = join(paths.expertChatsDir, chat.id, 'workspace')
+      expect(JSON.parse(readFileSync(join(workspace, 'candidate-universe.json'), 'utf8')).securities).toEqual(database.screeningUniverse())
+      expect(database.screeningUniverse()).toEqual([{ secId: '1.600000', code: '600000', name: '浦发银行', exchange: 'SH', updatedAt: '2026-10-30T07:00:00Z' }])
+      expect(readFileSync(join(workspace, 'AGENTS.md'), 'utf8')).toContain('当前会话：AI选股')
+      for (const endpoint of ['research-chat.get', 'research-chat.remove', 'expert-chat.get', 'expert-chat.remove'] as const) await expect(service.call(endpoint, { id: chat.id }, signal)).rejects.toThrow('不存在')
+      await expect(service.call('research-chat.upload', { id: chat.id, name: 'x.txt', data: 'eA==' }, signal)).rejects.toThrow('不存在')
+      await expect(service.call('screener.rename', { id: research.id, title: 'x' }, signal)).rejects.toThrow('不存在')
+      await expect(service.call('screener.get', { id: expert.id }, signal)).rejects.toThrow('不存在')
+      expect((await service.call('screener.rename', { id: chat.id, title: '新条件' }, signal)).title).toBe('新条件')
+      sessions.running = true
+      await expect(service.call('screener.remove', { id: chat.id }, signal)).rejects.toThrow('正在回答')
+      sessions.running = false
+      expect(await service.call('screener.remove', { id: chat.id }, signal)).toEqual([])
+      expect(existsSync(workspace)).toBe(false)
+      expect(database.getExpertChat(research.id)).not.toBeNull()
+      expect(database.getExpertChat(expert.id)).not.toBeNull()
+    } finally { database.close() }
+  })
+  it('retains a failed screening query in its own history when model creation fails', async () => {
+    const { database, service, sessions } = fixture()
+    const signal = new AbortController().signal
+    try {
+      vi.spyOn(sessions, 'create').mockRejectedValueOnce(new Error('model unavailable'))
+      await expect(service.call('screener.create', { openingMessage: '高分红银行股' }, signal)).rejects.toThrow('model unavailable')
+      const saved = await service.call('screener.list', {}, signal)
+      expect(saved).toHaveLength(1)
+      expect(saved[0]).toMatchObject({ title: '高分红银行股', turnStatus: 'failed', errorCode: 'screener-chat-start-failed' })
+      expect(await service.call('research-chat.list', {}, signal)).toEqual([])
+      expect(await service.call('expert-chat.list', {}, signal)).toEqual([])
+    } finally { database.close() }
+  })
   it('creates an independent research assistant, scopes its endpoints, persists attachments, and removes its workspace', async () => {
     const { database, paths, service, sessions } = fixture()
     const signal = new AbortController().signal

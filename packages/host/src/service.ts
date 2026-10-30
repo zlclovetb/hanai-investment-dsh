@@ -1,5 +1,6 @@
+import { AI_SCREENER_ID } from '../../contracts/src/ai-screener.ts'
 import { RESEARCH_ASSISTANT_ID } from '../../contracts/src/research-assistant.ts'
-import { RESEARCH_ASSISTANT, ResearchWorkspace } from '../../domain/src/research-assistant.ts'
+import { AI_SCREENER, RESEARCH_ASSISTANT, ResearchWorkspace } from '../../domain/src/research-assistant.ts'
 import type { MarketLadderData } from '../../contracts/src/market-ladder.ts'
 import { defaultMacroRange, type MacroRange } from '../../contracts/src/macro-range.ts'
 import { MacroSeries } from './macro-series.ts'
@@ -491,22 +492,31 @@ export class HanaiService {
       case 'judgement.remove': return this.removeJudgement(
         (request as HanaiRequest<'judgement.remove'>).id,
       )
-      case 'research-chat.list': return this.listConversations(true)
-      case 'research-chat.create': return this.createExpertChat({ ...(request as HanaiRequest<'research-chat.create'>), masterId: RESEARCH_ASSISTANT_ID }, true)
-      case 'research-chat.get': return this.getExpertChat((request as HanaiRequest<'research-chat.get'>).id, true)
-      case 'research-chat.remove': return this.removeExpertChat((request as HanaiRequest<'research-chat.remove'>).id, true)
+      case 'screener.list': return this.listConversations('screener')
+      case 'screener.create': return this.createExpertChat({ ...(request as HanaiRequest<'screener.create'>), masterId: AI_SCREENER_ID }, 'screener')
+      case 'screener.get': return this.getExpertChat((request as HanaiRequest<'screener.get'>).id, 'screener')
+      case 'screener.remove': return this.removeExpertChat((request as HanaiRequest<'screener.remove'>).id, 'screener')
+      case 'screener.rename': {
+        const input = request as HanaiRequest<'screener.rename'>
+        this.getExpertChat(input.id, 'screener')
+        return this.database.updateExpertChat(input.id, { title: expertChatTitle(AI_SCREENER.name, input.title) })
+      }
+      case 'research-chat.list': return this.listConversations('research')
+      case 'research-chat.create': return this.createExpertChat({ ...(request as HanaiRequest<'research-chat.create'>), masterId: RESEARCH_ASSISTANT_ID }, 'research')
+      case 'research-chat.get': return this.getExpertChat((request as HanaiRequest<'research-chat.get'>).id, 'research')
+      case 'research-chat.remove': return this.removeExpertChat((request as HanaiRequest<'research-chat.remove'>).id, 'research')
       case 'research-chat.rename': {
         const input = request as HanaiRequest<'research-chat.rename'>
-        this.getExpertChat(input.id, true)
+        this.getExpertChat(input.id, 'research')
         return this.database.updateExpertChat(input.id, { title: expertChatTitle(RESEARCH_ASSISTANT.name, input.title) })
       }
       case 'research-chat.upload': {
         const input = request as HanaiRequest<'research-chat.upload'>
-        const chat = this.getExpertChat(input.id, true)
+        const chat = this.getExpertChat(input.id, 'research')
         if (chat.dshSessionId === null) throw new Error('研究会话尚未建立，不能上传附件')
         return new ResearchWorkspace(this.paths).upload(chat.id, input.name, input.data)
       }
-      case 'expert-chat.list': return this.listConversations(false)
+      case 'expert-chat.list': return this.listConversations('expert')
       case 'expert-chat.create': return this.createExpertChat(request as HanaiRequest<'expert-chat.create'>)
       case 'expert-chat.get': return this.getExpertChat((request as HanaiRequest<'expert-chat.get'>).id)
       case 'expert-chat.remove': return this.removeExpertChat(
@@ -544,7 +554,7 @@ export class HanaiService {
       masters: listMasters(),
       groups: this.database.listWatchGroups(),
       judgements: this.database.listJudgements(),
-      expertChats: this.listConversations(false),
+      expertChats: this.listConversations('expert'),
       diagnostics: this.diagnostics(),
     }
   }
@@ -596,7 +606,7 @@ export class HanaiService {
       securityCount: this.database.securityCount(),
       masterCount: listMasters().length,
       judgementCount: this.database.judgementCount(),
-      expertChatCount: this.listConversations(false).length,
+      expertChatCount: this.listConversations('expert').length,
       latestMarketSuccess: this.database.getSetting('market.latestSuccess'),
       latestValuationSuccess: this.database.getSetting('valuation.latestSuccess'),
       marketSources: [...this.providerSources(MARKET_SUCCESS_SETTING), ...this.providerSources(BREADTH_SUCCESS_SETTING), ...this.providerSources(GLOBAL_SUCCESS_SETTING), ...this.providerSources(ACTIVITY_SUCCESS_SETTING)],
@@ -794,13 +804,14 @@ export class HanaiService {
     return this.database.listWatchGroups()
   }
 
-  private async createExpertChat(input: HanaiRequest<'expert-chat.create'>, research = false): Promise<ExpertChat> {
-    const master = research ? RESEARCH_ASSISTANT : getMasterPersona(input.masterId)
+  private async createExpertChat(input: HanaiRequest<'expert-chat.create'>, kind: 'expert' | 'research' | 'screener' = 'expert'): Promise<ExpertChat> {
+    const research = kind !== 'expert'
+    const master = kind === 'screener' ? AI_SCREENER : research ? RESEARCH_ASSISTANT : getMasterPersona(input.masterId)
     if (master === null) throw new Error('专家不存在')
     const id = randomUUID()
     let chat = this.database.createExpertChat({
       id,
-      title: research && !input.openingMessage ? '新研究对话' : expertChatTitle(master.name, input.openingMessage),
+      title: research && !input.openingMessage ? kind === 'screener' ? '新选股查询' : '新研究对话' : expertChatTitle(master.name, input.openingMessage),
       masterId: master.id,
       masterName: master.name,
       masterVersion: master.version,
@@ -819,7 +830,7 @@ export class HanaiService {
         const snapshot = latest ? this.marketHistory.get(latest.date) : null
         const records = snapshot ? Object.fromEntries(Object.entries(snapshot.records).filter(([key]) => !key.startsWith('macro.'))) : null
         const context = snapshot && records ? { ...snapshot, records, panels: Object.keys(records), capturedAt: Object.values(records).map(row => row.capturedAt).sort().at(-1) ?? snapshot.capturedAt } : null
-        workspace = new ResearchWorkspace(this.paths).prepare(id, context)
+        workspace = new ResearchWorkspace(this.paths).prepare(id, context, kind === 'screener' ? { securities: this.database.screeningUniverse(), note: '仅代码名称参考，不含财务指标；不是全市场筛选结果' } : undefined)
       } else workspace = this.expertChats.prepareWorkspace(id, master).workspace
       const sessionId = await this.sessions.create(`chat-${id}`, workspace, input.model)
       createdSessionId = sessionId
@@ -846,32 +857,36 @@ export class HanaiService {
       }
       this.database.updateExpertChat(chat.id, {
         turnStatus: 'failed',
-        errorCode: research ? 'research-chat-start-failed' : 'expert-chat-start-failed',
+        errorCode: `${kind}-chat-start-failed`,
         errorMessage: messageOf(failure),
       })
       throw failure
     }
   }
 
-  private listConversations(research: boolean): ExpertChat[] {
-    return this.database.listExpertChats().filter(chat => (chat.masterId === RESEARCH_ASSISTANT_ID) === research)
+  private conversationKind(chat: ExpertChat): 'expert' | 'research' | 'screener' {
+    return chat.masterId === AI_SCREENER_ID ? 'screener' : chat.masterId === RESEARCH_ASSISTANT_ID ? 'research' : 'expert'
   }
 
-  private getExpertChat(id: string, research = false): ExpertChat {
+  private listConversations(kind: 'expert' | 'research' | 'screener'): ExpertChat[] {
+    return this.database.listExpertChats().filter(chat => this.conversationKind(chat) === kind)
+  }
+
+  private getExpertChat(id: string, kind: 'expert' | 'research' | 'screener' = 'expert'): ExpertChat {
     const chat = this.database.getExpertChat(id)
-    if (chat === null || (chat.masterId === RESEARCH_ASSISTANT_ID) !== research) throw new Error(research ? '研究对话不存在' : '专家对谈不存在')
+    if (chat === null || this.conversationKind(chat) !== kind) throw new Error(kind === 'screener' ? '选股查询不存在' : kind === 'research' ? '研究对话不存在' : '专家对谈不存在')
     return chat
   }
 
-  private async removeExpertChat(id: string, research = false): Promise<HanaiResponse<'expert-chat.remove'>> {
-    const chat = this.getExpertChat(id, research)
+  private async removeExpertChat(id: string, kind: 'expert' | 'research' | 'screener' = 'expert'): Promise<HanaiResponse<'expert-chat.remove'>> {
+    const chat = this.getExpertChat(id, kind)
     if (chat.dshSessionId !== null) {
-      if (await this.sessions.isRunning(chat.dshSessionId)) throw new Error(research ? '研究助手正在回答，暂时不能删除' : '专家正在回答，暂时不能删除')
+      if (await this.sessions.isRunning(chat.dshSessionId)) throw new Error('会话正在回答，暂时不能删除')
       await this.sessions.archive(chat.dshSessionId)
     }
     this.expertChats.remove(id)
     this.database.removeExpertChat(id)
-    return this.listConversations(research)
+    return this.listConversations(kind)
   }
 
   private async createJudgement(
