@@ -43,6 +43,7 @@ export interface MacroIndicatorTask {
 export interface MacroIndicatorQuery {
   range: MacroRange
   data: MacroIndicatorMap
+  tradingDates?: string[]
   tasks: MacroIndicatorTask[]
   running: boolean
   queued: boolean

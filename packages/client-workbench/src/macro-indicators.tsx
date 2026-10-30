@@ -90,7 +90,7 @@ export function MacroIndicatorPage({ client, theme, topic, range, setRange }: { 
             <div><small>涨跌家数</small><strong>{latest?.armsDetails ? `${latest.armsDetails.upCount} : ${latest.armsDetails.downCount}` : '—'}</strong><small>涨跌比 {displayRatio(latest?.values.adRatio)}</small></div>
             <div><small>TRIN</small><strong>{displayRatio(latest?.values.trin)}</strong><small>{latest?.estimated ? '估算' : latest ? '收盘数据' : '暂无数据'}</small></div>
           </div>}
-          {valid.length > 0 ? <EChart option={buildMacroIndicatorOption(definition, data, range, getChartPalette(theme))} ariaLabel={`${definition.title} ${range.from} 至 ${range.to}`} style={{ height: 320 }} />
+          {valid.length > 0 ? <EChart option={buildMacroIndicatorOption(definition, data, range, getChartPalette(theme), result?.tradingDates)} ariaLabel={`${definition.title} ${range.from} 至 ${range.to}`} style={{ height: 320 }} />
             : <p className={styles['macroEmpty']}>{task?.state === 'failed' ? '公开来源未返回所选范围数据，可展开详情查看原因。' : busy || loading ? '等待后台取得公开数据…' : '所选区间暂无有效观测，后续后台更新会重试。'}</p>}
         </section>
       })}

@@ -36,7 +36,8 @@ export class MacroIndicators {
   }
   query(topic: EconomicTopic, range: MacroRange, refresh = false): MacroIndicatorQuery {
     if (!validWork({ topic, range })) throw new Error('无效宏观主题或日期范围（最长五年）')
-    const data = selectMacroSeries(this.records(), range).indicators ?? {}
+    const series = selectMacroSeries(this.records(), range)
+    const data = series.indicators ?? {}
     const missing = MACRO_INDICATORS.filter(row => row.topic === topic).some(row => {
       const value = data[row.id]
       return !value || !contains(value.checkedRange, range) || value.points.length === 0 || firstMacroIndicatorGap(row.id, value, range) !== null
@@ -50,7 +51,7 @@ export class MacroIndicators {
     const applies = (work: Work) => work.topic === topic && work.range.from <= range.to && work.range.to >= range.from
     const attempt = this.attempts.filter(applies).at(-1)
     const running = this.active !== null && applies(this.active)
-    return { range, data: Object.fromEntries(Object.entries(data).filter(([id]) => MACRO_INDICATORS.some(row => row.id === id && row.topic === topic))),
+    return { range, ...(topic === 'breadth' ? { tradingDates: series.index?.points.map(point => point.date) ?? [] } : {}), data: Object.fromEntries(Object.entries(data).filter(([id]) => MACRO_INDICATORS.some(row => row.id === id && row.topic === topic))),
       tasks: structuredClone(running ? this.tasks : attempt?.tasks ?? []), running, queued: this.queue.some(work => work !== this.active && applies(work)) }
   }
   private enqueue(work: Work, force = false): void {

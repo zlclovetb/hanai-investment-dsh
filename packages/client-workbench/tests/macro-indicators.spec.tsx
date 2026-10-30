@@ -55,6 +55,21 @@ it('renders the market breadth topic and marks estimated historical points in th
   expect(option.series[0].data).toEqual([[Date.parse(`${date}T00:00:00+08:00`), 0.5]])
   expect(option.series[1].markLine.data[0].yAxis).toBe(1)
 })
+it('omits confirmed market holidays but leaves missing trading observations empty', () => {
+  const definition = MACRO_INDICATORS.find(row => row.id === 'arms')!
+  const range = { from: '2026-09-30', to: '2026-10-09' }
+  const data: MacroIndicatorData = { id: 'arms', checkedRange: range, points: [
+    { date: '2026-09-30', values: { trin: 1, adRatio: 1, amountRatio: 1 } },
+    { date: '2026-10-09', values: { trin: 2, adRatio: 2, amountRatio: 1 } },
+  ], meta: { providerId: 'test', sourceName: 'test', sourceTimestamp: '2026-10-09', fetchedAt: '2026-10-29T10:00:00Z', cacheState: 'fresh' } }
+  const option = buildMacroIndicatorOption(definition, data, range, getChartPalette('light'), ['2026-09-30', '2026-10-08', '2026-10-09']) as any
+  const stamp = (date: string) => Date.parse(`${date}T00:00:00+08:00`)
+  expect(option.series[0].data).toEqual([[stamp('2026-09-30'), 1], [stamp('2026-10-08'), null], [stamp('2026-10-09'), 2]])
+  const withoutCalendar = buildMacroIndicatorOption(definition, data, range, getChartPalette('light')) as any
+  expect(withoutCalendar.series[0].data).toContainEqual([stamp('2026-10-01'), null])
+  const partialCalendar = buildMacroIndicatorOption(definition, data, range, getChartPalette('light'), ['2026-09-29', '2026-10-08', '2026-10-12']) as any
+  expect(partialCalendar.series[0].data).toContainEqual([stamp('2026-10-09'), 2])
+})
 it('keeps per-indicator failure details and supports keyboard navigation without exposing long copy by default', async () => {
   const { client } = fixture()
   render(<MacroPage client={client} theme="dark" />)

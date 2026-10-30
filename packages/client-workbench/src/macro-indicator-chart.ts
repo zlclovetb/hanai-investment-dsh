@@ -4,7 +4,7 @@ import type { MacroRange } from '../../contracts/src/macro-range.ts'
 import type { ChartPalette } from './chart-options.ts'
 
 /** Keep real holes; cumulative Jan-Feb reports use their actual published periods. */
-export function buildMacroIndicatorOption(definition: MacroIndicatorDefinition, data: MacroIndicatorData | undefined, range: MacroRange, palette: ChartPalette): EChartsCoreOption {
+export function buildMacroIndicatorOption(definition: MacroIndicatorDefinition, data: MacroIndicatorData | undefined, range: MacroRange, palette: ChartPalette, tradingDates: string[] = []): EChartsCoreOption {
   let points = data?.points ?? []
   if (definition.frequency === 'monthly') {
     const actual = new Map(points.map(point => [point.date, point]))
@@ -20,11 +20,15 @@ export function buildMacroIndicatorOption(definition: MacroIndicatorDefinition, 
   if (definition.id === 'arms' && points.length > 1) {
     const actual = new Map(points.map(point => [point.date, point]))
     const dates = []
+    const trading = new Set(tradingDates)
+    const ordered = [...trading].sort()
     const cursor = new Date(`${points[0]!.date}T00:00:00Z`)
     const end = points.at(-1)!.date
     while (cursor.toISOString().slice(0, 10) <= end) {
       const date = cursor.toISOString().slice(0, 10)
-      if (cursor.getUTCDay() !== 0 && cursor.getUTCDay() !== 6) dates.push(actual.get(date) ?? { date, values: {} })
+      // shortcut: outside cached index coverage, use weekdays until index history covers the range.
+      const confirmed = ordered.length > 0 && date >= ordered[0]! && date <= ordered.at(-1)!
+      if (actual.has(date) || (confirmed ? trading.has(date) : cursor.getUTCDay() !== 0 && cursor.getUTCDay() !== 6)) dates.push(actual.get(date) ?? { date, values: {} })
       cursor.setUTCDate(cursor.getUTCDate() + 1)
     }
     points = dates
