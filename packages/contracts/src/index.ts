@@ -1,4 +1,5 @@
 import type { ResearchAttachment } from './research-assistant.ts'
+import type { MarketScanQuery, MarketScanResult } from './market-scan.ts'
 import type { MarketLadderData } from './market-ladder.ts'
 import type { MacroRange } from './macro-range.ts'
 import type { MacroSeriesData } from './macro-series.ts'
@@ -464,6 +465,8 @@ export interface CreateExpertChatInput {
 export interface HanaiEndpointMap {
   'bootstrap': { request: Record<string, never>; response: BootstrapData }
   'dashboard.get': { request: { refresh?: boolean }; response: DashboardData }
+  'market.scan.query': { request: { query: MarketScanQuery; date?: string; refresh?: boolean }; response: MarketScanResult }
+  'market.scan.history': { request: { query: MarketScanQuery }; response: MarketHistorySummary[] }
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
   'market.arms': { request: Record<string, never>; response: MarketArmsData | null }
   'market.ladder': { request: Record<string, never>; response: MarketLadderData | null }

@@ -3,16 +3,25 @@ import { z } from 'zod'
 import type { ConnectionRpcResult as RpcResult } from '@deepseek-ai/dsh-client-connection'
 import type { HanaiEndpoint, HanaiRequest, HanaiResponse } from '../../contracts/src/index.ts'
 import { isMarketDate } from '../../contracts/src/market-history.ts'
+import { SCAN_FIELDS, scanQueryError, type MarketScanQuery, type ScanSort } from '../../contracts/src/market-scan.ts'
 
 const empty = z.object({}).strict()
 const identifier = z.string().regex(/^[A-Za-z0-9_-]{1,100}$/)
 const secId = z.string().regex(/^[01]\.\d{6}$/)
 const groupName = z.string().trim().min(1).max(20)
 const tradingDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const scanValue = z.number().finite().min(-1e12).max(1e12)
+const scanQuery = z.object({
+  search: z.string().trim().max(80), page: z.number().int().min(1).max(1000),
+  ranges: z.object(Object.fromEntries(Object.entries(SCAN_FIELDS).map(([key, field]) => [key, z.object(field.maximum ? { min: scanValue.optional(), max: scanValue.optional() } : { min: scanValue.optional() }).strict().optional()]))).strict(),
+  sort: z.enum(['code', 'price', 'changePct', ...Object.keys(SCAN_FIELDS)]), order: z.enum(['asc', 'desc']),
+}).strict().refine(value => scanQueryError(value as MarketScanQuery) === null, '筛选范围或排序无效')
 
 const schemas = {
   'bootstrap': empty,
   'dashboard.get': z.object({ refresh: z.boolean().optional() }).strict(),
+  'market.scan.query': z.object({ query: scanQuery, date: z.string().refine(isMarketDate).optional(), refresh: z.boolean().optional() }).strict(),
+  'market.scan.history': z.object({ query: scanQuery }).strict(),
   'market.breadth': empty,
   'market.arms': empty,
   'market.ladder': empty,

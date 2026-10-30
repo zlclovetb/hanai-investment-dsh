@@ -33,6 +33,7 @@ export const SOURCE_PRIORITY = [
   'eastmoney-macro',
   'mofcom-macro',
   '88ai-arms',
+  '88ai-scan',
 ] as const
 
 export type SourceId = (typeof SOURCE_PRIORITY)[number]

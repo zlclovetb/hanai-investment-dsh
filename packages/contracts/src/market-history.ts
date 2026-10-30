@@ -1,4 +1,5 @@
 import type { MarketLadderData } from './market-ladder.ts'
+import { isMarketScanData, type MarketScanData } from './market-scan.ts'
 import type { MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, SectorBoard, StockQuote } from './index.ts'
 import { MACRO_GENERATION_PANELS, MACRO_ETFS, type MacroChartData, type MacroEtfInputs, type MacroAllDailyData, macroAllTotals, type MacroAllEtfData, type MacroCapitalData, type MacroEtfData, type MacroIndexData, type MacroDailyEtfData } from './market-macro.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
@@ -103,6 +104,7 @@ function isCapitalReference(value: unknown, fetchedAt: string): boolean {
 
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
+  if (key.startsWith('scan:')) return isMarketScanData(value) && isMarketProviderMeta(value.meta)
   if (!object(value)) return false
   if (key === 'ladder') return (value.method === undefined || value.method === 'source-board-types-v1') && isMarketProviderMeta(value.meta) && typeof value.date === 'string' && isMarketDate(value.date)
     && (value.yesterdayPerformance === undefined || value.yesterdayPerformance === null || (object(value.yesterdayPerformance)
@@ -269,6 +271,7 @@ export function isMarketPanelPayload(key: string, value: unknown): boolean {
 
 export function marketHistoryPanel<K extends keyof MarketPanelPayloads>(snapshot: MarketHistorySnapshot | null, key: K): MarketPanelPayloads[K] | null
 export function marketHistoryPanel(snapshot: MarketHistorySnapshot | null, key: `sector:${string}`): { stocks: StockQuote[]; meta: ProviderMeta } | null
+export function marketHistoryPanel(snapshot: MarketHistorySnapshot | null, key: `scan:${string}`): MarketScanData | null
 export function marketHistoryPanel(snapshot: MarketHistorySnapshot | null, key: string): unknown {
   const panel = snapshot?.records[key]
   return panel?.version === 1 && isMarketPanelPayload(key, panel.data) ? panel.data : null

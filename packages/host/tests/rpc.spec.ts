@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { parseHanaiRequest } from '../src/rpc.ts'
+import { DEFAULT_SCAN_QUERY } from '../../contracts/src/market-scan.ts'
 
 describe('Hanai RPC request validation', () => {
+  it('bounds financial scanning without accepting arbitrary source URLs or unsupported upper bounds', () => {
+    expect(parseHanaiRequest('market.scan.query', { query: DEFAULT_SCAN_QUERY })).toEqual({ query: DEFAULT_SCAN_QUERY })
+    for (const payload of [{ query: { ...DEFAULT_SCAN_QUERY, ranges: { grossMargin: { max: 20 } } } }, { query: { ...DEFAULT_SCAN_QUERY, page: 0 } }, { query: DEFAULT_SCAN_QUERY, url: 'https://example.com' }, { query: DEFAULT_SCAN_QUERY, date: '2026-02-30' }, { query: { ...DEFAULT_SCAN_QUERY, ranges: { pe: { min: 30, max: 10 } } } }]) expect(() => parseHanaiRequest('market.scan.query', payload)).toThrow()
+  })
   it('accepts only bounded screening questions and scoped identifiers', () => {
     expect(parseHanaiRequest('screener.create', { openingMessage: ' 银行股 ' })).toEqual({ openingMessage: '银行股' })
     expect(() => parseHanaiRequest('screener.create', { masterId: 'some-master' })).toThrow()

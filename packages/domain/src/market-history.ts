@@ -84,9 +84,9 @@ export class MarketHistoryStore {
     `).run(date, key, capturedAt, observedAt, JSON.stringify(data), JSON.stringify(meta), key, key)
   }
 
-  get(date: string): MarketHistorySnapshot | null {
+  get(date: string, key?: string): MarketHistorySnapshot | null {
     if (!isMarketDate(date)) throw new Error('市场历史日期无效')
-    const rows = this.sqlite.prepare('SELECT * FROM market_panel_snapshots WHERE date = ? ORDER BY panel_key').all(date) as unknown as PanelRow[]
+    const rows = this.sqlite.prepare("SELECT * FROM market_panel_snapshots WHERE date = ? AND (? IS NULL OR panel_key = ?) AND (? IS NOT NULL OR panel_key NOT LIKE 'scan:%') ORDER BY panel_key").all(date, key ?? null, key ?? null, key ?? null) as unknown as PanelRow[]
     const records: Record<string, MarketPanelSnapshot> = Object.create(null)
     for (const row of rows) {
       try {
@@ -103,7 +103,7 @@ export class MarketHistoryStore {
 
   list(scope: 'all' | 'market' = 'all'): MarketHistorySummary[] {
     const rows = this.sqlite.prepare(`SELECT date, MAX(captured_at) AS captured_at, GROUP_CONCAT(panel_key) AS panels
-      FROM market_panel_snapshots WHERE (? = 'all' OR panel_key NOT LIKE 'macro.%')
+      FROM market_panel_snapshots WHERE (? = 'all' OR (panel_key NOT LIKE 'macro.%' AND panel_key NOT LIKE 'scan:%'))
       GROUP BY date ORDER BY date DESC`).all(scope) as unknown as Array<{ date: string; captured_at: string; panels: string }>
     return rows.map(row => ({ date: row.date, capturedAt: row.captured_at, panels: row.panels.split(',') }))
   }

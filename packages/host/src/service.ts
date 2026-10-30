@@ -1,3 +1,5 @@
+import { MarketScanService } from './market-scan.ts'
+import type { MarketScanData, MarketScanQuery } from '../../contracts/src/market-scan.ts'
 import { AI_SCREENER_ID } from '../../contracts/src/ai-screener.ts'
 import { RESEARCH_ASSISTANT_ID } from '../../contracts/src/research-assistant.ts'
 import { AI_SCREENER, RESEARCH_ASSISTANT, ResearchWorkspace } from '../../domain/src/research-assistant.ts'
@@ -67,6 +69,7 @@ const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableA
 const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
+  getMarketScan?(query: MarketScanQuery, refresh?: boolean): Promise<MarketScanData | null>
   getMacroIndicator?(id: MacroIndicatorId, range: MacroRange, signal?: AbortSignal): Promise<MacroIndicatorData>
   getMacroInputs(): MacroEtfInputs | null
   getMacroAllDaily(previous: MacroAllDailyData | null, inputs: MacroEtfInputs | null, retryMissing?: boolean, range?: MacroRange): Promise<MacroAllDailyData | null>
@@ -140,6 +143,7 @@ export class HanaiService {
   private securitySyncInProgress = false
   private readonly marketHistory: MarketHistoryStore
   private marketDateContext: { date: string; observedOn: string } | null = null
+  private readonly scan: MarketScanService
   private readonly macroSeries: MacroSeries
   private readonly macroIndicators: MacroIndicators
   startMacroUpdates(): void { this.macroSeries.start() }
@@ -156,6 +160,7 @@ export class HanaiService {
     this.sessions = options.sessions
     this.defaultModel = options.defaultModel
     this.market = options.market
+    this.scan = new MarketScanService((query, refresh) => this.market.getMarketScan?.(query, refresh) ?? Promise.resolve(null), this.marketHistory, this.database)
     this.macroIndicators = new MacroIndicators((id, range, signal) => {
       if (!this.market.getMacroIndicator) return Promise.reject(new Error('当前行情服务未提供宏观经济指标能力'))
       return this.market.getMacroIndicator(id, range, signal)
@@ -270,6 +275,11 @@ export class HanaiService {
   ): Promise<unknown> {
     switch (endpoint) {
       case 'bootstrap': return this.bootstrap()
+      case 'market.scan.query': {
+        const { query, date, refresh } = request as HanaiRequest<'market.scan.query'>
+        return this.scan.query(query, date, refresh)
+      }
+      case 'market.scan.history': return this.scan.dates((request as HanaiRequest<'market.scan.history'>).query)
       case 'dashboard.get': {
         const input = request as HanaiRequest<'dashboard.get'>
         const result = await this.market.getDashboard(input.refresh)
@@ -828,7 +838,7 @@ export class HanaiService {
       if (research) {
         const latest = this.marketHistory.list('market').find(row => row.panels.includes('overview'))
         const snapshot = latest ? this.marketHistory.get(latest.date) : null
-        const records = snapshot ? Object.fromEntries(Object.entries(snapshot.records).filter(([key]) => !key.startsWith('macro.'))) : null
+        const records = snapshot ? Object.fromEntries(Object.entries(snapshot.records).filter(([key]) => !key.startsWith('macro.') && !key.startsWith('scan:'))) : null
         const context = snapshot && records ? { ...snapshot, records, panels: Object.keys(records), capturedAt: Object.values(records).map(row => row.capturedAt).sort().at(-1) ?? snapshot.capturedAt } : null
         workspace = new ResearchWorkspace(this.paths).prepare(id, context, kind === 'screener' ? { securities: this.database.screeningUniverse(), note: '仅代码名称参考，不含财务指标；不是全市场筛选结果' } : undefined)
       } else workspace = this.expertChats.prepareWorkspace(id, master).workspace

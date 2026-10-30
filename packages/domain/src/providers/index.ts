@@ -48,6 +48,8 @@ import { MarketMacroDailyProvider } from './market-macro-daily.ts'
 import type { MacroAllDailyData, MacroEtfInputs, MacroCapitalData, MacroDailyEtfData } from '../../../contracts/src/market-macro.ts'
 import { MarketMacroProvider } from './market-macro.ts'
 import { MarketActivityProvider } from './market-activity.ts'
+import { MarketScanProvider } from './market-scan.ts'
+import type { MarketScanQuery } from '../../../contracts/src/market-scan.ts'
 
 export { EastmoneyProvider, type EastmoneyProviderOptions } from './eastmoney.ts'
 export {
@@ -93,6 +95,8 @@ async function optional<T>(promise: Promise<T>): Promise<T | null> {
 
 /** Facade consumed by the Host; all external transport and time are injectable for deterministic tests. */
 export class MarketDataService {
+  private readonly scan: MarketScanProvider
+  getMarketScan(query: MarketScanQuery, refresh = false) { return this.scan.get(query, refresh) }
   private readonly macroIndicators: MacroIndicatorProvider
   getMacroIndicator(id: MacroIndicatorId, range: MacroRange, signal?: AbortSignal) { return this.macroIndicators.get(id, range, signal) }
   readonly macroInputs: MarketMacroInputs
@@ -126,6 +130,7 @@ export class MarketDataService {
     this.breadthTimeoutMs = options.timeoutMs ?? 10_000
     this.clock = options.clock ?? systemClock
     this.circuit = new SourceCircuit({ ...options.circuit, clock: this.clock })
+    this.scan = new MarketScanProvider(http, this.clock, this.circuit)
     this.macroInputs = new MarketMacroInputs(http, this.clock, this.circuit)
     this.macroIndicators = new MacroIndicatorProvider(http, this.clock, this.circuit)
     this.macroAll = new MarketMacroAllProvider(http, this.clock, this.circuit)
@@ -193,6 +198,7 @@ export class MarketDataService {
       ['sina', '新浪', 'security'], ['eastmoney-push2', '东方财富', 'security'],
       ['legu', '乐咕乐股（AKShare 同源）', 'breadth'],
       ['88ai-arms', '88AI投（成交额版阿姆氏指标）', 'breadth'],
+      ['88ai-scan', '88AI投（公开财务扫描汇总）', 'market'],
       ['sina', '新浪涨跌分布', 'breadth'],
       ['tencent', '腾讯涨跌分布', 'breadth'],
       ['eastmoney-push2', '东方财富涨跌分布（兜底）', 'breadth'],
@@ -436,7 +442,7 @@ export class MarketDataService {
   }
 
   clearMarketCache(): number {
-    return this.ladder.clear() + this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.distributionCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
+    return this.scan.clear() + this.ladder.clear() + this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.distributionCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
   }
 
   async syncSecurities(
