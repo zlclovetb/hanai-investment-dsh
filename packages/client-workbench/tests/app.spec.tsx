@@ -1460,6 +1460,23 @@ describe('whole-page market history', () => {
     await act(async () => {})
   }
 
+  it('shows the separate arms source and reads only its archive in historical mode', async () => {
+    const snapshot = historyFixture('2026-10-26')
+    const meta = { ...fresh, providerId: '88ai-arms', sourceName: '88AI投 · 含 ST', sourceTimestamp: '2026-10-26T15:00:00+08:00', fetchedAt: '2026-10-26T15:06:00+08:00' }
+    const point = { date: '2026-10-26', time: '15:00', upCount: 100, downCount: 200, flatCount: 3, upAmount: 300, downAmount: 200, trin: 1 / 3, adRatio: 0.5, amountRatio: 1.5, estimated: false }
+    snapshot.records.arms = { key: 'arms', data: { point, meta }, meta, capturedAt: meta.fetchedAt, version: 1 }
+    snapshot.panels.push('arms')
+    const client = makeClient({ 'market.history.list': () => ({ snapshots: [snapshot] }), 'market.history.get': () => snapshot, 'market.arms': () => null })
+    renderAt('/dashboard', client)
+    await act(async () => {})
+    await selectDate(snapshot.date)
+    expect(screen.getByLabelText('成交额版阿姆氏指标').textContent).toContain('0.33')
+    expect(screen.getByText('88AI投 · 含 ST', { exact: false })).toBeTruthy()
+    expect(callsOf(client, 'market.arms')).toHaveLength(1)
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
+    expect(callsOf(client, 'market.arms')).toHaveLength(1)
+  })
+
   it('ignores missing macro archives on the dashboard but reports missing market panels', async () => {
     vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
     const snapshot = historyFixture('2026-10-27')

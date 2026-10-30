@@ -9,7 +9,7 @@ interface Work { topic: EconomicTopic; range: MacroRange }
 interface Attempt extends Work { at: number; tasks: MacroIndicatorTask[] }
 const needsRetry = (attempt: Attempt) => attempt.tasks.some(task => task.state === 'failed' || task.state === 'partial')
 const KEY = 'macro.indicators.work'
-const validWork = (value: unknown): value is Work => value !== null && typeof value === 'object' && 'topic' in value && ['credit', 'activity', 'prices'].includes(String(value.topic)) && 'range' in value && isMacroRange(value.range)
+const validWork = (value: unknown): value is Work => value !== null && typeof value === 'object' && 'topic' in value && ['credit', 'activity', 'prices', 'breadth'].includes(String(value.topic)) && 'range' in value && isMacroRange(value.range)
 const contains = (a: MacroRange, b: MacroRange) => a.from <= b.from && a.to >= b.to
 
 /** Shares the ETF scheduler's tick and canonical macro.series buckets; observations are independent. */
@@ -41,7 +41,12 @@ export class MacroIndicators {
       const value = data[row.id]
       return !value || !contains(value.checkedRange, range) || value.points.length === 0 || firstMacroIndicatorGap(row.id, value, range) !== null
     })
-    if (refresh || missing) this.enqueue({ topic, range }, refresh)
+    if (refresh || missing) {
+      const yearAgo = new Date(`${range.to}T00:00:00Z`)
+      yearAgo.setUTCFullYear(yearAgo.getUTCFullYear() - 1)
+      const from = yearAgo.toISOString().slice(0, 10)
+      this.enqueue({ topic, range: topic === 'breadth' && from < range.from ? { from, to: range.to } : range }, refresh)
+    }
     const applies = (work: Work) => work.topic === topic && work.range.from <= range.to && work.range.to >= range.from
     const attempt = this.attempts.filter(applies).at(-1)
     const running = this.active !== null && applies(this.active)
@@ -64,7 +69,7 @@ export class MacroIndicators {
     if (this.disposed) return
     if (slot !== this.slot) {
       this.slot = slot
-      for (const topic of ['credit', 'activity', 'prices'] as const) this.enqueue({ topic, range: defaultMacroRange() }, true)
+      for (const topic of ['credit', 'activity', 'prices', 'breadth'] as const) this.enqueue({ topic, range: defaultMacroRange() }, true)
       this.persist()
     }
     for (const attempt of [...this.attempts]) if (needsRetry(attempt) && Date.now() - attempt.at >= 6 * 3_600_000) this.enqueue({ topic: attempt.topic, range: attempt.range })
@@ -84,7 +89,7 @@ export class MacroIndicators {
         const old = seed[task.id]
         const range = { ...work.range }
         if (old && old.checkedRange.from <= range.from && old.checkedRange.to >= range.from && old.points.length > 0) {
-          const lookback = task.id === 'yields' ? new Date(Date.parse(old.points.at(-1)!.date) - 10 * 86_400_000).toISOString().slice(0, 10)
+          const lookback = task.id === 'yields' || task.id === 'arms' ? new Date(Date.parse(old.points.at(-1)!.date) - 10 * 86_400_000).toISOString().slice(0, 10)
             : new Date(Date.UTC(Number(range.to.slice(0, 4)) - 1, Number(range.to.slice(5, 7)) - 1, 1)).toISOString().slice(0, 10)
           const recent = lookback < old.checkedRange.to ? lookback : old.checkedRange.to
           if (recent > range.from) range.from = recent
@@ -94,11 +99,12 @@ export class MacroIndicators {
         const data = await this.load(task.id, range, this.controller.signal)
         this.controller.signal.throwIfAborted()
         if (data.id !== task.id || ['stale', 'unavailable'].includes(data.meta.cacheState)) throw new Error('来源未返回本指标有效数据')
-        this.save({ ...data, checkedRange: work.range })
+        this.save(task.id === 'arms' ? data : { ...data, checkedRange: work.range })
         const merged = selectMacroIndicators([seed, { [task.id]: data }], work.range)[task.id]!
         const gap = firstMacroIndicatorGap(task.id, merged, work.range)
-        task.state = gap === null ? 'completed' : 'partial'
-        if (gap !== null) task.error = `${gap}起仍有缺口，已保存可用数据，后续后台更新重试`
+        const incomplete = task.id === 'arms' && !contains(data.checkedRange, work.range)
+        task.state = gap === null && !incomplete ? 'completed' : 'partial'
+        if (gap !== null || incomplete) task.error = gap !== null ? `${gap}起仍有缺口，已保存可用数据，后续后台更新重试` : '来源未覆盖完整范围，已保存可用数据'
       } catch (error) { task.state = 'failed'; task.error = error instanceof Error ? error.message : '取数失败，保留本地数据' }
     })).then(() => {
       if (this.disposed) return

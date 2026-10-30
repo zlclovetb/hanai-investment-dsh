@@ -35,6 +35,15 @@ function setup() {
   }
   return { create, history, settings, load }
 }
+it('requests one year for breadth while returning only the selected display range', async () => {
+  const { create, load } = setup()
+  const worker = create()
+  const shown = { from: '2026-08-01', to: '2026-10-29' }
+  worker.query('breadth', shown)
+  expect(load).toHaveBeenCalledWith('arms', { from: '2025-10-29', to: '2026-10-29' }, expect.any(AbortSignal))
+  await vi.waitFor(() => expect(worker.query('breadth', shown).running).toBe(false))
+  expect(worker.query('breadth', shown).data.arms?.points[0]?.date).toBe('2026-10-29')
+})
 it('saves all independent indicators in canonical monthly buckets and restores cache in a new Host', async () => {
   const { create, load, history } = setup()
   const worker = create()
@@ -104,9 +113,9 @@ it('does one daily catch-up for all themes and resumes unfinished work after dis
   worker.tick('2026-10-28')
   expect(load).toHaveBeenCalledTimes(3)
   const saved = JSON.parse(settings.get('macro.indicators.work')!)
-  expect(saved.queue.map((work: { topic: string }) => work.topic)).toEqual(['credit', 'activity', 'prices'])
+  expect(saved.queue.map((work: { topic: string }) => work.topic)).toEqual(['credit', 'activity', 'prices', 'breadth'])
   worker.tick('2026-10-28')
-  expect(JSON.parse(settings.get('macro.indicators.work')!).queue).toHaveLength(3)
+  expect(JSON.parse(settings.get('macro.indicators.work')!).queue).toHaveLength(4)
   worker.dispose(); release()
   await vi.advanceTimersByTimeAsync(1)
   const restarted = create()
@@ -117,7 +126,7 @@ it('does one daily catch-up for all themes and resumes unfinished work after dis
   expect(load).toHaveBeenCalledTimes(count)
   vi.setSystemTime(new Date('2026-10-30T20:00:00+08:00'))
   restarted.tick('2026-10-30')
-  await vi.waitFor(() => expect(load.mock.calls.length).toBe(count + 9))
+  await vi.waitFor(() => expect(load.mock.calls.length).toBe(count + 10))
 })
 it('merges pending overlapping ranges, rejects oversized ranges and never cancels the active job', async () => {
   const { create, load, settings } = setup()

@@ -32,3 +32,12 @@ it('clips every date series to the requested window and validates stored ranges 
   const result = selectMacroSeries([cached], { from: '2026-10-08', to: '2026-10-09' })
   expect(result.index?.points.map(row => row.date)).toEqual(['2026-10-08'])
 })
+
+it('keeps the previous official month-end when a month has only reconstructed daily capital', () => {
+  const existing = data('2026-10-29T10:00:00Z', 470000, true)
+  const october = { from: '2026-10-01', to: '2026-10-09' }
+  const merged = selectMacroSeries([existing], october)
+  expect(merged.capital?.points).toEqual([{ date: '2026-09-30', floatCap: 470000 }])
+  expect(merged.capital?.reference?.points[0]?.date).toBe('2026-10-08')
+  expect(isMarketPanelPayload('macro.series', merged)).toBe(true)
+})

@@ -17,10 +17,10 @@ function fixture() {
   const call = vi.fn(async (endpoint: string) => endpoint === 'market.macro.indicators' ? value : { data: { range, etfs: null, index: null, daily: null, capital: null, allEtfs: null, allDaily: null }, task: { state: 'idle', panels: [] }, queued: [] })
   return { call, value, client: { call } as unknown as HanaiClient }
 }
-it('switches four themes, retains independent applied ranges and cancels only old observation', async () => {
+it('switches themes, retains independent applied ranges and cancels only old observation', async () => {
   const { call, client } = fixture()
   render(<MacroPage client={client} theme="light" />)
-  expect(screen.getAllByRole('tab')).toHaveLength(4)
+  expect(screen.getAllByRole('tab')).toHaveLength(5)
   await waitFor(() => expect(call).toHaveBeenCalledTimes(1))
   const firstSignal = (call.mock.calls[0] as unknown as [string, unknown, AbortSignal])[2]
   fireEvent.click(screen.getByRole('tab', { name: '货币与信用' }))
@@ -37,6 +37,23 @@ it('switches four themes, retains independent applied ranges and cancels only ol
   expect(screen.getByLabelText('开始日期')).toHaveValue('2021-10-29')
   fireEvent.click(screen.getByRole('tab', { name: '货币与信用' }))
   expect(screen.getByLabelText('开始日期')).toHaveValue('2015-01-01')
+})
+it('renders the market breadth topic and marks estimated historical points in the tooltip', async () => {
+  const { client, call } = fixture()
+  render(<MacroPage client={client} theme="light" />)
+  fireEvent.click(screen.getByRole('tab', { name: '市场广度' }))
+  await screen.findByRole('heading', { name: '成交额版阿姆氏指标' })
+  expect(call).toHaveBeenLastCalledWith('market.macro.indicators', expect.objectContaining({ topic: 'breadth' }), expect.any(AbortSignal))
+  const definition = MACRO_INDICATORS.find(row => row.id === 'arms')!
+  const date = '2026-10-28'
+  const data: MacroIndicatorData = { id: 'arms', checkedRange: { from: date, to: date }, points: [{ date, values: { trin: 0.5, adRatio: 2, amountRatio: 4 }, estimated: true }], meta: { providerId: '88ai-arms', sourceName: '88AI', sourceTimestamp: date, fetchedAt: '2026-10-29T10:00:00Z', cacheState: 'fresh' } }
+  const option = buildMacroIndicatorOption(definition, data, { from: date, to: date }, getChartPalette('light')) as any
+  expect(option.tooltip.formatter([{ value: [Date.parse(`${date}T00:00:00+08:00`), 0.5] }])).toContain('估算')
+  expect(option.series).toHaveLength(3)
+  expect(option.series.map((series: { name: string }) => series.name)).toEqual(['TRIN', '涨跌家数比', '涨跌成交额比'])
+  expect(option.series[0].type).toBe('bar')
+  expect(option.series[0].data).toEqual([[Date.parse(`${date}T00:00:00+08:00`), 0.5]])
+  expect(option.series[1].markLine.data[0].yAxis).toBe(1)
 })
 it('keeps per-indicator failure details and supports keyboard navigation without exposing long copy by default', async () => {
   const { client } = fixture()

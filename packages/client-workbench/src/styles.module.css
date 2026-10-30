@@ -334,7 +334,7 @@
 .breadthFlat { background: #697183; }
 .breadthDown { background: #309c70; }
 .breadthLimitDown { background: #1e7b56; }
-.breadthStats { display: flex; align-items: center; gap: 22px; padding: 0 16px 14px; font-size: 11px; }
+.breadthStats { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; padding: 0 16px 14px; font-size: 11px; }
 .breadthStats b { margin-left: 3px; font: 650 12px ui-monospace, monospace; }
 
 .dashboardMainGrid { display: grid; grid-template-columns: minmax(0, 1.72fr) minmax(330px, 1fr); gap: 14px; }
@@ -924,6 +924,10 @@
 .macroTabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .macroIndicatorGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 16px; }
 .macroIndicatorGrid > section { min-width: 0; }
+.armsFigures { display: flex; flex-wrap: wrap; gap: 20px 48px; padding: 16px; }
+.armsFigures > div { display: flex; flex-direction: column; gap: 5px; min-width: 140px; }
+.armsFigures small { color: var(--text-muted); }
+.armsFigures strong { font-size: 20px; }
 .macroEmpty { min-height: 260px; display: grid; place-items: center; padding: 20px; color: var(--muted); }
 .macroNotice { padding: 8px 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .macroNotice p { margin: 4px 0; }

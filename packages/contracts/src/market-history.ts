@@ -5,10 +5,12 @@ import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts
 import { isMacroRange } from './macro-range.ts'
 import type { MacroSeriesData } from './macro-series.ts'
 import { MACRO_INDICATORS } from './macro-indicators.ts'
+import type { MarketArmsData } from './market-arms.ts'
 
-export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
+export const MARKET_HISTORY_PANELS = ['overview', 'breadth', 'arms', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'global.indices', 'intraday', 'signals', 'macro.etf', 'macro.index', 'macro.etf.daily', 'macro.capital', 'macro.etf.all.quarter', 'macro.etf.inputs', 'macro.etf.all.daily', 'macro.chart', 'macro.series'] as const
 
 export interface MarketPanelPayloads {
+  arms: MarketArmsData
   'macro.series': MacroSeriesData
   'macro.chart': MacroChartData
   'macro.etf.inputs': MacroEtfInputs
@@ -98,12 +100,23 @@ function isCapitalReference(value: unknown, fetchedAt: string): boolean {
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (!object(value)) return false
+  if (key === 'arms') {
+    const point = value.point
+    return isMarketProviderMeta(value.meta) && object(point)
+      && typeof point.date === 'string' && isMarketDate(point.date)
+      && (point.time === null || (typeof point.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(point.time)))
+      && ['upCount', 'downCount', 'flatCount'].every(field => Number.isSafeInteger(point[field]) && Number(point[field]) >= 0)
+      && ['upAmount', 'downAmount', 'trin', 'adRatio', 'amountRatio'].every(field => numberOrNull(point[field]) && (point[field] === null || Number(point[field]) >= 0))
+      && typeof point.estimated === 'boolean'
+  }
   if (key === 'macro.series') return isMacroRange(value.range) && isMarketProviderMeta(value.meta)
     && (value.indicators === undefined || (object(value.indicators) && Object.entries(value.indicators).every(([id, data]) => {
       const definition = MACRO_INDICATORS.find(row => row.id === id)
       return definition !== undefined && object(data) && data.id === id && isMacroRange(data.checkedRange) && isMarketProviderMeta(data.meta)
         && Array.isArray(data.points) && data.points.every((point, i, rows) => object(point) && typeof point.date === 'string' && isMarketDate(point.date)
           && isMacroRange(value.range) && point.date >= value.range.from && point.date <= value.range.to && (i === 0 || String(rows[i - 1].date) < point.date)
+          && (point.estimated === undefined || typeof point.estimated === 'boolean')
+          && (point.armsDetails === undefined || (object(point.armsDetails) && ['upCount', 'downCount'].every(field => Number.isSafeInteger((point.armsDetails as Record<string, unknown>)[field]) && Number((point.armsDetails as Record<string, unknown>)[field]) >= 0) && ['upAmount', 'downAmount'].every(field => numberOrNull((point.armsDetails as Record<string, unknown>)[field]) && ((point.armsDetails as Record<string, unknown>)[field] === null || Number((point.armsDetails as Record<string, unknown>)[field]) >= 0))))
           && object(point.values) && Object.keys(point.values).length === definition.columns.length
           && definition.columns.every(column => object(point.values) && numberOrNull(point.values[column.key])))
     })))

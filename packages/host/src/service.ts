@@ -50,6 +50,7 @@ import { beijingMarketDate, marketDateFromMeta, marketHistoryPanel } from '../..
 import type { MacroAllDailyData, MacroEtfInputs, MacroAllEtfData, MacroCapitalData, MacroEtfData, MacroIndexData, MacroDailyEtfData } from '../../contracts/src/market-macro.ts'
 import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
+import type { MarketArmsData } from '../../contracts/src/market-arms.ts'
 
 const MARKET_SUCCESS_SETTING = 'market.latestSuccess'
 const BREADTH_SUCCESS_SETTING = 'market.breadth.latestSuccess'
@@ -73,6 +74,7 @@ export interface MarketFacade {
   getGlobalIndices(): Promise<GlobalIndicesData>
   getDashboard(refresh?: boolean): Promise<DashboardData>
   getMarketBreadth(): Promise<MarketBreadthData | null>
+  getMarketArms?(): Promise<MarketArmsData | null>
   getSectorStocks(sectorCode: string): Promise<{ stocks: StockQuote[]; meta: ProviderMeta }>
   getStockDetail(secId: string, security?: ReturnType<HanaiDatabase['getSecurity']>): Promise<StockDetail>
   getStockQuoteMetrics(secId: string): Promise<StockQuoteMetricsData>
@@ -277,6 +279,11 @@ export class HanaiService {
         this.recordProviderSuccess(BREADTH_SUCCESS_SETTING, [result?.meta ?? null])
         if (result !== null && result.meta.cacheState !== 'unavailable') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
         if (result !== null) this.archiveMarketPanel('breadth', result, result.meta, result.qdate)
+        return result
+      }
+      case 'market.arms': {
+        const result = await this.market.getMarketArms?.() ?? null
+        if (result !== null) this.archiveMarketPanel('arms', result, result.meta, result.point.date)
         return result
       }
       case 'market.history.list': return { snapshots: this.marketHistory.list('market') }

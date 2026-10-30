@@ -29,8 +29,9 @@ import type {
 } from '../../contracts/src/index.ts'
 import { ChatPanel } from '../../client-chat/src/index.tsx'
 import { HanaiClient, type DefaultModelView } from './api.ts'
-import { isClosingSnapshotCurrent, MarketHistoryBar, snapshotDashboard, useMarketHistory } from './market-history.tsx'
+import { isClosingPanelCurrent, isClosingSnapshotCurrent, MarketHistoryBar, snapshotDashboard, useMarketHistory } from './market-history.tsx'
 import { beijingMarketDate, MARKET_HISTORY_PANELS, marketHistoryPanel, type MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
+import type { MarketArmsData } from '../../contracts/src/market-arms.ts'
 import { DOMESTIC_INDICES, GLOBAL_INDICES, isGlobalMarketOpen, isGlobalSnapshotCurrent, type GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import { MacroPage } from './market-macro.tsx'
 import { MarketActivityPanel } from './market-activity.tsx'
@@ -304,6 +305,11 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const [liveGlobal, setGlobal] = useState<GlobalIndicesData | null>(null)
   const archivedGlobal = useRef<GlobalIndicesData | null>(null)
   const [activityRefreshVersion, setActivityRefreshVersion] = useState(0)
+  const [liveArms, setLiveArms] = useState<MarketArmsData | null>(null)
+  const [armsFailed, setArmsFailed] = useState(false)
+  const [armsPending, setArmsPending] = useState(false)
+  const savedArms = marketHistoryPanel(historical ? history.snapshot : restingSnapshot, 'arms')
+  const arms = historical ? savedArms : liveArms ?? savedArms
   const global = historical ? marketHistoryPanel(history.snapshot, 'global.indices') : liveGlobal
   const globalController = useRef<AbortController | null>(null)
   const globalInFlight = useRef(false)
@@ -326,6 +332,26 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const liveGeneration = useRef(0)
   const mainController = useRef<AbortController | null>(null)
   const breadthController = useRef<AbortController | null>(null)
+  useEffect(() => {
+    if (historical || loading) return
+    const controller = new AbortController()
+    let busy = false
+    const read = async () => {
+      if (busy) return
+      busy = true; setArmsPending(true)
+      try {
+        const next = await client.call('market.arms', {}, controller.signal)
+        if (controller.signal.aborted) return
+        if (next !== null) setLiveArms(next)
+        setArmsFailed(next === null || next.meta.cacheState === 'stale')
+        if (next !== null) void history.reloadIndex()
+      } catch { if (!controller.signal.aborted) setArmsFailed(true) }
+      finally { busy = false; if (!controller.signal.aborted) setArmsPending(false) }
+    }
+    if (isMarketOpen() || savedArms === null || !isClosingPanelCurrent(savedArms.meta) || activityRefreshVersion > 0) void read()
+    const timer = window.setInterval(() => { if (isMarketOpen()) void read() }, 30_000)
+    return () => { controller.abort(); window.clearInterval(timer) }
+  }, [client, historical, loading, savedArms, activityRefreshVersion, history.reloadIndex])
   const load = useCallback(async (refresh = false) => {
     if (historical || requestInFlight.current) return
     const generation = liveGeneration.current
@@ -494,7 +520,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     history.selectDate(date)
   }
   const dateBar = <MarketHistoryBar history={history} onSelect={selectDate} />
-  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.')) : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
+  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.') && key !== 'arms') : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals', 'arms'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
   if ((historical ? history.loading : loading) && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><PageSkeleton cards={6} /></Page>
   if (historical && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title={history.error === null ? '该日期暂无历史记录' : '历史记录读取失败'} detail={history.error ?? '历史从成功归档的数据积累；未保存的日期无法还原，页面不会补入实时数据。'} action={<button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取</button>} /></Page>
   if (data === null) {
@@ -570,10 +596,13 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     <div className={`${styles['dashboardMainGrid']} ${styles['marketContextGrid']}`}>
     <MarketActivityPanel client={client} snapshot={historical ? history.snapshot : restingSnapshot} historical={historical} marketStatus={data.overview.marketStatus} palette={palette} refreshVersion={activityRefreshVersion} onArchived={history.reloadIndex} />
     <article className={`${styles['card']} ${styles['breadthCard']}`}>
-      <PanelHead title="市场宽度" hint={breadthScope} extra={<span className={styles['metaText']}>两市成交 {money(data.overview.breadth.totalAmount)}</span>} meta={breadthMeta !== undefined && <>
+      <PanelHead title="市场宽度" hint={breadthScope} extra={<span className={styles['metaText']}>两市成交 {money(data.overview.breadth.totalAmount)}</span>} meta={<>
+        {breadthMeta !== undefined && <>
         <DataStateBadge history={historical} resting={!historical && breadth !== null && breadth === archivedBreadth.current} meta={breadthMeta} {...(breadthMeta.providerId === 'legu-breadth' ? { liveCapable: false, ...(data.overview.marketStatus === 'break' ? { marketStatus: 'break' as const } : {}) } : { marketStatus: data.overview.marketStatus })} refreshFailed={!historical && (breadthFailed || (breadth !== archivedBreadth.current && breadthMeta.cacheState === 'stale'))} />
         <DataSourceText meta={breadthMeta} />
         {!archived && (breadthMeta.cacheState === 'stale' || breadthFailed) && <small>更新失败，沿用最近成功的完整宽度快照</small>}
+        </>}
+        {arms && <><DataStateBadge meta={arms.meta} history={historical} resting={!historical && arms === savedArms} refreshFailed={armsFailed} /><DataSourceText meta={arms.meta} /></>}
       </>} />
       {breadthTotal > 0 ? <>
         <div className={styles['breadthBar']} aria-label="涨停、上涨、平盘、下跌、跌停分布">
@@ -594,6 +623,13 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
         </div>
       </> : breadthLoading ? <div className={styles['breadthStats']} aria-label="市场宽度加载中"><span className={styles['cellSkeleton']} /></div>
         : <Empty compact title={archived ? '该日期未保存市场宽度' : '市场宽度暂不可用'} detail={archived ? '历史视图不会调用实时接口补齐。' : '行情源尚未返回市场宽度。'} />}
+      <div className={styles['breadthStats']} aria-label="成交额版阿姆氏指标">
+        <span>TRIN 公式1 <b>{arms?.point.trin == null ? '—' : arms.point.trin.toFixed(2)}</b></span>
+        <span>公式2 <b>{arms?.point.trin == null ? '—' : arms.point.trin.toFixed(2)}</b>（等价）</span>
+        <span>涨跌比 <b>{arms?.point.adRatio == null ? '—' : arms.point.adRatio.toFixed(2)}</b></span>
+        <span>成交额比 <b>{arms?.point.amountRatio == null ? '—' : arms.point.amountRatio.toFixed(2)}</b></span>
+        <span>{arms ? `上涨 ${arms.point.upCount} / ${money(arms.point.upAmount)} · 下跌 ${arms.point.downCount} / ${money(arms.point.downAmount)}${arms.point.estimated ? ' · 估算' : ''}` : historical ? '该日期未保存' : armsPending ? '加载中' : '数据不可用'}</span>
+      </div>
     </article>
     </div>
 

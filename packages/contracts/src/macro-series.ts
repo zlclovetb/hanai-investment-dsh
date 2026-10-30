@@ -21,6 +21,11 @@ export function selectMacroSeries(records: MacroSeriesData[], range: MacroRange)
   const dailyPoints = rows(values('daily').map(value => value.points ?? []))
   const allPoints = rows(values('allDaily').map(value => value.points ?? []))
   const official = rows(values('capital').map(value => value.points ?? []))
+  // A month with only reconstructed daily values still needs its last official month-end anchor.
+  if (official.length === 0) {
+    const anchor = values('capital').flatMap(value => value.points).filter(point => point.date < range.from).sort((a, b) => a.date.localeCompare(b.date)).at(-1)
+    if (anchor) official.push(anchor)
+  }
   const reference = values('capital').flatMap(value => value.reference ?? []).at(-1)
   const refPoints = rows(values('capital').map(value => value.reference?.points ?? [])).filter(point => !official.some(row => row.date === point.date))
   const expectedDays = indexPoints.length

@@ -6,12 +6,14 @@ export const MACRO_TOPICS = [
   { id: 'credit', title: '货币与信用' },
   { id: 'activity', title: '经济景气' },
   { id: 'prices', title: '通胀与利率' },
+  { id: 'breadth', title: '市场广度' },
 ] as const
 export type MacroTopic = typeof MACRO_TOPICS[number]['id']
 export type EconomicTopic = Exclude<MacroTopic, 'funds'>
 
 /** Business definitions live here; transport field names stay in the provider. */
 export const MACRO_INDICATORS = [
+  { id: 'arms', topic: 'breadth', title: '成交额版阿姆氏指标', frequency: 'daily', unit: '比值', columns: [{ key: 'trin', name: 'TRIN' }, { key: 'adRatio', name: '涨跌家数比' }, { key: 'amountRatio', name: '涨跌成交额比' }], kind: 'line', note: '沪深京 A 股含 ST；TRIN 使用成交额而非成交量。历史估算值由来源标记，缺失留空。' },
   { id: 'social', topic: 'credit', title: '社会融资规模增量', frequency: 'monthly', unit: '亿元', columns: [{ key: 'increment', name: '当月社融增量' }], kind: 'bar', note: '当月新增融资，非存量；负值保留。来源可能晚于央行发布，末端未发布或未收录不补零。' },
   { id: 'loans', topic: 'credit', title: '新增人民币贷款', frequency: 'monthly', unit: '亿元', columns: [{ key: 'increment', name: '当月新增人民币贷款' }], kind: 'bar', note: '金融机构新增人民币贷款，不等同于社融中的对实体经济人民币贷款。' },
   { id: 'money', topic: 'credit', title: 'M1 / M2同比', frequency: 'monthly', unit: '%', columns: [{ key: 'm1', name: 'M1同比' }, { key: 'm2', name: 'M2同比' }], kind: 'line', note: '保留来源公布同比；2025年起M1统计口径调整，跨口径比较须谨慎，不自行拼接或重算历史同比。' },
@@ -24,7 +26,7 @@ export const MACRO_INDICATORS = [
 ] as const
 export type MacroIndicatorId = typeof MACRO_INDICATORS[number]['id']
 export type MacroIndicatorDefinition = typeof MACRO_INDICATORS[number]
-export interface MacroIndicatorPoint { date: string; values: Record<string, number | null> }
+export interface MacroIndicatorPoint { date: string; values: Record<string, number | null>; estimated?: boolean; armsDetails?: { upCount: number; downCount: number; upAmount: number | null; downAmount: number | null } }
 export interface MacroIndicatorData {
   id: MacroIndicatorId
   points: MacroIndicatorPoint[]
@@ -78,7 +80,8 @@ export function selectMacroIndicators(records: MacroIndicatorMap[], range: Macro
     const merged = new Map<string, MacroIndicatorPoint>()
     for (const point of values.flatMap(value => value.points).filter(point => point.date >= range.from && point.date <= range.to)) {
       const previous = merged.get(point.date)
-      merged.set(point.date, { date: point.date, values: Object.fromEntries(definition.columns.map(column => [column.key, point.values[column.key] ?? previous?.values[column.key] ?? null])) })
+      if (definition.id === 'arms' && previous && (point.values.trin == null || (point.estimated && previous.estimated === false))) continue
+      merged.set(point.date, { date: point.date, values: Object.fromEntries(definition.columns.map(column => [column.key, point.values[column.key] ?? previous?.values[column.key] ?? null])), ...(point.estimated !== undefined ? { estimated: point.estimated } : previous?.estimated !== undefined ? { estimated: previous.estimated } : {}), ...(point.armsDetails ? { armsDetails: point.armsDetails } : previous?.armsDetails ? { armsDetails: previous.armsDetails } : {}) })
     }
     const points = [...merged.values()].sort((a, b) => a.date.localeCompare(b.date))
     const covered = values.findLast(value => value.checkedRange.from <= range.from && value.checkedRange.to >= range.to)

@@ -37,6 +37,8 @@ export function MacroIndicatorPage({ client, theme, topic, range, setRange }: { 
     return () => { controller.abort(); clearTimeout(timer) }
   }, [client, topic, range, revision])
   const busy = Boolean(result?.running || result?.queued)
+  const displayRatio = (value: number | null | undefined) => value == null ? '—' : value.toFixed(2)
+  const displayAmount = (value: number | null | undefined) => value == null ? '—' : `${(value / 100_000_000).toFixed(2)} 亿`
   return <div>
     <div className={styles['macroToolbar']}>
       <form className={styles['marketHistoryBar']} aria-label="宏观图表日期范围" onSubmit={event => {
@@ -47,6 +49,11 @@ export function MacroIndicatorPage({ client, theme, topic, range, setRange }: { 
         <label>开始日期 <input aria-label="开始日期" type="date" value={draft.from} max={draft.to} onChange={event => setDraft(value => ({ ...value, from: event.target.value }))} /></label>
         <label>结束日期 <input aria-label="结束日期" type="date" value={draft.to} max={beijingMarketDate()} onChange={event => setDraft(value => ({ ...value, to: event.target.value }))} /></label>
         <button className={styles['button']} type="submit">查看图表</button>
+        {topic === 'breadth' && ([['1个月', 1], ['3个月', 3], ['6个月', 6], ['1年', 12]] as const).map(([label, months]) => <button className={styles['button']} type="button" key={months} onClick={() => {
+          const date = new Date(`${range.to}T00:00:00Z`); date.setUTCMonth(date.getUTCMonth() - months)
+          const next = { from: date.toISOString().slice(0, 10), to: range.to }
+          setDraft(next); setResult(null); setError(null); setRange(next)
+        }}>{label}</button>)}
       </form>
       <button className={styles['button']} disabled={loading || busy || !canRefresh} onClick={() => { startCooldown(); refresh.current = true; setRevision(value => value + 1) }}>{busy ? '后台补齐中…' : canRefresh ? '更新当前主题' : `更新 ${cooldown}s`}</button>
     </div>
@@ -67,6 +74,7 @@ export function MacroIndicatorPage({ client, theme, topic, range, setRange }: { 
             <span className={styles['macroBrief']}>{task?.state === 'failed' ? '更新失败，保留本地数据' : task?.state === 'partial' ? '部分数据待补齐' : task?.state === 'running' || task?.state === 'pending' ? '后台补齐中' : latest ? `${valid.length} 个观测期` : '数据不可用或尚未发布'}
               {data?.meta.sourceTimestamp && <span>来源最新统计期 {definition.frequency === 'monthly' ? data.meta.sourceTimestamp.slice(0, 7) : data.meta.sourceTimestamp}</span>}
               {definition.id === 'money' && <span>2025年起M1口径调整</span>}
+              {definition.id === 'arms' && <span>含估算数据时悬浮图表查看标记 · 不含未收盘当日</span>}
               {(definition.id === 'industry' || definition.id === 'retail') && <span>1—2月合并公布 · 累计线按公布期连接，单月缺口保留</span>}
               {missingTail && <span className={styles['macroPending']}>来源未覆盖所选尾部</span>}
             </span><span className={styles['macroDetailsToggle']}>数据详情</span>
@@ -77,6 +85,11 @@ export function MacroIndicatorPage({ client, theme, topic, range, setRange }: { 
             <p>{definition.frequency === 'monthly' ? '横轴为统计月份（月末坐标），不是发布日期；公开接口未提供逐期发布日期。未发布、未收录和字段缺失均留空，不补零、不按日铺平。' : '横轴为来源报价日期，非完整节假日交易日历。缺失报价不补零。'} 展示当前来源核实序列，可能包含历史修订，不代表当时可获知的数据。</p>
             {valid.length > 0 && <p>实际覆盖：{valid[0]!.date} 至 {latest!.date} · 获取时间 {data?.meta.fetchedAt}</p>}
           </div></details>
+          {definition.id === 'arms' && <div className={styles['armsFigures']} aria-label="阿姆氏指标摘要">
+            <div><small>量能比</small><strong>{displayRatio(latest?.values.amountRatio)}</strong><small>涨 {displayAmount(latest?.armsDetails?.upAmount)} · 跌 {displayAmount(latest?.armsDetails?.downAmount)}</small></div>
+            <div><small>涨跌家数</small><strong>{latest?.armsDetails ? `${latest.armsDetails.upCount} : ${latest.armsDetails.downCount}` : '—'}</strong><small>涨跌比 {displayRatio(latest?.values.adRatio)}</small></div>
+            <div><small>TRIN</small><strong>{displayRatio(latest?.values.trin)}</strong><small>{latest?.estimated ? '估算' : latest ? '收盘数据' : '暂无数据'}</small></div>
+          </div>}
           {valid.length > 0 ? <EChart option={buildMacroIndicatorOption(definition, data, range, getChartPalette(theme))} ariaLabel={`${definition.title} ${range.from} 至 ${range.to}`} style={{ height: 320 }} />
             : <p className={styles['macroEmpty']}>{task?.state === 'failed' ? '公开来源未返回所选范围数据，可展开详情查看原因。' : busy || loading ? '等待后台取得公开数据…' : '所选区间暂无有效观测，后续后台更新会重试。'}</p>}
         </section>

@@ -17,7 +17,11 @@ import styles from './styles.module.css'
 
 export function MacroPage({ client, theme }: { client: HanaiClient; theme: ThemeId }) {
   const [topic, setTopic] = useState<MacroTopic>('funds')
-  const [ranges, setRanges] = useState<Record<MacroTopic, MacroRange>>(() => Object.fromEntries(MACRO_TOPICS.map(row => [row.id, defaultMacroRange()])) as Record<MacroTopic, MacroRange>)
+  const [ranges, setRanges] = useState<Record<MacroTopic, MacroRange>>(() => Object.fromEntries(MACRO_TOPICS.map(row => {
+    const range = defaultMacroRange()
+    if (row.id === 'breadth') { const from = new Date(`${range.to}T00:00:00Z`); from.setUTCMonth(from.getUTCMonth() - 3); range.from = from.toISOString().slice(0, 10) }
+    return [row.id, range]
+  })) as Record<MacroTopic, MacroRange>)
   const onRangeChange = (range: MacroRange) => setRanges(value => ({ ...value, [topic]: range }))
   return <div className={styles['page']}>
     <div className={styles['pageHeader']}><div><h1>宏观数据</h1><p>按主题观察资金与经济周期 · 每天后台更新 · 单次最长五年</p></div></div>

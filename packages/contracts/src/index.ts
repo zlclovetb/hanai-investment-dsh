@@ -6,6 +6,7 @@ import type { MarketHistorySnapshot, MarketHistorySummary } from './market-histo
 import type { MacroGenerationStatus, MacroAllDailyData, MacroAllEtfData, MacroCapitalData, MacroEtfData, MacroIndexData, MacroDailyEtfData } from './market-macro.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
+import type { MarketArmsData } from './market-arms.ts'
 
 /** Conventional application appearance. Theme changes must not alter layout or product semantics. */
 export type ThemeId = 'light' | 'dark'
@@ -461,6 +462,7 @@ export interface HanaiEndpointMap {
   'bootstrap': { request: Record<string, never>; response: BootstrapData }
   'dashboard.get': { request: { refresh?: boolean }; response: DashboardData }
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
+  'market.arms': { request: Record<string, never>; response: MarketArmsData | null }
   'market.indices': { request: Record<string, never>; response: GlobalIndicesData }
   'market.macro.query': { request: { range: MacroRange; refresh?: boolean }; response: { data: MacroSeriesData; task: MacroGenerationStatus; taskRange: MacroRange | null; activeRange: MacroRange | null; queued: MacroRange[] } }
   'market.macro.indicators': { request: { topic: EconomicTopic; range: MacroRange; refresh?: boolean }; response: MacroIndicatorQuery }
