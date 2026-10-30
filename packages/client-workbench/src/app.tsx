@@ -1,3 +1,4 @@
+import { MarketScanPage } from './market-scan.tsx'
 import { ResearchAssistantPage } from './research-assistant.tsx'
 import { MarketLadderPanels, useMarketLadder } from './market-ladder.tsx'
 import {
@@ -60,7 +61,7 @@ import { DataSources } from './data-sources.tsx'
 import { classForChange, dateTime, money, number, percent, quantity, ratio } from './format.ts'
 import styles from './styles.module.css'
 
-type TopPage = 'screener' | 'research' | 'macro' | 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
+type TopPage = 'market-scan' | 'screener' | 'research' | 'macro' | 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
 type AppRoute =
   | { page: TopPage }
   | { page: 'stock'; secId: string }
@@ -77,6 +78,7 @@ const NAV: ReadonlyArray<{ page: TopPage; path: string; icon: string; label: str
   { page: 'dashboard', path: '/dashboard', icon: '◈', label: '今日市场' },
   { page: 'macro', path: '/dashboard/macro', icon: '▥', label: '宏观数据' },
   { page: 'watch', path: '/watch', icon: '☆', label: '自选与发现' },
+  { page: 'market-scan', path: '/market-scan', icon: '扫', label: '市场扫描' },
   { page: 'screener', path: '/screener', icon: '选', label: 'AI选股' },
   { page: 'research', path: '/research', icon: 'AI', label: 'AI研究助手' },
   { page: 'judgements', path: '/judgements', icon: '研', label: '大师研判' },
@@ -256,6 +258,7 @@ export function HanaiWorkbench({ client }: HanaiWorkbenchProps) {
           {route.page === 'judgement-detail' && (
             <JudgementDetailPage client={client} id={route.judgementId} onBack={() => navigate('/judgements')} onRetry={(stock, masterId) => { setLaunchRequest({ key: Date.now(), stock, masterId }); navigate('/judgements') }} notify={notify} />
           )}
+          {route.page === 'market-scan' && <MarketScanPage client={client} onStock={openStock} />}
           {(route.page === 'screener' || route.page === 'screener-detail') && <ResearchAssistantPage key="screener" screening client={client} selectedId={route.page === 'screener-detail' ? route.chatId : null} onOpen={id => navigate(`/screener/${encodeURIComponent(id)}`)} onHome={() => navigate('/screener')} />}
           {(route.page === 'research' || route.page === 'research-detail') && <ResearchAssistantPage key="research" client={client} selectedId={route.page === 'research-detail' ? route.chatId : null} onOpen={id => navigate(`/research/${encodeURIComponent(id)}`)} onHome={() => navigate('/research')} />}
           {(route.page === 'expert-chats' || route.page === 'expert-chat-detail') && (
@@ -2281,6 +2284,7 @@ function optionalToneMetric(label: string, value: number | null | undefined): { 
 
 function routeTitle(route: AppRoute): string {
   switch (route.page) {
+    case 'market-scan': return '市场扫描'
     case 'screener':
     case 'screener-detail': return 'AI选股'
     case 'research':
@@ -2307,6 +2311,7 @@ function routeFromHash(hash: string): AppRoute {
   if (judgement?.[1]) return { page: 'judgement-detail', judgementId: decodeURIComponent(judgement[1]) }
   const screener = /^\/screener\/([^/]+)$/.exec(path)
   if (screener?.[1]) return { page: 'screener-detail', chatId: decodeURIComponent(screener[1]) }
+  if (path === '/market-scan') return { page: 'market-scan' }
   if (path === '/screener') return { page: 'screener' }
   const research = /^\/research\/([^/]+)$/.exec(path)
   if (research?.[1]) return { page: 'research-detail', chatId: decodeURIComponent(research[1]) }
