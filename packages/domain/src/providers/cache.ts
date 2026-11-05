@@ -8,13 +8,13 @@ export class ProviderCache<T extends { meta: ProviderMeta }> {
 
   constructor(private readonly clock: Clock, private readonly ttlMs: number | (() => number)) {}
 
-  get(key: string, load: () => Promise<T>): Promise<T | null> {
+  get(key: string, load: () => Promise<T>, refresh = false): Promise<T | null> {
     const pending = this.pending.get(key)
     if (pending !== undefined) return pending
     const cached = this.entries.get(key)
     const expiresAt = cached?.value?.meta.cacheState === 'fresh' && typeof this.ttlMs === 'function'
       ? Math.min(cached.expiresAt, Date.parse(cached.value.meta.fetchedAt) + this.ttlMs()) : cached?.expiresAt
-    if (cached !== undefined && expiresAt !== undefined && expiresAt > this.clock.now()) {
+    if (!refresh && cached !== undefined && expiresAt !== undefined && expiresAt > this.clock.now()) {
       return Promise.resolve(cached.value === null ? null : this.cached(cached.value))
     }
     const promise = load().then(value => {

@@ -8,10 +8,21 @@ import type { HanaiClient } from '../src/api.ts'
 
 const meta = { providerId: 'ths-limit-reason', sourceName: '同花顺涨停池', sourceTimestamp: '2026-10-30', fetchedAt: '2026-10-30T15:10:00+08:00', cacheState: 'fresh' as const }
 const stock = (code: string, boards = 1) => ({ code, name: `梯队股${code}`, boards, industry: '食品', reason: '食品+业绩增长+食品', boardType: '换手板', firstSeal: '09:30:00', lastSeal: '10:00:00', breaks: 1, turnover: 12 })
-const data: MarketLadderData = { yesterdayPerformance: null, method: 'source-board-types-v1', date: '2026-10-30', stocks: [stock('001219', 3), ...Array.from({ length: 9 }, (_, i) => stock(`60000${i}`))], promotion: { eligible: 20, promoted: 1 }, broken: 5, issues: [], meta }
+const data: MarketLadderData = { yesterdayPerformance: null, missedPromotions: { confirmed: true, stocks: [] }, method: 'source-board-types-v1', date: '2026-10-30', stocks: [stock('001219', 3), ...Array.from({ length: 9 }, (_, i) => stock(`60000${i}`))], promotion: { eligible: 20, promoted: 1 }, broken: 5, issues: [], meta }
 const snapshot: MarketHistorySnapshot = { date: data.date, capturedAt: meta.fetchedAt, panels: ['ladder'], records: { ladder: { key: 'ladder', version: 1, data, meta, capturedAt: meta.fetchedAt } } }
-beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-30T16:00:00+08:00')) })
-afterEach(() => { cleanup(); vi.useRealTimers() })
+let gridColumns: string
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2026-10-30T16:00:00+08:00'))
+  gridColumns = '106px 106px 106px'
+  const getComputedStyle = window.getComputedStyle.bind(window)
+  vi.spyOn(window, 'getComputedStyle').mockImplementation((element, pseudo) => {
+    const style = getComputedStyle(element, pseudo)
+    if (element.className.toString().includes('ladderStocks')) style.gridTemplateColumns = gridColumns
+    return style
+  })
+})
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers() })
 
 it('shows missing ladder levels, caps first boards, retains metrics and opens a stock', () => {
   const onStock = vi.fn()
@@ -24,9 +35,57 @@ it('shows missing ladder levels, caps first boards, retains metrics and opens a 
   expect(within(first).getAllByRole('button')).toHaveLength(10)
   expect(within(card).getByLabelText('今日梯队摘要').textContent).toContain('5.0%')
   expect(within(card).getByText('33.3%')).toBeTruthy()
-  fireEvent.click(within(card).getByRole('button', { name: /梯队股001219/ }))
+  const cardButton = within(card).getByRole('button', { name: /梯队股001219/ })
+  fireEvent.focus(cardButton)
+  expect(screen.getByRole('tooltip').textContent).toContain('首次封板 09:30:00')
+  fireEvent.keyDown(cardButton, { key: 'Escape' })
+  expect(screen.queryByRole('tooltip')).toBeNull()
+  fireEvent.click(cardButton)
   expect(onStock).toHaveBeenCalledWith(expect.objectContaining({ secId: '0.001219' }))
   expect(ladderThemes(data).map(row => row.count)).toEqual([10, 10])
+})
+
+it('limits each level to two rows across sealed and missed stocks, including after resize', () => {
+  gridColumns = '106px 106px'
+  const missedStocks = Array.from({ length: 4 }, (_, i) => ({ ...stock(`00000${i}`, 2), changePct: -1 }))
+  render(<MarketLadderPanels data={{ ...data, missedPromotions: { confirmed: true, stocks: missedStocks } }} historical={false} failed={false} pending={false} onStock={() => {}} />)
+  const third = within(screen.getByLabelText('3板梯队'))
+  const first = within(screen.getByLabelText('首板梯队'))
+  expect(third.queryByText(missedStocks[3]!.name)).toBeNull()
+  fireEvent.click(third.getByRole('button', { name: '展开其余 1 只' }))
+  expect(third.getByText(missedStocks[3]!.name)).toBeTruthy()
+  expect(first.getByRole('button', { name: '展开其余 5 只' })).toBeTruthy()
+  fireEvent.click(third.getByRole('button', { name: '收起 3 板' }))
+  expect(third.queryByText(missedStocks[3]!.name)).toBeNull()
+  gridColumns = '106px 106px 106px'
+  fireEvent.resize(window)
+  expect(third.getByText(missedStocks[3]!.name)).toBeTruthy()
+  expect(third.queryByRole('button', { name: /展开/ })).toBeNull()
+  expect(first.getByRole('button', { name: '展开其余 3 只' })).toBeTruthy()
+})
+
+it('puts archived missed promotions at the attempted level with deletion styling and only sealed-stock counts', () => {
+  const missed = { ...stock('000001', 3), changePct: -4.13, broken: true, brokenTiming: { firstTouch: '09:25:00', lastTouch: '09:40:51' } }
+  const onStock = vi.fn()
+  const view = render(<MarketLadderPanels data={{ ...data, missedPromotions: { confirmed: true, stocks: [missed] } }} historical failed={false} pending={false} onStock={onStock} />)
+  const row = screen.getByLabelText('4板梯队')
+  expect(within(row).getByText(missed.name).tagName).toBe('DEL')
+  expect(within(row).getByText('-4.13%')).toBeTruthy()
+  expect(within(row).getByRole('img', { name: '炸板' })).toBeTruthy()
+  expect(within(row).queryByText('炸板')).toBeNull()
+  expect(row.textContent).not.toMatch(/0只|晋级失败/)
+  const card = within(row).getByRole('button', { name: new RegExp(missed.name) })
+  fireEvent.mouseEnter(card)
+  expect(screen.getByRole('tooltip').textContent).toContain('首封 09:25:00 · 炸板 09:40:51')
+  fireEvent.mouseLeave(card)
+  fireEvent.click(card)
+  expect(onStock).toHaveBeenCalledWith(expect.objectContaining({ secId: '0.000001' }))
+  expect(within(row).getByText('食品')).toBeTruthy()
+  expect(screen.getByLabelText('今日梯队摘要').textContent).toContain('最高板3 板')
+  view.rerender(<MarketLadderPanels data={{ ...data, missedPromotions: { confirmed: false, stocks: [{ ...stock('000001', 3), changePct: -4.13, broken: null }] } }} historical={false} failed={false} pending={false} onStock={() => {}} />)
+  expect(row.textContent).not.toMatch(/暂未晋级|晋级失败|炸板/)
+  expect(within(row).queryByRole('img', { name: '炸板' })).toBeNull()
+  expect(within(row).getByText(missed.name).tagName).toBe('DEL')
 })
 
 it('shows zero-denominator and absent values as unavailable, not zero rates', () => {
@@ -39,7 +98,8 @@ it('shows yesterday performance in its own compact row with red/green counts in 
   expect(within(summary).getByText('-0.68%')).toBeTruthy()
   expect(within(summary).getByText('-0.28%')).toBeTruthy()
   expect(summary.textContent).toContain('48.7%')
-  expect(within(summary).getByTitle('翻红 19只 · 翻绿 20只 · 平盘 0只')).toBeTruthy()
+  fireEvent.mouseEnter(within(summary).getByText('翻红率').parentElement!)
+  expect(screen.getByRole('tooltip').textContent).toBe('翻红 19只 · 翻绿 20只 · 平盘 0只')
 })
 it('shows explicit board types and does not infer a T board just from break counts', () => {
   const stocks = ['一字板', 'T字板', '换手板', null].map((boardType, i) => ({ ...stock(`60000${i}`), boardType, breaks: 3 }))
@@ -75,6 +135,13 @@ it('updates legacy default archives once for board types while explicit history 
   await act(async () => {})
   expect(current.call).toHaveBeenCalledTimes(1)
 })
+it('fetches a closing snapshot once when polling leaves the trading window', async () => {
+  vi.setSystemTime(new Date('2026-10-30T15:05:45+08:00'))
+  const view = setup(false, null)
+  await act(async () => { await vi.advanceTimersByTimeAsync(90_000) })
+  expect(view.call).toHaveBeenCalledTimes(2)
+})
+
 it('keeps the closing archive after manual failure and polls when market opens regardless of manual version', async () => {
   const view = setup(false)
   expect(view.call).not.toHaveBeenCalled()
@@ -83,9 +150,11 @@ it('keeps the closing archive after manual failure and polls when market opens r
   await act(async () => {})
   expect(view.result.current.data).toEqual(data)
   expect(view.result.current.failed).toBe(true)
+  expect(view.call).toHaveBeenLastCalledWith('market.ladder', { refresh: true }, expect.any(AbortSignal))
   view.unmount()
   vi.setSystemTime(new Date('2026-11-02T10:00:00+08:00'))
   const live = setup(false, null)
   await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
   expect(live.call).toHaveBeenCalledTimes(2)
+  expect(live.call).toHaveBeenLastCalledWith('market.ladder', {}, expect.any(AbortSignal))
 })

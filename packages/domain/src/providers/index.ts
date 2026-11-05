@@ -237,7 +237,7 @@ export class MarketDataService {
     return [...sources.map(([source, sourceName, scope]) => ({
       source, sourceName, scope,
       ...(scope === 'security' ? this.securitiesCircuit : this.circuit).snapshot(source),
-    })), ...(['ths-limit-reason', 'ths-limit-previous', 'ths-hot-reason', 'eastmoney-limit-up', 'eastmoney-limit-previous', 'eastmoney-limit-broken'] as const).map(source => ({ source, sourceName: `${source}（涨停梯队）`, scope: 'market' as const, ...this.ladder.circuit.snapshot(source) })), ...(['tencent', 'sina', 'eastmoney-push2'] as const).map(source => ({ source, sourceName: `${source}（海外指数）`, scope: 'indices' as const, ...this.globalIndices.circuit.snapshot(source) }))]
+    })), ...(['ths-limit-reason', 'ths-limit-previous', 'ths-limit-broken', 'ths-hot-reason', 'eastmoney-limit-up', 'eastmoney-limit-previous', 'eastmoney-limit-broken'] as const).map(source => ({ source, sourceName: `${source}（涨停梯队）`, scope: 'market' as const, ...this.ladder.circuit.snapshot(source) })), ...(['tencent', 'sina', 'eastmoney-push2'] as const).map(source => ({ source, sourceName: `${source}（海外指数）`, scope: 'indices' as const, ...this.globalIndices.circuit.snapshot(source) }))]
   }
 
   getMacroAllEtfs(range?: MacroRange) { return this.macroAll.get(range) }
@@ -261,7 +261,7 @@ export class MarketDataService {
     })
   }
 
-  getMarketLadder(date?: string) { return this.ladder.get(date) }
+  getMarketLadder(...args: Parameters<MarketLadderProvider['get']>) { return this.ladder.get(...args) }
   getTechnicalLimitPool(date: string) { return this.ladder.historicalPool(date) }
   getScreeningFacts(code: string, asOf: string, signal: AbortSignal) { return this.baostock.facts(code, asOf, signal) }
   dispose(): void { this.baostock.close() }

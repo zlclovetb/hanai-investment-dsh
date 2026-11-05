@@ -471,7 +471,7 @@ export interface HanaiEndpointMap {
   'market.scan.history': { request: { query: MarketScanQuery }; response: MarketHistorySummary[] }
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }
   'market.arms': { request: Record<string, never>; response: MarketArmsData | null }
-  'market.ladder': { request: Record<string, never>; response: MarketLadderData | null }
+  'market.ladder': { request: { refresh?: boolean }; response: MarketLadderData | null }
   'market.distribution': { request: Record<string, never>; response: MarketDistributionData | null }
   'market.indices': { request: Record<string, never>; response: GlobalIndicesData }
   'market.macro.query': { request: { range: MacroRange; refresh?: boolean }; response: { data: MacroSeriesData; task: MacroGenerationStatus; taskRange: MacroRange | null; activeRange: MacroRange | null; queued: MacroRange[] } }

@@ -103,6 +103,15 @@ function isCapitalReference(value: unknown, fetchedAt: string): boolean {
 }
 
 /** Validate stored version-1 payloads before charts consume them; unknown panel keys remain extensible. */
+function isBrokenTiming(value: unknown): boolean {
+  if (!object(value)) return false
+  const { firstSeal, firstTouch, lastTouch } = value
+  const isTime = (time: unknown): time is string => typeof time === 'string' && /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(time)
+  return firstSeal === undefined
+    ? isTime(firstTouch) && isTime(lastTouch) && firstTouch <= lastTouch
+    : isTime(firstSeal) && firstTouch === undefined && lastTouch === undefined
+}
+
 export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (key.startsWith('scan:')) return isMarketScanData(value) && isMarketProviderMeta(value.meta)
   if (!object(value)) return false
@@ -113,6 +122,17 @@ export function isMarketPanelPayload(key: string, value: unknown): boolean {
       && Number(value.yesterdayPerformance.up) + Number(value.yesterdayPerformance.down) + Number(value.yesterdayPerformance.flat) === value.yesterdayPerformance.sample
       && ['average', 'median'].every(key => numberOrNull((value.yesterdayPerformance as Record<string, unknown>)[key]))
       && (value.yesterdayPerformance.sample === 0 ? value.yesterdayPerformance.average === null && value.yesterdayPerformance.median === null : value.yesterdayPerformance.average !== null && value.yesterdayPerformance.median !== null)))
+    && (value.missedPromotions == null || (object(value.missedPromotions)
+      && typeof value.missedPromotions.confirmed === 'boolean'
+      && (!value.missedPromotions.confirmed || Date.parse(value.meta.fetchedAt) >= Date.parse(`${value.date}T15:05:00+08:00`))
+      && Array.isArray(value.missedPromotions.stocks) && value.missedPromotions.stocks.length <= 10000
+      && value.missedPromotions.stocks.every((row, i, rows) => object(row) && typeof row.code === 'string' && /^\d{6}$/.test(row.code)
+        && !rows.slice(0, i).some(previous => object(previous) && previous.code === row.code)
+        && Array.isArray(value.stocks) && !value.stocks.some(stock => object(stock) && stock.code === row.code)
+        && typeof row.name === 'string' && row.name.trim() !== '' && typeof row.industry === 'string' && row.industry.trim() !== ''
+        && Number.isSafeInteger(row.boards) && Number(row.boards) >= 1 && Number(row.boards) <= 100 && numberOrNull(row.changePct)
+        && (row.broken == null || typeof row.broken === 'boolean')
+        && (row.brokenTiming === undefined || (row.broken === true && isBrokenTiming(row.brokenTiming))))))
     && marketDateFromMeta(value.meta) === value.date && Array.isArray(value.stocks) && value.stocks.length <= 10000
     && value.stocks.every((row, i, rows) => object(row) && typeof row.code === 'string' && /^\d{6}$/.test(row.code)
       && !rows.slice(0, i).some(previous => object(previous) && previous.code === row.code)

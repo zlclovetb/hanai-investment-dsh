@@ -409,9 +409,12 @@ describe('HanaiService report lifecycle', () => {
       await service.call('market.ladder', {}, signal)
       const saved = await service.call('market.history.get', { date: data.date }, signal)
       expect(marketHistoryPanel(saved, 'ladder')).toEqual(data)
+      expect(fetch.mock.calls[0]![1](data.date)).toEqual(data)
+      expect(fetch.mock.calls[0]![1]('2026-10-28')).toBeNull()
       expect(await service.call('market.history.get', { date: '2026-10-30' }, signal)).toBeNull()
       fetch.mockResolvedValue({ ...data, meta: { ...meta, cacheState: 'stale' } })
-      await service.call('market.ladder', {}, signal)
+      await service.call('market.ladder', { refresh: true }, signal)
+      expect(fetch.mock.calls.at(-1)![2]).toBe(true)
       expect(await service.call('market.history.get', { date: data.date }, signal)).toEqual(saved)
     } finally { database.close(); vi.useRealTimers() }
   })

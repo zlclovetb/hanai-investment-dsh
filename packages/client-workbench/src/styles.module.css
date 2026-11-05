@@ -382,13 +382,21 @@
 .ladderLevel { display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 3px; align-self: start; min-height: 42px; border-radius: 6px; color: var(--gold-strong); background: var(--gold-soft); }
 .ladderLevel b { font-size: 15px; }
 .ladderLevel small, .ladderGap { color: var(--muted); font-size: 10px; }
-.ladderStocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(106px, 1fr)); gap: 6px; align-items: start; }
-.ladderStock { display: grid; min-width: 0; min-height: 42px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--border) !important; border-radius: 6px; background: var(--panel-soft); cursor: pointer; text-align: left; }
-.ladderStock:hover { background: var(--gold-soft); border-color: var(--gold) !important; }
+.ladderStocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 106px), 1fr)); gap: 6px; align-items: start; }
+.ladderStock { display: grid; min-width: 0; min-height: 42px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; padding: 6px; border: 1px solid var(--border) !important; border-radius: 6px; background: var(--up-soft); cursor: pointer; text-align: left; }
+button.ladderStock:hover { background: var(--gold-soft); border-color: var(--gold) !important; }
 .ladderStock strong { font-size: 11px; }
 .ladderStock span { color: var(--muted); font-size: 9px; }
 .ladderStock small { grid-column: 1 / -1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gold-strong); font-size: 10px; }
+.ladderMissed, button.ladderMissed:hover { position: relative; background: var(--down-soft); }
+.ladderBrokenBadge { position: absolute; top: 0; right: 0; width: 12px; height: 12px; border-top-right-radius: 5px; background: #087447; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+.ladderMissed strong, .ladderMissed small { color: var(--muted); }
+.ladderMissed span.up { color: var(--up); }
+.ladderMissed span.down { color: var(--down); }
+.ladderTooltip { position: fixed; z-index: 20; max-width: min(340px, calc(100vw - 16px)); padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--panel); color: var(--text); box-shadow: 0 3px 12px rgba(0, 0, 0, .14); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; pointer-events: none; }
+.ladderTooltipHint { color: var(--muted); }
 .ladderExpand { padding: 8px 6px; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; }
+.ladderStocks > .ladderExpand { grid-column: 1 / -1; justify-self: start; }
 .ladderExpand:hover { color: var(--gold-strong); }
 .ladderGap { grid-column: 1 / -1; align-self: center; min-height: 30px; display: flex; align-items: center; }
 .ladderFootnote { margin: 0; padding: 8px 16px; color: var(--faint); font-size: 10px; border-top: 1px solid var(--border); }

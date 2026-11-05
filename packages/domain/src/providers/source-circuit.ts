@@ -38,6 +38,7 @@ export const SOURCE_PRIORITY = [
   'eastmoney-limit-broken',
   'ths-limit-reason',
   'ths-limit-previous',
+  'ths-limit-broken',
   'ths-hot-reason',
   'gurufocus',
   'eastmoney-macro',

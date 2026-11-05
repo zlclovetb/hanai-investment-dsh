@@ -29,7 +29,25 @@ export interface YesterdayLimitPerformance {
   meta: ProviderMeta
 }
 
+export interface LadderPromotionCandidate {
+  code: string
+  name: string
+  boards: number
+  industry: string
+  changePct: number | null
+  broken?: boolean | null
+  brokenTiming?: { firstTouch: string; lastTouch: string } | { firstSeal: string }
+}
+
+export interface LadderMissedPromotions {
+  confirmed: boolean
+  stocks: LadderPromotionCandidate[]
+}
+
+export type PreviousLadder = (date: string) => MarketLadderData | null
+
 export interface MarketLadderData {
+  missedPromotions?: LadderMissedPromotions | null
   yesterdayPerformance?: YesterdayLimitPerformance | null
   method?: typeof LADDER_BOARD_TYPE_METHOD
   date: string

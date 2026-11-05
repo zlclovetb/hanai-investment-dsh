@@ -7,7 +7,7 @@ import type { MarketScanData, MarketScanQuery, ScreeningFact } from '../../contr
 import { AI_SCREENER_ID } from '../../contracts/src/ai-screener.ts'
 import { RESEARCH_ASSISTANT_ID } from '../../contracts/src/research-assistant.ts'
 import { AI_SCREENER, RESEARCH_ASSISTANT, ResearchWorkspace } from '../../domain/src/research-assistant.ts'
-import type { MarketLadderData } from '../../contracts/src/market-ladder.ts'
+import type { MarketLadderData, PreviousLadder } from '../../contracts/src/market-ladder.ts'
 import { defaultMacroRange, type MacroRange } from '../../contracts/src/macro-range.ts'
 import { MacroSeries } from './macro-series.ts'
 import { MacroIndicators } from './macro-indicators.ts'
@@ -95,7 +95,7 @@ export interface MarketFacade {
   getDashboard(refresh?: boolean): Promise<DashboardData>
   getMarketBreadth(): Promise<MarketBreadthData | null>
   getMarketArms?(): Promise<MarketArmsData | null>
-  getMarketLadder?(date?: string): Promise<MarketLadderData | null>
+  getMarketLadder?(date?: string, previousLadder?: PreviousLadder, refresh?: boolean): Promise<MarketLadderData | null>
   getMarketDistribution?(): Promise<MarketDistributionData | null>
   getSectorStocks(sectorCode: string): Promise<{ stocks: StockQuote[]; meta: ProviderMeta }>
   getStockDetail(secId: string, security?: ReturnType<HanaiDatabase['getSecurity']>): Promise<StockDetail>
@@ -363,7 +363,8 @@ export class HanaiService {
       }
       case 'market.ladder': {
         const date = this.marketDateContext?.observedOn === beijingMarketDate() ? this.marketDateContext.date : undefined
-        const result = await this.market.getMarketLadder?.(date) ?? null
+        const result = await this.market.getMarketLadder?.(date, previousDate =>
+          marketHistoryPanel(this.marketHistory.get(previousDate), 'ladder'), (request as HanaiRequest<'market.ladder'>).refresh) ?? null
         if (result !== null) this.archiveMarketPanel('ladder', result, result.meta, result.date)
         return result
       }
