@@ -228,6 +228,7 @@ export class MarketDataService {
       ['sse-etf', '上交所ETF日份额', 'market'],
       ['szse-etf', '深交所ETF日份额', 'market'],
       ['eastmoney-fund', '东方财富基金规模', 'market'],
+      ['csindex-macro', '中证指数历史估值', 'market'],
       ['eastmoney-macro', '东方财富宏观经济与国债', 'market'],
       ['mofcom-macro', '商务部社融（原始来源：人民银行）', 'market'],
       ['ths-news', '同花顺板块异动快讯', 'market'],

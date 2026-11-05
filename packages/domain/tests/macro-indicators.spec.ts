@@ -38,3 +38,29 @@ it('records failures in the existing source circuit and honors Host cancellation
   expect(request).toHaveBeenCalledTimes(3)
   expect(circuit.isOpen('eastmoney-macro')).toBe(true)
 })
+
+it('joins only same-date yields and computes the band using pre-range sessions', async () => {
+  const days = Array.from({ length: 251 }, (_, i) => new Date(Date.UTC(2025, 0, i + 1)).toISOString().slice(0, 10))
+  const request = vi.fn(async (url: string) => ({
+    status: 200,
+    body: JSON.stringify(url.includes('csindex.com.cn')
+      ? { code: '200', data: days.map(date => ({ indexCode: '000300', tradeDate: date.replaceAll('-', ''), peg: 20, close: 4000 })) }
+      : { success: true, result: { pages: 1, data: days.slice(0, 250).map(date => ({ SOLAR_DATE: date, EMM00588704: 1, EMM00166462: 2, EMM00166466: 2, EMM00166469: 3 })) } }),
+  }))
+  const data = await new MacroIndicatorProvider({ request }, systemClock, new SourceCircuit())
+    .get('equityBondSpread', { from: days[249]!, to: days[250]! })
+  expect(data.points.map(point => point.values)).toEqual([
+    { spread: 3, pe: 20, y10: 2, close: 4000, mean: 3, upper: 3, lower: 3 },
+    { spread: null, pe: 20, y10: null, close: 4000, mean: null, upper: null, lower: null },
+  ])
+  expect(data.meta.sourceTimestamp).toBe(days[249])
+})
+
+it('rejects equity valuation rows belonging to another index', async () => {
+  const request = vi.fn(async (url: string) => ({
+    status: 200, body: JSON.stringify(url.includes('csindex.com.cn')
+      ? { code: '200', data: [{ indexCode: '000905', tradeDate: '20261028', peg: 20, close: 4000 }] }
+      : { success: true, result: { pages: 1, data: [{ SOLAR_DATE: '2026-10-28', EMM00588704: 1, EMM00166462: 2, EMM00166466: 2, EMM00166469: 3 }] } }),
+  }))
+  await expect(new MacroIndicatorProvider({ request }, systemClock, new SourceCircuit()).get('equityBondSpread', range)).rejects.toThrow('指数代码')
+})

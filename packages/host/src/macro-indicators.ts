@@ -90,7 +90,7 @@ export class MacroIndicators {
         const old = seed[task.id]
         const range = { ...work.range }
         if (old && old.checkedRange.from <= range.from && old.checkedRange.to >= range.from && old.points.length > 0) {
-          const lookback = task.id === 'yields' || task.id === 'arms' ? new Date(Date.parse(old.points.at(-1)!.date) - 10 * 86_400_000).toISOString().slice(0, 10)
+          const lookback = task.id === 'yields' || task.id === 'arms' || task.id === 'equityBondSpread' ? new Date(Date.parse(old.points.at(-1)!.date) - 10 * 86_400_000).toISOString().slice(0, 10)
             : new Date(Date.UTC(Number(range.to.slice(0, 4)) - 1, Number(range.to.slice(5, 7)) - 1, 1)).toISOString().slice(0, 10)
           const recent = lookback < old.checkedRange.to ? lookback : old.checkedRange.to
           if (recent > range.from) range.from = recent

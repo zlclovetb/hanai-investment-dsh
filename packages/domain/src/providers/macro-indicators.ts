@@ -31,7 +31,7 @@ export function macroPeriodEnd(month: string): string | null {
 export function parseMacroIndicator(id: MacroIndicatorId, raw: unknown, range: MacroRange, fetchedAt: string): MacroIndicatorData {
   if (!Array.isArray(raw) || raw.length === 0 || !raw.every(object)) throw new Error('公开来源未返回有效观测记录')
   const definition = MACRO_INDICATORS.find(row => row.id === id)!
-  if (id === 'arms') throw new Error('市场广度使用独立数据解析')
+  if (id === 'arms' || id === 'equityBondSpread') throw new Error('市场广度使用独立数据解析')
   const fields: Record<string, string> = id === 'social' ? { increment: 'tiosfs' } : reports[id].fields
   const points = raw.map(row => {
     const rawDate = id === 'social' ? String(row.date ?? '').replace(/^(\d{4})(\d{2})$/, '$1-$2') : String(row[id === 'yields' ? 'SOLAR_DATE' : 'REPORT_DATE'] ?? '').slice(0, 10)
@@ -53,6 +53,47 @@ export function parseMacroIndicator(id: MacroIndicatorId, raw: unknown, range: M
 export class MacroIndicatorProvider {
   constructor(private readonly http: HttpClient, private readonly clock: Clock, private readonly circuit: SourceCircuit) {}
   async get(id: MacroIndicatorId, range: MacroRange, signal?: AbortSignal): Promise<MacroIndicatorData> {
+    if (id === 'equityBondSpread') {
+      const now = new Date(this.clock.now() + 8 * 3_600_000)
+      const today = now.toISOString().slice(0, 10)
+      const lastClosed = now.getUTCHours() >= 20 ? today : new Date(Date.parse(today) - 86_400_000).toISOString().slice(0, 10)
+      const to = range.to < lastClosed ? range.to : lastClosed
+      const from = new Date(Date.parse(range.from) - 400 * 86_400_000).toISOString().slice(0, 10)
+      const params = new URLSearchParams({ indexCode: '000300', startDate: from.replaceAll('-', ''), endDate: to.replaceAll('-', '') })
+      const [index, yields] = await Promise.all([
+        this.circuit.run('csindex-macro', async () => {
+          const response = await this.http.request(`https://www.csindex.com.cn/csindex-home/perf/index-perf?${params}`, { timeoutMs: 20_000, ...(signal ? { signal } : {}) })
+          if (response.status !== 200) throw new Error(`中证指数接口 HTTP ${response.status}`)
+          const json: unknown = JSON.parse(response.body)
+          if (!object(json) || String(json.code) !== '200' || !Array.isArray(json.data) || !json.data.length || !json.data.every(object)) throw new Error('中证指数未返回历史行情')
+          const rows = new Map<string, { pe: number | null; close: number | null }>()
+          for (const row of json.data) {
+            if (row.indexCode !== '000300') throw new Error('中证指数返回的指数代码不匹配')
+            const date = String(row.tradeDate ?? '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3')
+            if (!isMarketDate(date)) throw new Error('中证指数交易日期无效')
+            if (date >= from && date <= to) rows.set(date, { pe: numeric(row.peg), close: numeric(row.close) })
+          }
+          if (![...rows.values()].some(row => row.pe !== null && row.pe > 0)) throw new Error('中证指数未返回有效滚动市盈率')
+          return [...rows.entries()].sort(([a], [b]) => a.localeCompare(b))
+        }),
+        this.get('yields', { from, to }, signal),
+      ])
+      const rates = new Map(yields.points.map(point => [point.date, point.values.y10 ?? null]))
+      const window: (number | null)[] = []
+      const points = index.map(([date, { pe, close }]) => {
+        const y10 = rates.get(date) ?? null
+        const spread = pe !== null && pe > 0 && y10 !== null ? 100 / pe - y10 : null
+        window.push(spread)
+        if (window.length > 250) window.shift()
+        const full = window.length === 250 && window.every(value => value !== null)
+        const mean = full ? window.reduce<number>((sum, value) => sum + value!, 0) / 250 : null
+        const width = mean === null ? null : 2 * Math.sqrt(window.reduce<number>((sum, value) => sum + (value! - mean) ** 2, 0) / 250)
+        return { date, values: { spread, pe, y10, close, mean, upper: mean === null ? null : mean + width!, lower: mean === null ? null : mean - width! } }
+      }).filter(point => point.date >= range.from)
+      const latest = points.findLast(point => point.values.spread !== null)?.date
+      if (!latest) throw new Error('所选范围无同日市盈率和国债收益率')
+      return { id, points, checkedRange: range, meta: { providerId: 'csindex-macro', sourceName: '中证指数（滚动市盈率、收盘点位）／东方财富（国债到期收益率）', sourceTimestamp: latest, fetchedAt: isoNow(this.clock), cacheState: 'fresh' } }
+    }
     if (id === 'arms') return this.circuit.run('88ai-arms', async () => {
       const result = await fetchArms(this.http, this.clock, 'daily', signal)
       const now = new Date(this.clock.now() + 8 * 3_600_000)

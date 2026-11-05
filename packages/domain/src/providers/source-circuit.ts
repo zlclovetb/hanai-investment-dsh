@@ -41,6 +41,7 @@ export const SOURCE_PRIORITY = [
   'ths-hot-reason',
   'gurufocus',
   'eastmoney-macro',
+  'csindex-macro',
   'mofcom-macro',
   '88ai-arms',
   '88ai-scan',

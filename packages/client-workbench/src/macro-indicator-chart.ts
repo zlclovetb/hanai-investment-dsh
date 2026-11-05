@@ -62,6 +62,52 @@ export function buildMacroIndicatorOption(definition: MacroIndicatorDefinition, 
       }).join('\n')
     } } : {}),
   }
+  if (definition.id === 'equityBondSpread') {
+    const axis = { type: 'value', scale: true, axisLabel: { color: palette.axisLabel } }
+    const columns = definition.columns.slice(0, 5)
+    const highlighted = points.flatMap(({ date, values }, index) =>
+      values.spread != null && values.upper != null && values.spread >= values.upper
+        ? [[{ xAxis: date }, { xAxis: points[index + 1]?.date ?? date }]] : [])
+    const band = (data: (number | null)[], opacity: number) => ({
+      type: 'line', stack: 'spread-band', stackStrategy: 'all', silent: true, showSymbol: false,
+      lineStyle: { opacity: 0 }, areaStyle: { color: palette.averageBlue, opacity }, tooltip: { show: false }, data,
+    })
+    return {
+      animation: false,
+      grid: { left: 65, right: 65, top: 55, bottom: 65 },
+      xAxis: {
+        type: 'category', data: points.map(point => point.date),
+        axisLabel: {
+          color: palette.axisLabel, hideOverlap: true, showMaxLabel: true,
+          interval: (index: number, date: string) => date.slice(0, 4) !== points[index - 1]?.date.slice(0, 4),
+          formatter: (date: string) => date.slice(0, 4),
+        },
+      },
+      yAxis: [{ ...axis, name: '百分点' }, { ...axis, name: '点', splitLine: { show: false } }],
+      legend: { top: 8, data: columns.map(column => column.name), selected: { '沪深 300': false }, textStyle: { color: palette.legendText } },
+      dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 8, height: 18 }],
+      tooltip: { ...tooltip, formatter: (params: unknown) => {
+        const point = Array.isArray(params) ? points[params[0]?.dataIndex] : undefined
+        if (!point) return ''
+        return [point.date, ...definition.columns.map(column => {
+          const unit = column.key === 'pe' ? ' 倍' : column.key === 'y10' ? '%' : column.key === 'close' ? ' 点' : ' 个百分点'
+          const value = point.values[column.key]
+          return column.name + '：' + (value == null ? '—' : formatValue(value) + unit)
+        })].join('\n')
+      } },
+      series: [
+        band(points.map(point => point.values.lower ?? null), 0),
+        band(points.map(({ values }) => values.upper == null || values.lower == null ? null : values.upper - values.lower), 0.13),
+        ...columns.map(column => ({
+          name: column.name, type: 'line', showSymbol: false, yAxisIndex: column.key === 'close' ? 1 : 0,
+          data: points.map(point => point.values[column.key] ?? null),
+          lineStyle: { width: column.key === 'spread' ? 1.5 : 1, type: column.key === 'mean' ? 'dashed' : 'solid' },
+          itemStyle: { color: column.key === 'spread' ? palette.averageBlue : column.key === 'close' ? palette.up : palette.axisLabel },
+          ...(column.key === 'spread' ? { markArea: { silent: true, itemStyle: { color: palette.up, opacity: 0.13 }, data: highlighted } } : {}),
+        })),
+      ],
+    }
+  }
   return {
     animation: false, color: [palette.up, palette.averageBlue, palette.gold, palette.down],
     legend: { top: 8, textStyle: { color: palette.legendText } },

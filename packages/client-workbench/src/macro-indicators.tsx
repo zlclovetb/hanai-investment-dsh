@@ -63,7 +63,7 @@ export function MacroIndicatorPage({ client, theme, topic, range, setRange }: { 
       {MACRO_INDICATORS.filter(row => row.topic === topic).map(definition => {
         const data = result?.data[definition.id]
         const task = result?.tasks.find(row => row.id === definition.id)
-        const valid = data?.points.filter(point => Object.values(point.values).some(value => value !== null)) ?? []
+        const valid = data?.points.filter(point => definition.id === 'equityBondSpread' ? point.values.spread != null : Object.values(point.values).some(value => value !== null)) ?? []
         const latest = valid.at(-1)
         const latestPeriod = definition.frequency === 'monthly' ? latest?.date.slice(0, 7) : latest?.date
         const previousMonthEnd = new Date(Date.UTC(Number(range.to.slice(0, 4)), Number(range.to.slice(5, 7)) - 1, 0)).toISOString().slice(0, 10)
@@ -90,6 +90,11 @@ export function MacroIndicatorPage({ client, theme, topic, range, setRange }: { 
             <div><small>涨跌家数</small><strong>{latest?.armsDetails ? `${latest.armsDetails.upCount} : ${latest.armsDetails.downCount}` : '—'}</strong><small>涨跌比 {displayRatio(latest?.values.adRatio)}</small></div>
             <div><small>TRIN</small><strong>{displayRatio(latest?.values.trin)}</strong><small>{latest?.estimated ? '估算' : latest ? '收盘数据' : '暂无数据'}</small></div>
           </div>}
+          {definition.id === 'equityBondSpread' && <dl className={styles['ladderSummary']} aria-label="股债利差摘要">
+            <div><dt>股债利差</dt><dd>{displayRatio(latest?.values.spread)}<small> 个百分点</small></dd></div>
+            <div><dt>沪深 300 滚动市盈率</dt><dd>{displayRatio(latest?.values.pe)}<small> 倍</small></dd></div>
+            <div><dt>10 年期国债到期收益率</dt><dd>{displayRatio(latest?.values.y10)}<small>%</small></dd></div>
+          </dl>}
           {valid.length > 0 ? <EChart option={buildMacroIndicatorOption(definition, data, range, getChartPalette(theme), result?.tradingDates)} ariaLabel={`${definition.title} ${range.from} 至 ${range.to}`} style={{ height: 320 }} />
             : <p className={styles['macroEmpty']}>{task?.state === 'failed' ? '公开来源未返回所选范围数据，可展开详情查看原因。' : busy || loading ? '等待后台取得公开数据…' : '所选区间暂无有效观测，后续后台更新会重试。'}</p>}
         </section>

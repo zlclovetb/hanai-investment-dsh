@@ -35,6 +35,7 @@ declare module 'echarts/components' {
   export const DataZoomComponent: unknown
   export const AxisPointerComponent: unknown
   export const MarkLineComponent: unknown
+  export const MarkAreaComponent: unknown
   export const MarkPointComponent: unknown
 }
 

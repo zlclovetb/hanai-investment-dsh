@@ -35,6 +35,7 @@ function loadEChartsRuntime(): Promise<EChartsRuntime> {
       components.DataZoomComponent,
       components.AxisPointerComponent,
       components.MarkLineComponent,
+      components.MarkAreaComponent,
       components.MarkPointComponent,
       renderers.CanvasRenderer,
     ])

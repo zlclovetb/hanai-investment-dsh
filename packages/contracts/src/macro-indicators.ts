@@ -22,6 +22,7 @@ export const MACRO_INDICATORS = [
   { id: 'retail', topic: 'activity', title: '社会消费品零售总额', frequency: 'monthly', unit: '%', columns: [{ key: 'yoy', name: '当月同比' }, { key: 'ytd', name: '累计同比' }], kind: 'line', note: '展示名义同比；1—2月合并发布时按来源保留累计值，不以累计增速代替当月增速。' },
   { id: 'cpi', topic: 'prices', title: '居民消费价格（CPI）', frequency: 'monthly', unit: '%', columns: [{ key: 'yoy', name: '全国CPI同比' }, { key: 'mom', name: '全国CPI环比' }], kind: 'line', note: '同比与环比使用来源直接公布的增长率，不将价格指数基数当作增长率。' },
   { id: 'ppi', topic: 'prices', title: '工业生产者出厂价格（PPI）', frequency: 'monthly', unit: '%', columns: [{ key: 'yoy', name: 'PPI同比' }], kind: 'line', note: '全国工业生产者出厂价格同比，非工业增加值增速。' },
+  { id: 'equityBondSpread', topic: 'prices', title: '沪深 300 股债利差', frequency: 'daily', unit: '百分点', columns: [{ key: 'spread', name: '股债利差' }, { key: 'mean', name: '滚动均值' }, { key: 'upper', name: '上轨' }, { key: 'lower', name: '下轨' }, { key: 'close', name: '沪深 300' }, { key: 'pe', name: '滚动市盈率' }, { key: 'y10', name: '10 年期国债收益率' }], kind: 'line', note: '100 ÷ 沪深 300 滚动市盈率 − 同日 10 年期中国国债到期收益率（%）。按最近 250 个指数交易日计算均值 ± 2 倍总体标准差，窗口不全时留空。浅红表示利差触及或高于上轨。' },
   { id: 'yields', topic: 'prices', title: '中国国债收益率', frequency: 'daily', unit: '%', columns: [{ key: 'y2', name: '2年' }, { key: 'y5', name: '5年' }, { key: 'y10', name: '10年' }, { key: 'y30', name: '30年' }], kind: 'line', note: '按来源实际交易日展示各期限收益率；无报价日不补值，不代表可直接成交价格。' },
 ] as const
 export type MacroIndicatorId = typeof MACRO_INDICATORS[number]['id']
@@ -53,7 +54,7 @@ export interface MacroIndicatorQuery {
 export function firstMacroIndicatorGap(id: MacroIndicatorId, data: MacroIndicatorData, range: MacroRange): string | null {
   const definition = MACRO_INDICATORS.find(row => row.id === id)!
   const combined = id === 'industry' || id === 'retail'
-  const missing = (point: MacroIndicatorPoint) => definition.columns.some(column => point.values[column.key] == null
+  const missing = (point: MacroIndicatorPoint) => definition.columns.some(column => (id !== 'equityBondSpread' || column.key === 'spread') && point.values[column.key] == null
     && !(combined && point.date.slice(5, 7) === '02' && column.key === 'yoy' && point.values.ytd != null))
   if (definition.frequency === 'daily') return data.points.find(missing)?.date ?? null
   const observations = new Map(data.points.map(point => [point.date, point]))
