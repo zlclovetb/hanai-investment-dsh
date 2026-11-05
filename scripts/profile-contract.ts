@@ -13,7 +13,7 @@ import type * as DshBoot from '@deepseek-ai/dsh-app-boot'
 export const BASE_BUNDLE = '@deepseek-ai/dsh-base'
 export const WEB_APP_BUNDLE = '@deepseek-ai/dsh-web-app'
 export const HANAI_BUNDLE = 'hanai-investment-dsh'
-export const SUPPORTED_DSH_VERSION = '0.2.1-rc.2'
+export const SUPPORTED_DSH_VERSION = '>=0.2.1-rc.2 <0.2.2-0'
 export const EXPECTED_PROFILE_BUNDLES = [
   BASE_BUNDLE,
   WEB_APP_BUNDLE,
@@ -29,7 +29,9 @@ function invariant(condition: unknown, message: string): asserts condition {
 /** Reject a CLI mismatch before changing a profile or composing its runtime. */
 export function assertDshVersion(output: string): string {
   const version = output.match(/\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/)?.[0]
-  invariant(version === SUPPORTED_DSH_VERSION,
+  // Keep the install gate aligned with engines.dsh: the 0.2.1 RC train and stable release.
+  const compatible = version?.match(/^0\.2\.1(?:-rc\.(0|[1-9]\d*))?$/)
+  invariant(version && compatible && (compatible[1] === undefined || Number(compatible[1]) >= 2),
     `Hanai 需要 DSH ${SUPPORTED_DSH_VERSION}，当前为 ${version ?? '无法识别'}；请先更新 dsh CLI`)
   return version
 }
