@@ -29,11 +29,10 @@ function manifest(bundles = [...EXPECTED_PROFILE_BUNDLES] as string[]): Record<s
 }
 
 describe('Hanai DSH profile contract', () => {
-  it('accepts the supported release train before profile mutation', () => {
-    expect(assertDshVersion('0.2.1-rc.2\n')).toBe('0.2.1-rc.2')
+  it('accepts the supported release before profile mutation', () => {
+    expect(assertDshVersion('0.2.2-rc.2\n')).toBe('0.2.2-rc.2')
     expect(() => assertDshVersion('0.2.0-rc.2')).toThrow(/请先更新/)
-    for (const version of ['0.2.1-rc.3', '0.2.1-rc.5', '0.2.1-rc.10', '0.2.1']) expect(assertDshVersion(version)).toBe(version)
-    for (const version of ['0.2.1-rc.1', '0.2.1-beta.5', '0.2.2-rc.1', '0.2.2', '0.3.0']) expect(() => assertDshVersion(version)).toThrow(/需要 DSH/)
+    for (const version of ['0.2.1-rc.5', '0.2.2-rc.1', '0.2.2-rc.3', '0.2.2', '0.3.0']) expect(() => assertDshVersion(version)).toThrow(/需要 DSH/)
     expect(() => assertDshVersion('unknown')).toThrow(/无法识别/)
   })
 
@@ -61,7 +60,7 @@ describe('Hanai DSH profile contract', () => {
 
   it('rejects a direct web-app dependency before installation', () => {
     const input = manifest()
-    ;(input.dependencies as Record<string, unknown>)[WEB_APP_BUNDLE] = '0.2.1-rc.2'
+    ;(input.dependencies as Record<string, unknown>)[WEB_APP_BUNDLE] = '0.2.2-rc.2'
     expect(() => assertSafeProfileManifest(input, 'web')).toThrow(/不得是 profile dependency/)
   })
 

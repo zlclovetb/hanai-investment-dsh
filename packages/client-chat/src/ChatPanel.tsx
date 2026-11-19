@@ -400,9 +400,7 @@ const SessionView = memo(function SessionView({
     ? '这条 Session 已被删除，历史仍可阅读。'
     : subagent?.address.mode === 'one-shot'
       ? '一次性子 Agent 对话不可继续。'
-      : subagent !== null && !subagent.parentAvailable
-        ? '父 Agent 当前不可用，暂时无法继续该子对话。'
-        : null
+      : null
   const readOnlyReason = externalReadOnlyReason ?? sessionReadOnlyReason
 
   return (

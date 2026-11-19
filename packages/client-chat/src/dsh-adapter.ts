@@ -79,6 +79,7 @@ export function createChatSessions(ctx: Context): ChatSessions {
           prompt: native.prompt.bind(native),
           cancel: native.cancel.bind(native),
           loadOlder: native.loadOlder.bind(native),
+          consumeOlder: native.consumeOlder.bind(native),
           loadThrough: native.loadThrough.bind(native),
           updateQueue: native.updateQueue.bind(native),
           rename: native.rename.bind(native),

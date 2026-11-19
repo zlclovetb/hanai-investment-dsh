@@ -13,9 +13,9 @@ Hanai Worth · 值见当前以兼容包名 `hanai-investment-dsh` 和独立 DSH 
 
 | 组件 | 实测版本 |
 | --- | --- |
-| Node.js | `v22.22.0` |
+| Node.js | `>=24.9.0` |
 | pnpm | `11.7.0` |
-| DeepSeek Harness | `0.2.1-rc.2` |
+| DeepSeek Harness | `0.2.2-rc.2` |
 | Profile | `hanai-investment` |
 | 默认监听 | `http://127.0.0.1:3080` |
 
@@ -32,7 +32,7 @@ pnpm --version
 在仓库根目录执行：
 
 ```bash
-npm install -g @deepseek-ai/dsh@0.2.1-rc.2
+npm install -g @deepseek-ai/dsh@0.2.2-rc.2
 pnpm install --frozen-lockfile
 pnpm run build
 pnpm run profile:install -- --package .

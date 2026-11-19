@@ -78,10 +78,12 @@ describe('DshSessionGateway controller lifecycle', () => {
       { type: 'assistant/message', seq: SessionSeq(1) },
       { type: 'turn/end', seq: SessionSeq(2) },
     ] as SessionEvent[]
-    const inspect = vi.fn().mockResolvedValue({ events })
-    const harness = gateway({ inspect })
+    const page = vi.fn().mockResolvedValue({ records: events.slice(1).map(event => ({ type: 'event', event })) })
+    const harness = gateway({ page })
     await expect(harness.gateway.history('hanai-test', 1)).resolves.toEqual(events.slice(1))
-    expect(inspect).toHaveBeenCalledWith('hanai-test')
+    expect(page).toHaveBeenCalledWith({
+      address: { kind: 'session', sessionId: 'hanai-test' }, maxMessages: 1,
+    }, expect.any(AbortSignal))
   })
 
   it('uses host catalog running state and treats an absent session as idle', async () => {

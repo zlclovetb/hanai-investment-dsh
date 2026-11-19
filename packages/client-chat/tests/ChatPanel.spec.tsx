@@ -227,7 +227,6 @@ describe('DshChatPanel', () => {
     const harness = makeHarness([], true, {
       subagent: {
         address: { mode: 'continuable' },
-        parentAvailable: true,
       } as never,
     })
     render(<DshChatPanel sessions={harness.sessions} sessionId="session-1" />)

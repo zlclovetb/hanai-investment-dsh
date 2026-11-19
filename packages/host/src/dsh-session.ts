@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller'
-import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
-import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
+import type { SessionRequestId, SessionWireEvent } from '@deepseek-ai/dsh-api-session-controller/types'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type { ModelSelectionInput } from '../../contracts/src/index.ts'
 
 const HANAI_AGENT_PRESET = 'standard'
@@ -64,15 +64,11 @@ export class DshSessionGateway {
     }, new AbortController().signal)
   }
 
-  async history(sessionId: string, maxMessages = 10): Promise<SessionEvent[]> {
-    const { events } = await this.ctx.sessionController.inspect(SessionId(sessionId))
-    let messages = 0
-    for (let index = events.length - 1; index >= 0; index -= 1) {
-      const event = events[index]!
-      if (event.type === 'user/message' || event.type === 'assistant/message') messages += 1
-      if (messages > maxMessages) return events.slice(index + 1)
-    }
-    return [...events]
+  async history(sessionId: string, maxMessages = 10): Promise<SessionWireEvent[]> {
+    const { records } = await this.ctx.sessionController.page({
+      address: { kind: 'session', sessionId: SessionId(sessionId) }, maxMessages,
+    }, new AbortController().signal)
+    return records.map(record => record.event)
   }
 
   async isRunning(sessionId: string): Promise<boolean> {

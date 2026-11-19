@@ -27,7 +27,7 @@ function harness() {
     sessionId: 'session-1',
     projections: { faceOf: vi.fn(() => inbox) },
     beginSubmission: vi.fn(), prompt: vi.fn().mockResolvedValue({ ok: true }),
-    cancel: vi.fn(), loadOlder: vi.fn(), loadThrough: vi.fn(), updateQueue: vi.fn(),
+    cancel: vi.fn(), loadOlder: vi.fn(), consumeOlder: vi.fn(), loadThrough: vi.fn(), updateQueue: vi.fn(),
     rename: vi.fn(), command: vi.fn(), readAttachment: vi.fn(),
   }
   const release = vi.fn()

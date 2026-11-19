@@ -43,8 +43,8 @@ const EXPECTED_CLIENT_INJECT = [
   '@deepseek-ai/dsh-client-ui-user-questions',
 ]
 
-const DSH_PEER_RANGE = '>=0.2.1-rc.2 <0.2.2-0'
-const DSH_DEV_VERSION = '0.2.1-rc.2'
+const DSH_PEER_RANGE = '0.2.2-rc.2'
+const DSH_DEV_VERSION = '0.2.2-rc.2'
 const DYNAMIC_DSH_PEERS = [
   '@deepseek-ai/dsh-agent-default-model',
   '@deepseek-ai/dsh-api-remotes',
