@@ -94,7 +94,7 @@ export class MacroIndicatorProvider {
       if (!latest) throw new Error('所选范围无同日市盈率和国债收益率')
       return { id, points, checkedRange: range, meta: { providerId: 'csindex-macro', sourceName: '中证指数（滚动市盈率、收盘点位）／东方财富（国债到期收益率）', sourceTimestamp: latest, fetchedAt: isoNow(this.clock), cacheState: 'fresh' } }
     }
-    if (id === 'arms') return this.circuit.run('88ai-arms', async () => {
+    if (id === 'arms') return this.circuit.run('88ai-arms-daily', async () => {
       const result = await fetchArms(this.http, this.clock, 'daily', signal)
       const now = new Date(this.clock.now() + 8 * 3_600_000)
       const today = now.toISOString().slice(0, 10)

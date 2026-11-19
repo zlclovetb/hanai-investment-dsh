@@ -5,7 +5,7 @@ import type { HanaiClient } from './api.ts'
 import { isClosingPanelCurrent } from './market-history.tsx'
 
 /** Reuse the page's weekday policy; missing holiday records stay unavailable rather than skipping dates. */
-export function usePreviousTurnover(client: HanaiClient, date: string | null, snapshots: MarketHistorySummary[], refreshVersion: number) {
+export function usePreviousTurnover(client: HanaiClient, date: string | null, snapshots: MarketHistorySummary[], refreshVersion: number | string) {
   let previousDate: string | null = null
   if (date !== null && isMarketDate(date)) {
     const day = new Date(`${date}T00:00:00Z`)

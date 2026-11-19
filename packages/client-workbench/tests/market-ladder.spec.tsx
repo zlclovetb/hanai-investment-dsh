@@ -1,15 +1,13 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { MarketLadderPanels, useMarketLadder, ladderThemes } from '../src/market-ladder.tsx'
+import { MarketLadderPanels } from '../src/market-ladder.tsx'
+import { ladderThemes } from '../../contracts/src/market-ladder.ts'
 import type { MarketLadderData } from '../../contracts/src/market-ladder.ts'
-import type { MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
-import type { HanaiClient } from '../src/api.ts'
 
 const meta = { providerId: 'ths-limit-reason', sourceName: '同花顺涨停池', sourceTimestamp: '2026-10-30', fetchedAt: '2026-10-30T15:10:00+08:00', cacheState: 'fresh' as const }
 const stock = (code: string, boards = 1) => ({ code, name: `梯队股${code}`, boards, industry: '食品', reason: '食品+业绩增长+食品', boardType: '换手板', firstSeal: '09:30:00', lastSeal: '10:00:00', breaks: 1, turnover: 12 })
 const data: MarketLadderData = { yesterdayPerformance: null, missedPromotions: { confirmed: true, stocks: [] }, method: 'source-board-types-v1', date: '2026-10-30', stocks: [stock('001219', 3), ...Array.from({ length: 9 }, (_, i) => stock(`60000${i}`))], promotion: { eligible: 20, promoted: 1 }, broken: 5, issues: [], meta }
-const snapshot: MarketHistorySnapshot = { date: data.date, capturedAt: meta.fetchedAt, panels: ['ladder'], records: { ladder: { key: 'ladder', version: 1, data, meta, capturedAt: meta.fetchedAt } } }
 let gridColumns: string
 beforeEach(() => {
   vi.useFakeTimers()
@@ -107,54 +105,4 @@ it('shows explicit board types and does not infer a T board just from break coun
   for (const label of ['一字板', 'T字板', '换手板', '板型待确认']) expect(screen.getByText(label)).toBeTruthy()
   expect(screen.queryByText('已封板')).toBeNull()
   expect(screen.queryByText('开板回封')).toBeNull()
-})
-
-function setup(historical: boolean, saved: MarketHistorySnapshot | null = snapshot) {
-  const call = vi.fn().mockResolvedValue(data)
-  const reload = vi.fn(async () => {})
-  const client = { call } as unknown as HanaiClient
-  return { call, ...renderHook(({ version }) => useMarketLadder(client, saved, historical, true, version, reload), { initialProps: { version: 0 } }) }
-}
-it('reads explicit history with no live requests and reports missing history locally', async () => {
-  const view = setup(true)
-  await act(async () => { await vi.advanceTimersByTimeAsync(90_000) })
-  expect(view.result.current.data).toEqual(data)
-  expect(view.call).not.toHaveBeenCalled()
-  const missing = setup(true, null)
-  expect(missing.result.current.data).toBeNull()
-  expect(missing.call).not.toHaveBeenCalled()
-})
-it('updates legacy default archives once for board types while explicit history stays readonly', async () => {
-  const legacy = { ...data }
-  delete legacy.method
-  const saved = { ...snapshot, records: { ladder: { ...snapshot.records.ladder!, data: legacy } } }
-  const historical = setup(true, saved)
-  await act(async () => {})
-  expect(historical.call).not.toHaveBeenCalled()
-  const current = setup(false, saved)
-  await act(async () => {})
-  expect(current.call).toHaveBeenCalledTimes(1)
-})
-it('fetches a closing snapshot once when polling leaves the trading window', async () => {
-  vi.setSystemTime(new Date('2026-10-30T15:05:45+08:00'))
-  const view = setup(false, null)
-  await act(async () => { await vi.advanceTimersByTimeAsync(90_000) })
-  expect(view.call).toHaveBeenCalledTimes(2)
-})
-
-it('keeps the closing archive after manual failure and polls when market opens regardless of manual version', async () => {
-  const view = setup(false)
-  expect(view.call).not.toHaveBeenCalled()
-  view.call.mockRejectedValue(new Error('offline'))
-  view.rerender({ version: 1 })
-  await act(async () => {})
-  expect(view.result.current.data).toEqual(data)
-  expect(view.result.current.failed).toBe(true)
-  expect(view.call).toHaveBeenLastCalledWith('market.ladder', { refresh: true }, expect.any(AbortSignal))
-  view.unmount()
-  vi.setSystemTime(new Date('2026-11-02T10:00:00+08:00'))
-  const live = setup(false, null)
-  await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
-  expect(live.call).toHaveBeenCalledTimes(2)
-  expect(live.call).toHaveBeenLastCalledWith('market.ladder', {}, expect.any(AbortSignal))
 })

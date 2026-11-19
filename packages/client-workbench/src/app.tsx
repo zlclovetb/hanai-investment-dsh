@@ -1,8 +1,9 @@
+import { DASHBOARD_PANELS, type DashboardPanelKey } from '../../contracts/src/index.ts'
 import { AiScreenerPage } from './ai-screener.tsx'
 import { StockDataPanel } from './stock-data.tsx'
 import { MarketScanPage } from './market-scan.tsx'
 import { ResearchAssistantPage } from './research-assistant.tsx'
-import { MarketLadderPanels, useMarketLadder } from './market-ladder.tsx'
+import { MarketLadderPanels } from './market-ladder.tsx'
 import {
   useCallback,
   useEffect,
@@ -21,7 +22,6 @@ import type {
   Judgement,
   JudgementDetail,
   MasterPersona,
-  MarketBreadthData,
   ProviderMeta,
   SearchResult,
   SecurityMaster,
@@ -34,13 +34,13 @@ import type {
 } from '../../contracts/src/index.ts'
 import { ChatPanel } from '../../client-chat/src/index.tsx'
 import { HanaiClient, type DefaultModelView } from './api.ts'
-import { isClosingPanelCurrent, isClosingSnapshotCurrent, MarketHistoryBar, snapshotDashboard, useMarketHistory } from './market-history.tsx'
-import { beijingMarketDate, MARKET_HISTORY_PANELS, marketDateFromMeta, marketHistoryPanel, type MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
-import type { MarketArmsData } from '../../contracts/src/market-arms.ts'
-import { DOMESTIC_INDICES, GLOBAL_INDICES, isGlobalMarketOpen, type GlobalIndicesData } from '../../contracts/src/market-indices.ts'
+import { MarketHistoryBar, snapshotDashboard, useMarketHistory } from './market-history.tsx'
+import { beijingMarketDate, MARKET_HISTORY_PANELS, marketDateFromMeta, marketHistoryPanel } from '../../contracts/src/market-history.ts'
+import { DOMESTIC_INDICES, GLOBAL_INDICES, type GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import { MacroPage } from './market-macro.tsx'
 import { MarketActivityPanel } from './market-activity.tsx'
-import { DistributionChart, useMarketDistribution } from './market-distribution.tsx'
+import { DistributionChart } from './market-distribution.tsx'
+import { useMarketSnapshot } from './market-snapshot.tsx'
 import { usePreviousTurnover } from './market-turnover.ts'
 import { MarketPanelStatus } from './market-panel-status.tsx'
 import {
@@ -302,222 +302,46 @@ export function HanaiWorkbench({ client, onClose, initialPath }: HanaiWorkbenchP
 function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient; theme: ThemeId; onStock: (stock: SearchResult) => void; notify: Notify }) {
   const history = useMarketHistory(client)
   const historical = history.selectedDate !== null
-  const [restingSnapshot, setRestingSnapshot] = useState<MarketHistorySnapshot | null>(null)
-  const archived = historical || restingSnapshot !== null
-  const [liveData, setData] = useState<DashboardData | null>(null)
-  const [liveBreadth, setBreadth] = useState<MarketBreadthData | null>(null)
-  const archivedBreadth = useRef<MarketBreadthData | null>(null)
-  const [liveBreadthLoading, setBreadthLoading] = useState(true)
-  const [liveGlobal, setGlobal] = useState<GlobalIndicesData | null>(null)
-  const [globalFailed, setGlobalFailed] = useState(false)
-  const [activityRefreshVersion, setActivityRefreshVersion] = useState(0)
-  const [liveArms, setLiveArms] = useState<MarketArmsData | null>(null)
-  const [armsFailed, setArmsFailed] = useState(false)
-  const [armsPending, setArmsPending] = useState(false)
-  const savedArms = marketHistoryPanel(historical ? history.snapshot : restingSnapshot, 'arms')
-  const arms = historical ? savedArms : liveArms ?? savedArms
-  const global = historical ? marketHistoryPanel(history.snapshot, 'global.indices') : liveGlobal
-  const globalController = useRef<AbortController | null>(null)
-  const globalInFlight = useRef(false)
-  const data = historical ? history.dashboard : liveData
-  const breadth = historical ? history.breadth : liveBreadth
-  const breadthLoading = historical ? history.loading : liveBreadthLoading
-  const [breadthFailed, setBreadthFailed] = useState(false)
-  const breadthInFlight = useRef(false)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const live = useMarketSnapshot(client, historical)
+  useEffect(() => { if (live.data?.id) void history.reloadIndex() }, [live.data?.id, history.reloadIndex])
+  const restingSnapshot = live.data?.snapshot ?? null
+  const selectedSnapshot = historical ? history.snapshot : restingSnapshot
+  const archived = historical || isMarketResting()
+  const data = historical ? history.dashboard : snapshotDashboard(selectedSnapshot)
+  const breadth = marketHistoryPanel(selectedSnapshot, 'breadth')
+  const global = marketHistoryPanel(selectedSnapshot, 'global.indices')
+  const arms = marketHistoryPanel(selectedSnapshot, 'arms')
+  const issues = historical ? {} : live.data?.errors ?? {}
+  const loading = historical ? history.loading : live.loading
+  const refreshing = live.refreshing
+  const refreshError = live.error
+  const breadthLoading = loading
+  const breadthFailed = Boolean(issues.breadth)
+  const globalFailed = Boolean(issues['global.indices'])
+  const armsFailed = Boolean(issues.arms)
+  const armsPending = loading
+  const distribution = { data: marketHistoryPanel(selectedSnapshot, 'distribution'), failed: Boolean(issues.distribution), pending: loading }
+  const ladder = { data: marketHistoryPanel(selectedSnapshot, 'ladder'), failed: Boolean(issues.ladder), pending: loading }
+  const failedDashboardPanels = new Set(DASHBOARD_PANELS.filter(key => issues[key]))
   const [rank, setRank] = useState<keyof DashboardData['ranks']>('gainers')
   const [sectorType, setSectorType] = useState<'industry' | 'concept'>('industry')
   const [sectorLoading, setSectorLoading] = useState(false)
-  const distribution = useMarketDistribution(client, historical ? history.snapshot : restingSnapshot, historical, liveData !== null, activityRefreshVersion, history.reloadIndex)
-  const ladder = useMarketLadder(client, historical ? history.snapshot : restingSnapshot, historical, liveData !== null, activityRefreshVersion, history.reloadIndex)
-  const previousTurnover = usePreviousTurnover(client, historical ? history.selectedDate : data === null ? null : marketDateFromMeta(data.overview.meta), history.snapshots, activityRefreshVersion)
+  const previousTurnover = usePreviousTurnover(client, historical ? history.selectedDate : data === null ? null : marketDateFromMeta(data.overview.meta), history.snapshots, live.data?.id ?? '')
   const [drill, setDrill] = useState<{ code: string; name: string; stocks: StockQuote[] | null; meta: ProviderMeta | null } | null>(null)
   const drillGeneration = useRef(0)
-  const drillController = useRef<AbortController | null>(null)
-  const { cooldown, canRefresh, startCooldown } = useRefreshCooldown(60)
-  const requestInFlight = useRef(false)
-  const liveGeneration = useRef(0)
-  const mainController = useRef<AbortController | null>(null)
-  const breadthController = useRef<AbortController | null>(null)
   useEffect(() => {
-    if (historical || loading) return
-    const controller = new AbortController()
-    let busy = false
-    const read = async () => {
-      if (busy) return
-      busy = true; setArmsPending(true)
-      try {
-        const next = await client.call('market.arms', {}, controller.signal)
-        if (controller.signal.aborted) return
-        if (next !== null) setLiveArms(next)
-        setArmsFailed(next === null || next.meta.cacheState === 'stale')
-        if (next !== null) void history.reloadIndex()
-      } catch { if (!controller.signal.aborted) setArmsFailed(true) }
-      finally { busy = false; if (!controller.signal.aborted) setArmsPending(false) }
-    }
-    if (isMarketOpen() || savedArms === null || !isClosingPanelCurrent(savedArms.meta) || activityRefreshVersion > 0) void read()
-    const timer = window.setInterval(() => { if (isMarketOpen()) void read() }, 30_000)
-    return () => { controller.abort(); window.clearInterval(timer) }
-  }, [client, historical, loading, savedArms, activityRefreshVersion, history.reloadIndex])
-  const load = useCallback(async (refresh = false) => {
-    if (historical || requestInFlight.current) return
-    const generation = liveGeneration.current
-    const controller = new AbortController()
-    mainController.current = controller
-    requestInFlight.current = true
-    setRefreshing(true)
-    try {
-      const value = await client.call('dashboard.get', { refresh }, controller.signal)
-      if (controller.signal.aborted || generation !== liveGeneration.current) return
-      if ([value.overview.meta, value.industry.meta, value.concept.meta, ...Object.values(value.rankSources ?? {})]
-        .every(meta => meta.cacheState === 'unavailable')) throw new Error('所有首页行情源均不可用，保留最近成功快照')
-      setData(value)
-      setRestingSnapshot(null)
-      setRefreshError(null)
-      void history.reloadIndex()
-    } catch (error) {
-      if (controller.signal.aborted || generation !== liveGeneration.current) return
-      const message = messageOf(error)
-      setRefreshError(message)
-      if (refresh) notify(message, 'error')
-    } finally {
-      if (generation === liveGeneration.current) {
-        requestInFlight.current = false
-        setLoading(false)
-        setRefreshing(false)
-      }
-    }
-  }, [client, notify, historical, history.reloadIndex])
-
-  const loadBreadth = useCallback(async () => {
-    if (historical || breadthInFlight.current) return
-    const generation = liveGeneration.current
-    const controller = new AbortController()
-    breadthController.current = controller
-    breadthInFlight.current = true
-    setBreadthLoading(true)
-    try {
-      const result = await client.call('market.breadth', {}, controller.signal)
-      if (controller.signal.aborted || generation !== liveGeneration.current) return
-      if (result !== null) setBreadth(result)
-      setBreadthFailed(result === null || result.meta.cacheState === 'stale')
-      void history.reloadIndex()
-    } catch {
-      if (!controller.signal.aborted && generation === liveGeneration.current) setBreadthFailed(true)
-    } finally {
-      if (generation === liveGeneration.current) {
-        breadthInFlight.current = false
-        setBreadthLoading(false)
-      }
-    }
-  }, [client, historical, history.reloadIndex])
-
-  const loadGlobal = useCallback(async () => {
-    if (historical || globalInFlight.current) return
-    const generation = liveGeneration.current
-    const controller = new AbortController()
-    globalController.current = controller
-    globalInFlight.current = true
-    try {
-      const value = await client.call('market.indices', {}, controller.signal)
-      if (controller.signal.aborted || generation !== liveGeneration.current) return
-      setGlobalFailed(value.meta.cacheState === 'unavailable' || value.indices.length < GLOBAL_INDICES.length || value.indices.some(index => index.meta.cacheState === 'stale' || index.meta.cacheState === 'unavailable'))
-      if (value.meta.cacheState !== 'unavailable') setGlobal(value)
-      else setGlobal(previous => previous === null ? value : { ...previous, indices: previous.indices.map(item => ({ ...item, meta: { ...item.meta, cacheState: 'stale' } })) })
-      void history.reloadIndex()
-    } catch {
-      if (!controller.signal.aborted && generation === liveGeneration.current) setGlobalFailed(true)
-      if (!controller.signal.aborted && generation === liveGeneration.current) setGlobal(previous => previous === null ? null : { ...previous, indices: previous.indices.map(item => ({ ...item, meta: { ...item.meta, cacheState: 'stale' } })) })
-    } finally { if (generation === liveGeneration.current) globalInFlight.current = false }
-  }, [client, historical, history.reloadIndex])
-
+    setDrill(null)
+    drillGeneration.current++
+  }, [history.selectedDate])
+  useEffect(() => () => { drillGeneration.current++ }, [])
   useEffect(() => {
     if (historical) return
-    liveGeneration.current += 1
-    const generation = liveGeneration.current
-    const controller = new AbortController()
-    mainController.current = controller
-    const initialize = async () => {
-      let refreshArchive = false
-      let globalArchiveLoaded = false
-      if (!isMarketOpen()) {
-        try {
-          const { snapshots } = await client.call('market.history.list', {}, controller.signal)
-          for (const item of snapshots.filter(item => item.date <= beijingMarketDate()).sort((a, b) => b.date.localeCompare(a.date))) {
-            if (controller.signal.aborted || generation !== liveGeneration.current) return
-            const snapshot = await client.call('market.history.get', { date: item.date }, controller.signal)
-            if (controller.signal.aborted || generation !== liveGeneration.current) return
-            if (snapshot === null) continue
-            if (snapshot.date !== item.date) throw new Error('历史记录日期不匹配')
-            const overseas = marketHistoryPanel(snapshot, 'global.indices')
-            if (!globalArchiveLoaded && overseas !== null) {
-              setGlobal(overseas)
-              setGlobalFailed(false)
-              globalArchiveLoaded = true
-            }
-            // US trading can create a new Beijing-day record before the next A-share session.
-            if (snapshot.panels.every(key => key.startsWith('macro.') || ['global.indices', 'intraday', 'signals', 'ladder'].includes(key))) continue
-            setData(snapshotDashboard(snapshot))
-            const savedBreadth = marketHistoryPanel(snapshot, 'breadth')
-            archivedBreadth.current = savedBreadth
-            setBreadth(savedBreadth)
-            setRestingSnapshot(snapshot)
-            setBreadthFailed(false)
-            setBreadthLoading(false)
-            setLoading(false)
-            setRefreshing(false)
-            setRefreshError(null)
-            if (!globalArchiveLoaded) { globalArchiveLoaded = true; void loadGlobal() }
-            if (isClosingSnapshotCurrent(snapshot)) return
-            refreshArchive = true
-            break
-          }
-        } catch (error) {
-          if (controller.signal.aborted || generation !== liveGeneration.current) return
-          setRefreshError(`休市归档读取失败：${messageOf(error)}`)
-          setLoading(false)
-          setBreadthLoading(false)
-          return
-        }
-      }
-      if (controller.signal.aborted || generation !== liveGeneration.current) return
-      void load(refreshArchive)
-      void loadBreadth()
-      void loadGlobal()
-    }
-    void initialize()
-    // 闭市后停自动轮询；interval 常驻注册、回调内判断，跨过开盘边界自然恢复。
-    const timer = window.setInterval(() => {
-      if (!isMarketOpen()) return
-      controller.abort()
-      void load()
-      void loadBreadth()
-    }, 30_000)
-    const globalTimer = window.setInterval(() => { if (!isMarketResting() && isGlobalMarketOpen()) void loadGlobal() }, 30_000)
-    return () => {
-      window.clearInterval(timer)
-      window.clearInterval(globalTimer)
-      liveGeneration.current += 1
-      mainController.current?.abort()
-      breadthController.current?.abort()
-      globalController.current?.abort()
-      requestInFlight.current = false
-      breadthInFlight.current = false
-      globalInFlight.current = false
-    }
-  }, [client, historical, load, loadBreadth, loadGlobal])
-  useEffect(() => () => {
-    drillGeneration.current += 1
-    drillController.current?.abort()
-  }, [])
-  useEffect(() => {
-    drillGeneration.current += 1
-    drillController.current?.abort()
-    setDrill(null)
-  }, [restingSnapshot])
-
+    setDrill(previous => {
+      if (!previous) return null
+      const panel = marketHistoryPanel(restingSnapshot, `sector:${previous.code}`)
+      return panel ? { ...previous, stocks: panel.stocks, meta: panel.meta } : previous
+    })
+  }, [historical, restingSnapshot])
   const palette = useMemo(() => getChartPalette(theme), [theme])
   const sector = data === null ? null : sectorType === 'industry' ? data.industry : data.concept
   const treemapOption = useMemo(() => buildTreemapOption(sector, palette), [palette, sector])
@@ -525,16 +349,15 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
 
   const selectDate = (date: string | null) => {
     drillGeneration.current += 1
-    drillController.current?.abort()
     setDrill(null)
     history.selectDate(date)
   }
   const dateBar = <MarketHistoryBar history={history} onSelect={selectDate} />
-  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.') && !['arms', 'distribution'].includes(key)) : MARKET_HISTORY_PANELS.filter(key => key.startsWith('macro.') || ['intraday', 'signals', 'arms', 'distribution', 'ladder'].includes(key) ? false : key === 'global.indices' ? global === null : !restingSnapshot?.records[key])
+  const missingPanels = historical ? history.missing.filter(key => !key.startsWith('macro.')) : []
   if ((historical ? history.loading : loading) && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><PageSkeleton cards={6} /></Page>
   if (historical && data === null) return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title={history.error === null ? '该日期暂无历史记录' : '历史记录读取失败'} detail={history.error ?? '历史从成功归档的数据积累；未保存的日期无法还原，页面不会补入实时数据。'} action={<button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取</button>} /></Page>
   if (data === null) {
-    return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title="市场数据暂不可用" detail={refreshError ?? '行情源尚未返回可用数据。'} action={<button className={styles['button']} onClick={() => { void load(true); void loadBreadth() }}>重新加载</button>} /></Page>
+    return <Page><PageHeader title="今日市场" className={styles['marketPageHeader'] ?? ''} action={dateBar} /><Empty title="市场数据暂不可用" detail={refreshError ?? '行情源尚未返回可用数据。'} action={<button className={styles['button']} onClick={() => void live.refresh()}>重新加载</button>} /></Page>
   }
 
   const breadthMeta = breadth?.meta
@@ -552,31 +375,28 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
   const openSector = (params: unknown) => {
     const target = treemapTargetFromEvent(params)
     if (target === null) return
-    if (archived) {
-      const stored = marketHistoryPanel(historical ? history.snapshot : restingSnapshot, `sector:${target.sectorCode}`)
+    const stored = marketHistoryPanel(selectedSnapshot, `sector:${target.sectorCode}`)
+    if (historical || (archived && stored !== null)) {
       setDrill({ code: target.sectorCode, name: target.name, stocks: stored?.stocks ?? [], meta: stored?.meta ?? null })
       return
     }
     const generation = ++drillGeneration.current
-    drillController.current?.abort()
-    const controller = new AbortController()
-    drillController.current = controller
     setDrill({ code: target.sectorCode, name: target.name, stocks: null, meta: null })
-    void client.call('sector.stocks', { sectorCode: target.sectorCode }, controller.signal)
+    void live.selectSector(target.sectorCode)
       .then(result => {
-        if (controller.signal.aborted || generation !== drillGeneration.current) return
-        setDrill({ code: target.sectorCode, name: target.name, stocks: result.stocks, meta: result.meta })
+        if (generation !== drillGeneration.current) return
+        const panel = marketHistoryPanel(result?.snapshot ?? null, `sector:${target.sectorCode}`)
+        if (!panel) throw new Error('统一快照尚无该板块成分')
+        setDrill({ code: target.sectorCode, name: target.name, stocks: panel.stocks, meta: panel.meta })
       })
       .catch(error => {
-        if (controller.signal.aborted || generation !== drillGeneration.current) return
+        if (generation !== drillGeneration.current) return
         setDrill(null)
         notify(messageOf(error), 'error')
       })
   }
   const closeDrill = () => {
     drillGeneration.current += 1
-    drillController.current?.abort()
-    drillController.current = null
     setDrill(null)
   }
   const selectSectorType = (type: 'industry' | 'concept') => {
@@ -587,25 +407,25 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
     window.setTimeout(() => setSectorLoading(false), 0)
   }
 
-  return <Page>
+  return <Page snapshotId={historical ? undefined : live.data?.id}>
     <PageHeader
       title="今日市场"
       className={styles['marketPageHeader'] ?? ''}
-      meta={historical ? <span>历史快照 · {history.selectedDate}</span> : restingSnapshot !== null && refreshError === null ? <span>休市缓存 · {restingSnapshot.date}</span> : <MarketPanelStatus items={[{ label: '行情', meta: data.overview.meta, failed: refreshError !== null, ...(refreshError ? { message: refreshError } : {}) }]} />}
-      action={<>{dateBar}{historical ? <button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取历史</button> : <button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing || !canRefresh} onClick={() => { mainController.current?.abort(); startCooldown(); setActivityRefreshVersion(value => value + 1); void load(true); void loadBreadth(); void loadGlobal() }} aria-label="手动刷新今日市场">{refreshing ? '刷新中' : canRefresh ? '刷新' : `刷新 ${cooldown}s`}</button>}</>}
+      meta={historical ? <span>历史快照 · {history.selectedDate}</span> : isMarketResting() && restingSnapshot !== null && refreshError === null ? <span>休市缓存 · {restingSnapshot.date}</span> : <MarketPanelStatus items={[{ label: '行情', meta: data.overview.meta, failed: refreshError !== null, ...(refreshError ? { message: refreshError } : {}) }]} />}
+      action={<>{dateBar}{historical ? <button className={styles['button']} onClick={() => history.selectDate(history.selectedDate)}>重新读取历史</button> : <button className={`${styles['button']} ${styles['buttonGhost']}`} disabled={refreshing || live.cooldown > 0} onClick={() => void live.refresh()} aria-label="手动刷新今日市场">{refreshing ? '刷新中' : live.cooldown === 0 ? (isMarketOpen() ? '刷新' : '补齐收盘数据') : `刷新 ${live.cooldown}s`}</button>}</>}
     />
     {archived && missingPanels.length > 0 && <div className={styles['errorCard']} role="status">历史记录不完整：有 {missingPanels.length} 个面板未保存，仅展示该日期已有的记录。</div>}
     {!historical && refreshError !== null && <div className={styles['errorCard']}><b>行情获取失败：</b>{refreshError}<span>请检查网络后点击刷新；其他面板保留最近成功的数据。</span></div>}
     {archived && data.overview.indices.length === 0 && <Empty compact title="该日期未保存指数面板" detail="其余已保存面板仍可查看。" />}
 
-    <MarketIndexPanel overview={data.overview} global={global} historical={historical} archived={archived} refreshFailed={!historical && refreshError !== null} globalFailed={globalFailed} />
+    <MarketIndexPanel overview={data.overview} global={global} historical={historical} archived={archived} refreshFailed={!historical && failedDashboardPanels.has('overview')} globalFailed={globalFailed} />
 
     <div className={`${styles['dashboardMainGrid']} ${styles['marketContextGrid']}`}>
-    <MarketActivityPanel client={client} snapshot={historical ? history.snapshot : restingSnapshot} historical={historical} marketStatus={data.overview.marketStatus} palette={palette} refreshVersion={activityRefreshVersion} onArchived={history.reloadIndex} />
+    <MarketActivityPanel snapshot={selectedSnapshot} historical={historical} palette={palette} pending={loading} errors={issues} />
     <article className={`${styles['card']} ${styles['breadthCard']}`}>
       <PanelHead title="市场宽度" meta={<MarketPanelStatus historical={historical} items={[
         { label: '涨跌家数', meta: breadthMeta, failed: !historical && breadthFailed },
-        { label: 'TRIN', meta: arms?.meta, failed: !historical && armsFailed },
+        { label: 'TRIN', meta: arms?.meta, failed: !historical && armsFailed, ...(issues.arms ? { message: issues.arms } : {}) },
         { label: '涨跌分布', meta: distribution.data?.meta, failed: distribution.failed },
         { label: '昨日成交', failed: previousTurnover.error !== null, ...(previousTurnover.error ? { message: previousTurnover.error } : {}) },
       ]} />} />
@@ -660,7 +480,7 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
       <article className={`${styles['card']} ${styles['treemapCard']}`}>
         <PanelHead
           title={drill === null ? '板块热力' : `板块热力 · ${drill.name}`}
-          meta={<MarketPanelStatus historical={historical} items={[{ label: drill === null ? '板块热力' : '板块成分', meta: drill === null ? sector?.meta : drill.meta, failed: !historical && (refreshError !== null || (!archived && (drill === null ? sector?.meta : drill.meta)?.cacheState === 'stale')) }]} />}
+          meta={<MarketPanelStatus historical={historical} items={[{ label: drill === null ? '板块热力' : '板块成分', meta: drill === null ? sector?.meta : drill.meta, failed: !historical && ((drill === null ? failedDashboardPanels.has(sectorType) : Boolean(issues[`sector:${drill.code}`])) || (!archived && (drill === null ? sector?.meta : drill.meta)?.cacheState === 'stale')) }]} />}
           extra={drill === null ? <div className={styles['buttonGroup']}>
             <button className={sectorType === 'industry' ? styles['buttonSelected'] : styles['button']} disabled={sectorLoading} onClick={() => selectSectorType('industry')}>行业</button>
             <button className={sectorType === 'concept' ? styles['buttonSelected'] : styles['button']} disabled={sectorLoading} onClick={() => selectSectorType('concept')}>概念</button>
@@ -674,11 +494,11 @@ function DashboardPage({ client, theme, onStock, notify }: { client: HanaiClient
             <span>跌</span>
             <small>面积 = 板块成交额（个股可重叠）· 其他固定</small>
           </div>
-        </div> : <SectorDrill drill={drill} onStock={onStock} historical={archived} />}
+        </div> : <SectorDrill drill={drill} onStock={onStock} historical={historical} />}
       </article>
 
       <article className={`${styles['card']} ${styles['rankCard']}`}>
-        <PanelHead title="榜单" meta={<MarketPanelStatus historical={historical} items={[{ label: '榜单', meta: data.rankSources?.[rank], failed: !historical && (refreshError !== null || (!archived && data.rankSources?.[rank]?.cacheState === 'stale')) }]} />} extra={<div className={styles['buttonGroup']}>
+        <PanelHead title="榜单" meta={<MarketPanelStatus historical={historical} items={[{ label: '榜单', meta: data.rankSources?.[rank], failed: !historical && (failedDashboardPanels.has(('rank.' + rank) as DashboardPanelKey) || (!archived && data.rankSources?.[rank]?.cacheState === 'stale')) }]} />} extra={<div className={styles['buttonGroup']}>
           {([['gainers', '涨幅榜'], ['losers', '跌幅榜'], ['amount', '成交额'], ['turnover', '换手率']] as const).map(([id, label]) => <button key={id} className={rank === id ? styles['buttonSelected'] : styles['button']} onClick={() => setRank(id)}>{label}</button>)}
         </div>} />
         <div className={styles['rankBody']}>
@@ -2034,8 +1854,8 @@ function GlobalSearch({ client, groups, onGroups, onClose, onSelect, notify }: {
   }}><header><span>⌕</span><input ref={input} value={query} onChange={event => setQuery(event.target.value)} placeholder="输入代码、名称、拼音全拼或首字母…" aria-activedescendant={results[activeIndex] === undefined ? undefined : `hanai-search-${results[activeIndex].secId}`} /><kbd>ESC</kbd></header><div className={styles['searchBody']}>{query.trim() === '' ? <div className={styles['searchHint']}>支持：600519 · 贵州茅台 · guizhoumaotai · gzmt</div> : error !== null ? <div className={styles['searchHint']}>{error}</div> : results.length === 0 ? <div className={styles['searchHint']}>未找到匹配的证券（本地主数据）</div> : results.map((result, index) => <div id={`hanai-search-${result.secId}`} key={result.secId} className={index === activeIndex ? styles['searchActive'] : ''} onMouseEnter={() => setActiveIndex(index)}><button ref={node => { resultRefs.current[index] = node }} onClick={() => onSelect(result)}><span>{result.code}</span><b>{highlight(result.name, query)}</b><small>{result.exchange}</small><span>{number(result.price)}</span><em className={styles[classForChange(result.changePct)]}>{percent(result.changePct)}</em></button><button className={styles['watchAdd']} onClick={() => setWatchTarget(result)}>＋ 加入自选</button></div>)}</div></div>{watchTarget !== null && <WatchGroupDialog client={client} open groups={groups} stock={watchTarget} mode="add" onClose={() => setWatchTarget(null)} onGroups={(next) => { onGroups(next); setWatchTarget(null); onClose() }} notify={notify} />}</div>
 }
 
-function Page({ children }: { children: ReactNode }) {
-  return <div className={styles['page']}>{children}</div>
+function Page({ children, snapshotId }: { children: ReactNode; snapshotId?: string | undefined }) {
+  return <div className={styles['page']} data-market-snapshot={snapshotId}>{children}</div>
 }
 
 function PageHeader({ title, description, meta, action, className = '' }: { title: ReactNode; description?: string; meta?: ReactNode; action?: ReactNode; className?: string }) {

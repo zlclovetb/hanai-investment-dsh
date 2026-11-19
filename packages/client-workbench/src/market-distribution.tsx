@@ -1,39 +1,7 @@
-import { useEffect, useState } from 'react'
-import type { HanaiClient } from './api.ts'
 import { DISTRIBUTION_BINS, type MarketDistributionData } from '../../contracts/src/market-distribution.ts'
-import { marketHistoryPanel, type MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
-import { isClosingPanelCurrent } from './market-history.tsx'
-import { isMarketOpen } from './market-hours.ts'
 import { EChart } from './echarts.tsx'
 import { getChartPalette } from './chart-options.ts'
 import type { ThemeId } from '../../contracts/src/index.ts'
-
-export function useMarketDistribution(client: HanaiClient, snapshot: MarketHistorySnapshot | null, historical: boolean, ready: boolean, refreshVersion: number, reloadIndex: () => Promise<void>) {
-  const saved = marketHistoryPanel(snapshot, 'distribution')
-  const [live, setLive] = useState<MarketDistributionData | null>(null)
-  const [failed, setFailed] = useState(false)
-  const [pending, setPending] = useState(false)
-  useEffect(() => {
-    if (historical || !ready) return
-    const controller = new AbortController()
-    let busy = false
-    const read = async () => {
-      if (busy) return
-      busy = true; setPending(true)
-      try {
-        const next = await client.call('market.distribution', {}, controller.signal)
-        if (controller.signal.aborted) return
-        if (next !== null) { setLive(next); void reloadIndex() }
-        setFailed(next === null || next.meta.cacheState === 'stale')
-      } catch { if (!controller.signal.aborted) setFailed(true) }
-      finally { busy = false; if (!controller.signal.aborted) setPending(false) }
-    }
-    if (isMarketOpen() || saved === null || !isClosingPanelCurrent(saved.meta) || refreshVersion > 0) void read()
-    const timer = window.setInterval(() => { if (isMarketOpen()) void read() }, 30_000)
-    return () => { controller.abort(); window.clearInterval(timer) }
-  }, [client, saved, historical, ready, refreshVersion, reloadIndex])
-  return { data: historical ? saved : live ?? saved, resting: !historical && live === null && saved !== null, failed: !historical && failed, pending: !historical && pending }
-}
 
 export function DistributionChart({ data, theme }: { data: MarketDistributionData; theme: ThemeId }) {
   const palette = getChartPalette(theme)

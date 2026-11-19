@@ -34,6 +34,7 @@ it('calculates yesterday sample averages, both median cases and flat counts with
 
 it('prefers THS yesterday candidates plus one current quote batch and never requests Eastmoney on success', async () => {
   const http = new HandlerHttpClient(url => {
+    if (url.includes('open_limit_pool')) return jsonResponse(ths([{ ...row, code: '600001' }, { ...row, code: '600002' }]))
     const historical = new URL(url).searchParams.get('date') === '20261029'
     const value = ths([{ ...row, high_days: '首板', first_limit_up_time: String(epoch - (historical ? 86400 : 0)), last_limit_up_time: String(epoch - (historical ? 86400 : 0)) }])
     if (historical) value.data.date = '20261029'
@@ -45,7 +46,7 @@ it('prefers THS yesterday candidates plus one current quote batch and never requ
   const data = await new MarketLadderProvider(http, new FakeClock(now), 5000, quotes).get()
   expect(data?.yesterdayPerformance).toMatchObject({ sample: 1, average: -2, median: -2, up: 0, down: 1, flat: 0 })
   expect(quotes).toHaveBeenCalledWith(['0.001219'])
-  expect(http.requests).toHaveLength(2)
+  expect(http.requests).toHaveLength(3)
   expect(http.requests.every(row => row.url.includes('10jqka.com.cn'))).toBe(true)
 })
 
@@ -77,6 +78,7 @@ it('reuses the previous closing ladder, removes resealed names and archives the 
   expect(load).toHaveBeenCalledWith('2026-10-29')
   expect(http.requests).toHaveLength(2)
   expect(intraday?.broken).toBe(2)
+  expect(intraday?.brokenStocks?.map(row => row.code)).toEqual(['000001', '600001'])
   expect(intraday?.missedPromotions).toEqual({ confirmed: false, stocks: [{ ...missing, changePct: -2, broken: true, brokenTiming: { firstTouch: '10:30:00', lastTouch: '10:31:00' } }] })
   expect(isMarketPanelPayload('ladder', intraday)).toBe(true)
   expect(http.requests.some(request => request.url.includes('getTopicZBPool'))).toBe(false)
@@ -101,31 +103,33 @@ it('manually reloads the resting ladder within its cache TTL', async () => {
   const clock = new FakeClock(Date.parse('2026-10-30T16:00:00+08:00'))
   let boardType: string | null = null
   let online = true
-  const http = new HandlerHttpClient(() => online ? jsonResponse(ths([{ ...row, limit_up_type: boardType as string }])) : jsonResponse({}, 503))
+  const http = new HandlerHttpClient(url => !online ? jsonResponse({}, 503) : url.includes('open_limit_pool')
+    ? jsonResponse(ths([{ ...row, code: '600001' }, { ...row, code: '600002' }])) : jsonResponse(ths([{ ...row, limit_up_type: boardType as string }])))
   const provider = new MarketLadderProvider(http, clock)
   expect((await provider.get())?.stocks[0]?.boardType).toBeNull()
   boardType = '换手板'
   expect((await provider.get())?.stocks[0]?.boardType).toBeNull()
   expect((await provider.get(undefined, undefined, true))?.stocks[0]?.boardType).toBe('换手板')
-  expect(http.requests).toHaveLength(2)
+  expect(http.requests).toHaveLength(4)
   online = false
   const stale = await provider.get(undefined, undefined, true)
   expect(stale?.meta.cacheState).toBe('stale')
   expect(stale?.stocks[0]?.boardType).toBe('换手板')
 })
 
-it('uses a single THS batch without any Eastmoney calls and preserves missing break counts', async () => {
+it('shares complete THS sealed and broken pools without Eastmoney calls and preserves missing break counts', async () => {
   const clock = new FakeClock(now)
-  const http = new HandlerHttpClient(() => jsonResponse(ths([{ ...row, open_num: null as unknown as number }])))
+  const http = new HandlerHttpClient(url => jsonResponse(ths(url.includes('open_limit_pool')
+    ? [{ ...row, code: '600001' }, { ...row, code: '600002' }] : [{ ...row, open_num: null as unknown as number }])))
   const provider = new MarketLadderProvider(http, clock)
   const data = await provider.get()
   expect(data?.stocks[0]).toMatchObject({ boards: 5, firstSeal: '10:30:00', breaks: null })
   expect(data?.promotion).toEqual({ eligible: 4, promoted: 1 })
   expect(data?.broken).toBe(2)
-  expect(http.requests).toHaveLength(1)
+  expect(http.requests).toHaveLength(2)
   expect(http.requests[0]?.url).toContain('10jqka.com.cn')
   expect((await provider.get())?.meta.cacheState).toBe('cached')
-  expect(http.requests).toHaveLength(1)
+  expect(http.requests).toHaveLength(2)
 })
 
 it('falls back to Eastmoney, opens the primary circuit after 3 failures, and retries after cooldown', async () => {
@@ -204,4 +208,41 @@ it('opens the Eastmoney fallback circuit too and skips both sources during coold
   const calls = http.requests.length
   expect(await provider.get()).toBeNull()
   expect(http.requests).toHaveLength(calls)
+})
+
+it('checks reason coverage against the fallback pool and retries incomplete themes through the closing cache', async () => {
+  let available = false
+  const http = new HandlerHttpClient(url => {
+    if (url.includes('dataapi')) return jsonResponse(ths([{ ...row, high_days: '3天2板' }]))
+    if (url.includes('getTopicZTPool')) return pool([em, { ...em, c: '920007', n: '酉立智能', lbc: 1 }])
+    if (url.includes('getharden')) return jsonResponse({ errocode: 0, data: available ? [{ code: '920007', date: '2026-10-30', reason: '光伏设备' }] : [] })
+    return pool([])
+  })
+  const provider = new MarketLadderProvider(http, new FakeClock(now + 7 * 3_600_000))
+  const partial = await provider.get()
+  expect(partial?.meta.cacheState).toBe('fresh')
+  expect(partial?.issues).toContain('部分涨停股缺少题材归因')
+  expect(http.requests.some(row => row.url.includes('getharden'))).toBe(true)
+  const count = http.requests.length
+  available = true
+  await provider.get()
+  expect(http.requests).toHaveLength(count)
+  const repaired = await provider.get(undefined, undefined, true)
+  expect(http.requests.length).toBeGreaterThan(count)
+  expect(repaired?.stocks.find(stock => stock.code === '920007')?.reason).toBe('光伏设备')
+  expect(repaired?.stocks.find(stock => stock.code === row.code)?.reason).toBe(row.reason_type)
+  expect(repaired?.issues.some(issue => issue.includes('题材'))).toBe(false)
+})
+
+it('keeps validated primary reasons when supplementary theme retrieval fails', async () => {
+  const http = new HandlerHttpClient(url => {
+    if (url.includes('dataapi')) return jsonResponse(ths([{ ...row, high_days: '3天2板' }]))
+    if (url.includes('getTopicZTPool')) return pool([em, { ...em, c: '920007', n: '酉立智能', lbc: 1 }])
+    if (url.includes('getharden')) return jsonResponse({}, 503)
+    return pool([])
+  })
+  const result = await new MarketLadderProvider(http, new FakeClock(now)).get()
+  expect(result?.stocks.find(stock => stock.code === row.code)?.reason).toBe(row.reason_type)
+  expect(result?.stocks.find(stock => stock.code === '920007')?.reason).toBeNull()
+  expect(result?.issues).toContain('部分涨停股缺少题材归因')
 })

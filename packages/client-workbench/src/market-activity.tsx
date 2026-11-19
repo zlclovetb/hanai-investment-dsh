@@ -1,25 +1,13 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
-import type { MarketStatus } from '../../contracts/src/index.ts'
 import { marketHistoryPanel, type MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
-import type { HanaiClient } from './api.ts'
 import { buildTrendOption, type ChartPalette } from './chart-options.ts'
-import { isClosingPanelCurrent } from './market-history.tsx'
-import { isMarketOpen } from './market-hours.ts'
 import { EChart } from './echarts.tsx'
 import { number } from './format.ts'
 import { PanelHead } from './panel-head.tsx'
 import { MarketPanelStatus } from './market-panel-status.tsx'
 import styles from './styles.module.css'
-
-function latestTrend(previous: MarketIntradayData | null, incoming: MarketIntradayData): MarketIntradayData {
-  return previous !== null && Date.parse(incoming.meta.sourceTimestamp ?? incoming.meta.fetchedAt) < Date.parse(previous.meta.sourceTimestamp ?? previous.meta.fetchedAt) ? previous : incoming
-}
-
-function latestSignals(previous: MarketSignalsData | null, incoming: MarketSignalsData): MarketSignalsData {
-  return previous !== null && (incoming.date < previous.date || (incoming.date === previous.date && Date.parse(incoming.meta.fetchedAt) < Date.parse(previous.meta.fetchedAt))) ? previous : incoming
-}
 
 /** Reuses the price/average/volume chart; news labels are escaped by ECharts' plain-text labels. */
 export function buildMarketActivityOption(trend: MarketIntradayData | null, signals: MarketSignalsData | null, palette: ChartPalette): EChartsCoreOption | null {
@@ -44,8 +32,8 @@ export function buildMarketActivityOption(trend: MarketIntradayData | null, sign
     tooltip: { trigger: 'item' } }] }
 }
 
-export function MarketActivityPanel({ client, snapshot, historical, marketStatus, palette, refreshVersion, onArchived }: {
-  client: HanaiClient; snapshot: MarketHistorySnapshot | null; historical: boolean; marketStatus?: MarketStatus; palette: ChartPalette; refreshVersion: number; onArchived: () => Promise<void>
+export function MarketActivityPanel({ snapshot, historical, palette, pending = false, errors = {} }: {
+  snapshot: MarketHistorySnapshot | null; historical: boolean; palette: ChartPalette; pending?: boolean; errors?: Record<string, string>
 }) {
   const cardRef = useRef<HTMLElement | null>(null)
   const dialogRef = useRef<HTMLDialogElement | null>(null)
@@ -72,63 +60,18 @@ export function MarketActivityPanel({ client, snapshot, historical, marketStatus
     window.addEventListener('resize', measure)
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); if (dialog.open) dialog.close() }
   }, [expanded])
-  const [liveTrend, setTrend] = useState<{ data: MarketIntradayData; archived: boolean } | null>(null)
-  const [liveSignals, setSignals] = useState<MarketSignalsData | null>(null)
-  const trend = historical ? marketHistoryPanel(snapshot, 'intraday') : liveTrend?.data ?? null
-  const signals = historical ? marketHistoryPanel(snapshot, 'signals') : liveSignals
-  const [trendLoading, setTrendLoading] = useState(false)
-  const [signalsLoading, setSignalsLoading] = useState(false)
-  const [failed, setFailed] = useState({ trend: false, signals: false })
-  useEffect(() => {
-    if (historical) return
-    const savedTrend = marketHistoryPanel(snapshot, 'intraday')
-    const savedSignals = marketHistoryPanel(snapshot, 'signals')
-    if (savedTrend !== null) setTrend(previous => previous !== null && latestTrend(previous.data, savedTrend) === previous.data ? previous : { data: savedTrend, archived: true })
-    if (savedSignals !== null) setSignals(previous => latestSignals(previous, savedSignals))
-    setFailed({ trend: false, signals: false })
-    setTrendLoading(false)
-    setSignalsLoading(false)
-    const controller = new AbortController()
-    let trendPending = false
-    let signalsPending = false
-    const loadTrend = async () => {
-      if (trendPending) return
-      trendPending = true
-      setTrendLoading(true)
-      try {
-        const result = await client.call('market.intraday', {}, controller.signal)
-        if (controller.signal.aborted) return
-        setFailed(previous => ({ ...previous, trend: result === null || result.meta.cacheState === 'stale' }))
-        if (result !== null) setTrend(previous => previous !== null && latestTrend(previous.data, result) === previous.data ? previous : { data: result, archived: false })
-        void onArchived()
-      } catch { if (!controller.signal.aborted) setFailed(previous => ({ ...previous, trend: true })) }
-      finally { trendPending = false; if (!controller.signal.aborted) setTrendLoading(false) }
-    }
-    const loadSignals = async () => {
-      if (signalsPending) return
-      signalsPending = true
-      setSignalsLoading(true)
-      try {
-        const result = await client.call('market.signals', {}, controller.signal)
-        if (controller.signal.aborted) return
-        setFailed(previous => ({ ...previous, signals: result === null || result.meta.cacheState === 'stale' }))
-        if (result !== null) setSignals(previous => latestSignals(previous, result))
-        void onArchived()
-      } catch { if (!controller.signal.aborted) setFailed(previous => ({ ...previous, signals: true })) }
-      finally { signalsPending = false; if (!controller.signal.aborted) setSignalsLoading(false) }
-    }
-    if (refreshVersion > 0 || isMarketOpen() || savedTrend === null || !isClosingPanelCurrent(savedTrend.meta)) void loadTrend()
-    if (refreshVersion > 0 || isMarketOpen() || savedSignals === null || savedSignals.method !== 'ths-sector-events-v2' || !isClosingPanelCurrent(savedSignals.meta)) void loadSignals()
-    const timer = window.setInterval(() => { if (isMarketOpen()) { void loadTrend(); void loadSignals() } }, 30_000)
-    return () => { controller.abort(); window.clearInterval(timer) }
-  }, [client, snapshot, historical, refreshVersion, onArchived])
+  const trend = marketHistoryPanel(snapshot, 'intraday')
+  const signals = marketHistoryPanel(snapshot, 'signals')
+  const trendLoading = pending
+  const signalsLoading = pending
+  const failed = { trend: !historical && Boolean(errors.intraday), signals: !historical && Boolean(errors.signals) }
   const option = useMemo(() => buildMarketActivityOption(trend, signals, palette), [trend, signals, palette])
   const header = (zoomed: boolean) => <PanelHead title="大盘异动" hint="上证分时 · 板块异动" meta={<>
       <MarketPanelStatus historical={historical} items={[
-        { label: '上证分时', meta: trend?.meta, failed: !historical && failed.trend },
-        { label: '异动快讯', meta: signals?.meta, failed: !historical && failed.signals },
+        { label: '上证分时', meta: trend?.meta, failed: failed.trend, ...(errors.intraday ? { message: errors.intraday } : {}) },
+        { label: '异动快讯', meta: signals?.meta, failed: failed.signals, ...(errors.signals ? { message: errors.signals } : {}) },
       ]} />
-      {signals?.method !== 'ths-sector-events-v2' && signals !== null && <small>{historical ? '旧版异动快照，仅保存了部分事件' : '旧版异动数据，正在更新'}</small>}
+      {signals?.method !== 'ths-sector-events-v2' && signals !== null && <small>{historical ? '旧版异动快照，仅保存了部分事件' : '旧版异动数据，等待统一更新'}</small>}
     </>} extra={<span className={`${styles['metaText']} ${styles['activityActions']}`}>昨收 {number(trend?.prevClose ?? null)}
         <button className={styles['button']} aria-label={zoomed ? '缩小大盘异动' : '放大大盘异动'} aria-pressed={zoomed} autoFocus={zoomed} onClick={() => setExpanded(!zoomed)}>{zoomed ? '缩小' : '放大'}</button>
       </span>} />

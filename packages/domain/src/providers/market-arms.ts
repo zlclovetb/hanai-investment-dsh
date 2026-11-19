@@ -1,6 +1,6 @@
 import type { MarketArmsData, MarketArmsPoint } from '../../../contracts/src/market-arms.ts'
 import { beijingMarketDate, isMarketDate } from '../../../contracts/src/market-history.ts'
-import { isoNow, type Clock, type HttpClient } from '../http.ts'
+import type { Clock, HttpClient } from '../http.ts'
 
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)
 const amount = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
@@ -25,13 +25,17 @@ export function parseArmsPoint(value: unknown, date: string, intraday: boolean):
 }
 
 export async function fetchArms(http: HttpClient, clock: Clock, view: 'intraday' | 'daily', signal?: AbortSignal): Promise<{ points: MarketArmsPoint[]; meta: MarketArmsData['meta'] }> {
-  const response = await http.request(`https://www.88aitou.com/api/market/arms-index?view=${view}${view === 'daily' ? '&days=250' : ''}`, { timeoutMs: 10_000, ...(signal ? { signal } : {}) })
+  const response = await http.request(`https://www.88aitou.com/api/market/arms-index?view=${view}${view === 'daily' ? '&days=250' : ''}`, { timeoutMs: 10_000, ...(signal ? { signal } : {}) }).catch(error => {
+    if (error instanceof Error && error.name === 'AbortError' && !signal?.aborted) throw new Error('88AI 市场广度请求超时', { cause: error })
+    throw error
+  })
   if (response.status !== 200) throw new Error(`88AI 市场广度请求失败：HTTP ${response.status}`)
   const raw: unknown = JSON.parse(response.body)
   if (!object(raw) || raw.view !== view || typeof raw.trade_date !== 'string' || !isMarketDate(raw.trade_date) || !Array.isArray(raw.points)) throw new Error('88AI 市场广度响应无效')
-  const fetchedAt = isoNow(clock), today = beijingMarketDate(clock.now())
+  const fetchedTime = clock.now()
+  const fetchedAt = new Date(fetchedTime).toISOString(), today = beijingMarketDate(fetchedTime)
   const points = raw.points.map(point => parseArmsPoint(point, raw.trade_date as string, view === 'intraday'))
-    .filter(point => point.date <= today && (point.time === null || Date.parse(`${point.date}T${point.time}:00+08:00`) <= clock.now() + 60_000))
+    .filter(point => point.date <= today && (point.time === null || Date.parse(`${point.date}T${point.time}:00+08:00`) <= fetchedTime))
     .sort((a, b) => `${a.date}${a.time ?? ''}`.localeCompare(`${b.date}${b.time ?? ''}`))
   if (points.length === 0) throw new Error('88AI 市场广度无有效记录')
   const last = points.at(-1)!

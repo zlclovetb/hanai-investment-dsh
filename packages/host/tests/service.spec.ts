@@ -139,6 +139,36 @@ async function eventually(assertion: () => void): Promise<void> {
 }
 
 describe('HanaiService report lifecycle', () => {
+  it('routes legacy refreshes through the complete shared round', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-30T18:00:00+08:00'))
+    const { service, market, database } = fixture()
+    const meta: ProviderMeta = { providerId: 'test', sourceName: 'test', sourceTimestamp: '2026-10-30T15:00:00+08:00', fetchedAt: '2026-10-30T15:06:00+08:00', cacheState: 'fresh' }
+    const original: DashboardData = {
+      overview: { indices: [{ code: '000001', name: '上证', price: 100, change: 0, changePct: 0, amount: 10, upCount: null, downCount: null, flatCount: null, meta }],
+        breadth: { up: null, down: null, flat: null, limitUp: null, limitDown: null, totalAmount: null }, meta, marketStatus: 'closed' },
+      industry: { type: 'industry', sectors: [], meta }, concept: { type: 'concept', sectors: [], meta },
+      ranks: { gainers: [], losers: [], amount: [], turnover: [] },
+      rankSources: { gainers: meta, losers: meta, amount: meta, turnover: meta },
+    }
+    const load = vi.spyOn(market, 'getDashboard').mockResolvedValue(original)
+    const signal = new AbortController().signal
+    try {
+      await service.call('dashboard.get', {}, signal)
+      const next = structuredClone(original)
+      next.overview.indices[0]!.price = 999
+      next.overview.meta = { ...meta, sourceTimestamp: '2026-10-30T15:01:00+08:00' }
+      next.overview.indices[0]!.meta = next.overview.meta
+      next.industry.meta = { ...meta, fetchedAt: '2026-10-30T18:00:00+08:00' }
+      load.mockResolvedValue(next)
+      const result = await service.call('dashboard.get', { refresh: true, panels: ['industry'] }, signal)
+      expect(load).toHaveBeenLastCalledWith(false, ['overview', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover'])
+      expect(result.overview.indices[0]?.price).toBe(999)
+      expect(result.concept).toEqual(original.concept)
+      expect(result.industry.meta.fetchedAt).toBe('2026-10-30T18:00:00+08:00')
+      expect(result.rankSources).toEqual(original.rankSources)
+    } finally { service.dispose(); database.close(); vi.useRealTimers() }
+  })
+
   it('prepares BaoStock facts first and keeps them when supplementary quotes fail', async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date('2026-11-02T20:00:00+08:00'))
     const { service, market, database } = fixture()
@@ -383,7 +413,7 @@ describe('HanaiService report lifecycle', () => {
       await service.call('market.intraday', {}, signal)
       let snapshot = await service.call('market.history.get', { date: trend.date }, signal)
       expect(marketHistoryPanel(snapshot, 'intraday')).toEqual(trend)
-      expect(marketHistoryPanel(snapshot, 'signals')).toBeNull()
+      expect(marketHistoryPanel(snapshot, 'signals')).toEqual(news)
       await service.call('market.signals', {}, signal)
       snapshot = await service.call('market.history.get', { date: trend.date }, signal)
       expect(marketHistoryPanel(snapshot, 'signals')).toEqual(news)
@@ -393,8 +423,8 @@ describe('HanaiService report lifecycle', () => {
       await service.call('market.signals', {}, signal)
       expect(await service.call('market.history.get', { date: trend.date }, signal)).toEqual(snapshot)
       expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toBeNull()
-      expect(dashboard).not.toHaveBeenCalled()
-    } finally { database.close(); vi.useRealTimers() }
+      expect(dashboard).toHaveBeenCalledTimes(1)
+    } finally { service.dispose(); database.close(); vi.useRealTimers() }
   })
   it('archives the independent ladder by its source date and preserves it on a failed retry', async () => {
     vi.useFakeTimers()
@@ -431,14 +461,14 @@ describe('HanaiService report lifecycle', () => {
     try {
       expect(await service.call('market.indices', {}, signal)).toEqual(data)
       expect(fetchIndices).toHaveBeenCalledWith(false)
-      expect(dashboard).not.toHaveBeenCalled()
+      expect(dashboard).toHaveBeenCalledTimes(1)
       const record = await service.call('market.history.get', { date: '2026-10-27' }, signal)
       expect(marketHistoryPanel(record, 'global.indices')).toEqual(data)
       expect(await service.call('market.history.get', { date: '2026-10-26' }, signal)).toBeNull()
       vi.setSystemTime(new Date('2026-10-28T00:01:00+08:00'))
       vi.spyOn(market, 'getGlobalIndices').mockResolvedValue({ ...data, meta: { ...meta, cacheState: 'cached' } })
       const cached = await service.call('market.indices', {}, signal)
-      expect(cached.meta.cacheState).toBe('cached')
+      expect(cached.meta.cacheState).toBe('fresh')
       expect(cached.meta.fetchedAt).toBe(meta.fetchedAt)
       expect(fetchIndices).toHaveBeenCalledTimes(1)
       expect(await service.call('market.history.get', { date: '2026-10-28' }, signal)).toBeNull()
@@ -480,13 +510,15 @@ describe('HanaiService report lifecycle', () => {
       boardMeta.cacheState = 'cached'
       for (const fetchedAt of ['2026-10-26T23:59:59+08:00', '2026-10-27T09:24:59+08:00']) {
         boardMeta.fetchedAt = fetchedAt
-        await service.call('dashboard.get', {}, signal)
+        vi.advanceTimersByTime(61_000)
+        await service.call('market.snapshot', { refresh: true }, signal)
         await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
         expect((await service.call('market.history.get', { date: '2026-10-27' }, signal))?.panels).toEqual(['overview'])
       }
       boardMeta.cacheState = 'fresh'
       boardMeta.fetchedAt = new Date().toISOString()
-      await service.call('dashboard.get', {}, signal)
+      vi.advanceTimersByTime(61_000)
+      await service.call('market.snapshot', { refresh: true }, signal)
       await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
       const saved = await service.call('market.history.get', { date: '2026-10-27' }, signal)
       expect(saved?.panels).toEqual(expect.arrayContaining(['industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover', 'sector:SINA:new_blhy']))
@@ -494,7 +526,8 @@ describe('HanaiService report lifecycle', () => {
       data.overview.indices = []
       vi.advanceTimersByTime(60_000)
       boardMeta.fetchedAt = new Date().toISOString()
-      await service.call('dashboard.get', {}, signal)
+      vi.advanceTimersByTime(61_000)
+      await service.call('market.snapshot', { refresh: true }, signal)
       await service.call('sector.stocks', { sectorCode: 'SINA:new_blhy' }, signal)
       expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toEqual(saved)
     } finally { database.close(); vi.useRealTimers() }
@@ -504,7 +537,7 @@ describe('HanaiService report lifecycle', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-26T16:00:00+08:00'))
     const { database, market, service } = fixture()
-    const meta: ProviderMeta = { providerId: 'fake', sourceName: '测试', sourceTimestamp: '2026-10-26T15:00:00+08:00', fetchedAt: new Date().toISOString(), cacheState: 'stale' }
+    const meta: ProviderMeta = { providerId: 'fake', sourceName: '测试', sourceTimestamp: '2026-10-26T15:00:00+08:00', fetchedAt: new Date().toISOString(), cacheState: 'fresh' }
     const summaryMeta = { ...meta, sourceTimestamp: null, cacheState: 'fresh' as const }
     const data: DashboardData = {
       overview: { indices: [{ code: '000001', name: '上证指数', price: 3500, change: 0, changePct: 0, amount: 100, upCount: null, downCount: null, flatCount: null }],
@@ -537,8 +570,8 @@ describe('HanaiService report lifecycle', () => {
       expect(dates.snapshots[0]?.panels.some(key => key.startsWith('macro.'))).toBe(false)
       expect(marketHistoryPanel(store.get('2026-10-01'), 'macro.index')).not.toBeNull()
       expect(await service.call('market.history.get', { date: '2026-10-26' }, signal)).toEqual(snapshot)
-      expect(dashboardRead).toHaveBeenCalledTimes(1)
-      expect(breadthRead).toHaveBeenCalledTimes(1)
+      expect(dashboardRead).toHaveBeenCalledTimes(2)
+      expect(breadthRead).toHaveBeenCalledTimes(2)
       expect(sectorRead).toHaveBeenCalledTimes(1)
       vi.advanceTimersByTime(60_000)
       const failed = { ...meta, cacheState: 'unavailable' as const, fetchedAt: new Date().toISOString() }
@@ -582,7 +615,7 @@ describe('HanaiService report lifecycle', () => {
     const signal = new AbortController().signal
     try {
       await service.call('market.distribution', {}, signal)
-      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-30' }, signal), 'distribution')).toBeNull()
+      expect(marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-30' }, signal), 'distribution')).toEqual(data)
       await service.call('dashboard.get', {}, signal)
       await service.call('market.distribution', {}, signal)
       const saved = marketHistoryPanel(await service.call('market.history.get', { date: '2026-10-30' }, signal), 'distribution')
@@ -593,7 +626,7 @@ describe('HanaiService report lifecycle', () => {
     } finally { database.close(); vi.useRealTimers() }
   })
 
-  it('serves independent breadth without running the dashboard and preserves both source records', async () => {
+  it('serves breadth and dashboard from one acquisition and preserves both source records', async () => {
     const { database, market, service } = fixture()
     const quoteMeta: ProviderMeta = { providerId: 'tencent', sourceName: '腾讯行情', sourceTimestamp: null,
       fetchedAt: '2026-10-27T06:40:00.000Z', cacheState: 'fresh' }
@@ -604,7 +637,7 @@ describe('HanaiService report lifecycle', () => {
     vi.spyOn(market, 'getMarketBreadth').mockResolvedValue(width)
     try {
       expect(await service.call('market.breadth', {}, new AbortController().signal)).toEqual(width)
-      expect(dashboard).not.toHaveBeenCalled()
+      expect(dashboard).toHaveBeenCalledTimes(1)
       const diagnostics = await service.call('diagnostics.get', {}, new AbortController().signal)
       expect(diagnostics.marketSources).toEqual([quoteMeta, width.meta])
       expect(diagnostics.latestMarketSuccess).toBe(width.meta.fetchedAt)

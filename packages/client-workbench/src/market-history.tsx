@@ -1,58 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { DashboardData, ProviderMeta } from '../../contracts/src/index.ts'
-import { beijingMarketDate, isMarketDate, marketHistoryPanel, MARKET_HISTORY_PANELS, type MarketHistorySnapshot, type MarketHistorySummary } from '../../contracts/src/market-history.ts'
+import { snapshotDashboard, beijingMarketDate, isMarketDate, marketHistoryPanel, MARKET_HISTORY_PANELS, type MarketHistorySnapshot, type MarketHistorySummary } from '../../contracts/src/market-history.ts'
 import type { HanaiClient } from './api.ts'
 import { dateTime } from './format.ts'
 import styles from './styles.module.css'
-import { DOMESTIC_INDICES } from '../../contracts/src/market-indices.ts'
 
-/** Uses the same weekday policy as polling; this is not an exchange holiday calendar. */
-function latestClosingDate(now: Date): string {
-  const bj = new Date(now.getTime() + 8 * 3_600_000)
-  const minutes = bj.getUTCHours() * 60 + bj.getUTCMinutes()
-  if (minutes <= 15 * 60 + 5) bj.setUTCDate(bj.getUTCDate() - 1)
-  while (bj.getUTCDay() === 0 || bj.getUTCDay() === 6) bj.setUTCDate(bj.getUTCDate() - 1)
-  return bj.toISOString().slice(0, 10)
-}
+export { isClosingPanelCurrent } from '../../contracts/src/market-snapshot.ts'
 
-export function isClosingPanelCurrent(meta: ProviderMeta, now = new Date()): boolean {
-  const date = latestClosingDate(now)
-  const cutoff = Date.parse(`${date}T15:05:00+08:00`)
-  const fetchedAt = Date.parse(meta.fetchedAt)
-  if (!Number.isFinite(fetchedAt) || fetchedAt > now.getTime() || meta.cacheState === 'unavailable') return false
-  if (meta.sourceTimestamp === null) return fetchedAt >= cutoff && meta.cacheState !== 'stale'
-  if (isMarketDate(meta.sourceTimestamp)) return meta.sourceTimestamp === date && fetchedAt >= cutoff
-  const sourceAt = Date.parse(meta.sourceTimestamp)
-  return Number.isFinite(sourceAt) && beijingMarketDate(sourceAt) === date
-    && sourceAt >= Date.parse(`${date}T15:00:00+08:00`) && sourceAt <= fetchedAt
-}
-
-export function isClosingSnapshotCurrent(snapshot: MarketHistorySnapshot, now = new Date()): boolean {
-  if (snapshot.date !== latestClosingDate(now)) return false
-  const current = (meta: ProviderMeta) => isClosingPanelCurrent(meta, now)
-  for (const key of MARKET_HISTORY_PANELS) {
-    if (key.startsWith('macro.') || ['global.indices', 'intraday', 'signals', 'arms', 'distribution', 'ladder'].includes(key)) continue
-    const record = snapshot.records[key]
-    if (record === undefined || marketHistoryPanel(snapshot, key) === null || !current(record.meta)) return false
-  }
-  const overview = marketHistoryPanel(snapshot, 'overview')!
-  return DOMESTIC_INDICES.every(item => overview.indices.some(index => index.code === item.code))
-    && overview.indices.every(index => current(index.meta ?? overview.meta))
-}
-
-export function snapshotDashboard(snapshot: MarketHistorySnapshot | null): DashboardData | null {
-  if (snapshot === null) return null
-  const missing: ProviderMeta = { providerId: 'history-missing', sourceName: '该日期未保存', sourceTimestamp: null, fetchedAt: snapshot.capturedAt, cacheState: 'unavailable' }
-  const ranks = { gainers: marketHistoryPanel(snapshot, 'rank.gainers'), losers: marketHistoryPanel(snapshot, 'rank.losers'),
-    amount: marketHistoryPanel(snapshot, 'rank.amount'), turnover: marketHistoryPanel(snapshot, 'rank.turnover') }
-  return {
-    overview: marketHistoryPanel(snapshot, 'overview') ?? { indices: [], breadth: { up: null, down: null, flat: null, limitUp: null, limitDown: null, totalAmount: null }, marketStatus: 'unknown', meta: missing },
-    industry: marketHistoryPanel(snapshot, 'industry') ?? { type: 'industry', sectors: [], meta: missing },
-    concept: marketHistoryPanel(snapshot, 'concept') ?? { type: 'concept', sectors: [], meta: missing },
-    ranks: { gainers: ranks.gainers?.entries ?? [], losers: ranks.losers?.entries ?? [], amount: ranks.amount?.entries ?? [], turnover: ranks.turnover?.entries ?? [] },
-    rankSources: { gainers: ranks.gainers?.meta ?? missing, losers: ranks.losers?.meta ?? missing, amount: ranks.amount?.meta ?? missing, turnover: ranks.turnover?.meta ?? missing },
-  }
-}
+export { snapshotDashboard } from '../../contracts/src/market-history.ts'
 
 export function useMarketHistory(client: HanaiClient) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)

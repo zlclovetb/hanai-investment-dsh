@@ -45,6 +45,7 @@ export const SOURCE_PRIORITY = [
   'csindex-macro',
   'mofcom-macro',
   '88ai-arms',
+  '88ai-arms-daily',
   '88ai-scan',
 ] as const
 

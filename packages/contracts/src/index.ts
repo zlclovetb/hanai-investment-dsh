@@ -378,6 +378,9 @@ export interface StockValuationData {
   meta: ProviderMeta | null
 }
 
+export const DASHBOARD_PANELS = ['overview', 'industry', 'concept', 'rank.gainers', 'rank.losers', 'rank.amount', 'rank.turnover'] as const
+export type DashboardPanelKey = typeof DASHBOARD_PANELS[number]
+
 export interface DashboardData {
   overview: MarketOverview
   industry: SectorBoard
@@ -465,8 +468,9 @@ export interface CreateExpertChatInput {
 }
 
 export interface HanaiEndpointMap {
+  'market.snapshot': { request: { refresh?: boolean; after?: string; sector?: string }; response: import('./market-snapshot.ts').MarketSnapshotResponse }
   'bootstrap': { request: Record<string, never>; response: BootstrapData }
-  'dashboard.get': { request: { refresh?: boolean }; response: DashboardData }
+  'dashboard.get': { request: { refresh?: boolean; panels?: DashboardPanelKey[] }; response: DashboardData }
   'market.scan.query': { request: { query: MarketScanQuery; date?: string; refresh?: boolean }; response: MarketScanResult }
   'market.scan.history': { request: { query: MarketScanQuery }; response: MarketHistorySummary[] }
   'market.breadth': { request: Record<string, never>; response: MarketBreadthData | null }

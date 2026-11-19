@@ -597,3 +597,21 @@ describe('MarketDataService', () => {
     expect(detail.monthly).toEqual([])
   })
 })
+
+
+it('fetches only selected dashboard capabilities without querying skipped sectors or rankings', async () => {
+  const urls: string[] = []
+  const service = new MarketDataService({
+    clock: new FakeClock(Date.parse('2026-10-01T10:00:00+08:00')),
+    http: new HandlerHttpClient(url => { urls.push(url); return { status: 200, body: tencentQuotes } }),
+  })
+  const sectors = vi.spyOn(service as unknown as { getSectorBoard(type: string): Promise<null> }, 'getSectorBoard')
+  const ranks = vi.spyOn(service as unknown as { getRankList(kind: string): Promise<null> }, 'getRankList')
+  const result = await service.getDashboard(true, ['overview'])
+  expect(result.overview.indices).toHaveLength(6)
+  expect(urls.length).toBeGreaterThan(0)
+  expect(sectors).not.toHaveBeenCalled()
+  expect(ranks).not.toHaveBeenCalled()
+  expect(result.industry.meta.cacheState).toBe('unavailable')
+  service.dispose()
+})

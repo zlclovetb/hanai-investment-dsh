@@ -1,3 +1,5 @@
+import { snapshotDashboard } from '../../contracts/src/market-history.ts'
+import { MarketSnapshots } from './market-snapshots.ts'
 import { LocalScreening } from './local-screening.ts'
 import { AiScreener } from './ai-screener.ts'
 import { StockDataSync } from './stock-data.ts'
@@ -27,6 +29,7 @@ import type {
   BootstrapData,
   CacheClearResult,
   DashboardData,
+  DashboardPanelKey,
   DefaultModelSelection,
   Diagnostics,
   ExpertChat,
@@ -61,7 +64,6 @@ import type { MacroAllDailyData, MacroEtfInputs, MacroAllEtfData, MacroCapitalDa
 import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
 import type { MarketArmsData } from '../../contracts/src/market-arms.ts'
-import { isMarketResting } from '../../contracts/src/market-hours.ts'
 import type { TechnicalBar, TechnicalHistoryInput, HistoricalLimitPool } from '../../contracts/src/technical-screen.ts'
 import type { MarketDistributionData } from '../../contracts/src/market-distribution.ts'
 
@@ -74,6 +76,7 @@ const SECURITY_SYNC_AVAILABLE_AT_SETTING = 'security.master.manualSyncAvailableA
 const SECURITY_SYNC_COOLDOWN_MS = 60_000
 
 export interface MarketFacade {
+  clearMarketPanelsCache?(): number
   syncScreeningSecurities?(database: HanaiDatabase, signal: AbortSignal, force?: boolean): Promise<{ count: number; updatedAt: string | null }>
   getScreeningFacts?(code: string, asOf: string, signal: AbortSignal): Promise<Record<string, ScreeningFact>>
   getTechnicalCalendar?(through: string, signal: AbortSignal): Promise<string[]>
@@ -92,7 +95,7 @@ export interface MarketFacade {
   getMarketIntraday(): Promise<MarketIntradayData | null>
   getMarketSignals(): Promise<MarketSignalsData | null>
   getGlobalIndices(cacheOnly?: boolean): Promise<GlobalIndicesData>
-  getDashboard(refresh?: boolean): Promise<DashboardData>
+  getDashboard(refresh?: boolean, panels?: DashboardPanelKey[]): Promise<DashboardData>
   getMarketBreadth(): Promise<MarketBreadthData | null>
   getMarketArms?(): Promise<MarketArmsData | null>
   getMarketLadder?(date?: string, previousLadder?: PreviousLadder, refresh?: boolean): Promise<MarketLadderData | null>
@@ -160,11 +163,12 @@ export class HanaiService {
   private readonly macroSeries: MacroSeries
   private readonly stockData: StockDataSync
   private readonly technicalData: TechnicalData
+  private readonly marketSnapshots: MarketSnapshots
   private readonly macroIndicators: MacroIndicators
-  startBackgroundUpdates(): void { this.macroSeries.start(); if ((this.market.getTechnicalBars || this.market.getTechnicalHistory) && this.market.getTechnicalCalendar) this.stockData.start() }
+  startBackgroundUpdates(): void { this.marketSnapshots.start(); this.macroSeries.start(); if ((this.market.getTechnicalBars || this.market.getTechnicalHistory) && this.market.getTechnicalCalendar) this.stockData.start() }
 
   private disposed = false
-  dispose(): void { this.disposed = true; this.screener.dispose(); this.stockData.dispose(); this.technicalData.dispose(); this.macroSeries.dispose(); this.macroIndicators.dispose() }
+  dispose(): void { this.marketSnapshots.dispose(); this.disposed = true; this.screener.dispose(); this.stockData.dispose(); this.technicalData.dispose(); this.macroSeries.dispose(); this.macroIndicators.dispose() }
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
@@ -175,6 +179,7 @@ export class HanaiService {
     this.sessions = options.sessions
     this.defaultModel = options.defaultModel
     this.market = options.market
+    this.marketSnapshots = new MarketSnapshots(this.market, this.marketHistory, this.database)
     this.scan = new MarketScanService((query, refresh) => this.market.getMarketScan?.(query, refresh) ?? Promise.resolve(null), this.marketHistory, this.database)
     const technicalSource = {
       calendar: (through: string, signal: AbortSignal) => this.market.getTechnicalCalendar?.(through, signal) ?? Promise.reject(new Error('宿主未提供技术交易日历')),
@@ -206,6 +211,22 @@ export class HanaiService {
       return this.market.getMacroIndicator(id, range, signal)
     }, this.marketHistory, this.database)
     this.macroSeries = new MacroSeries(this.market, this.marketHistory, this.database, slot => this.macroIndicators.tick(slot))
+    this.marketSnapshots.onPublish(value => {
+      const record = (setting: string, metas: Array<ProviderMeta | null>) => {
+        const valid = metas.filter((meta): meta is ProviderMeta => meta !== null && meta.cacheState !== 'unavailable')
+        if (valid.length) this.recordProviderSuccess(setting, valid)
+      }
+      const data = snapshotDashboard(value.snapshot)
+      if (!data) return
+      const date = data.overview.meta.sourceTimestamp ? marketDateFromMeta(data.overview.meta) : null
+      this.marketDateContext = date ? { date, observedOn: beijingMarketDate() } : null
+      record(MARKET_SUCCESS_SETTING, [data.overview.meta, data.industry.meta, data.concept.meta, ...Object.values(data.rankSources ?? {})].filter(meta => meta.cacheState !== 'unavailable'))
+      const breadthMeta = marketHistoryPanel(value.snapshot, 'breadth')?.meta
+      record(BREADTH_SUCCESS_SETTING, [breadthMeta ?? null])
+      if (breadthMeta && breadthMeta.cacheState !== 'unavailable') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, breadthMeta.fetchedAt)
+      record(ACTIVITY_SUCCESS_SETTING, [marketHistoryPanel(value.snapshot, 'intraday')?.meta ?? null])
+      record(GLOBAL_SUCCESS_SETTING, marketHistoryPanel(value.snapshot, 'global.indices')?.indices.map(index => index.meta) ?? [])
+    })
     this.version = options.version
     this.openDirectory = options.openDirectory ?? openDirectoryWithSystem
   }
@@ -342,40 +363,31 @@ export class HanaiService {
         return this.scan.query(query, date, refresh)
       }
       case 'market.scan.history': return this.scan.dates((request as HanaiRequest<'market.scan.history'>).query)
+      case 'market.snapshot': {
+        const input = request as HanaiRequest<'market.snapshot'>
+        const value = input.refresh ? await this.marketSnapshots.manual()
+          : input.sector ? await this.marketSnapshots.ensure([], [input.sector]) : await this.marketSnapshots.read()
+        return { data: value?.id === input.after ? null : value, refreshAvailableAt: this.marketSnapshots.refreshAvailableAt }
+      }
       case 'dashboard.get': {
-        const input = request as HanaiRequest<'dashboard.get'>
-        const result = await this.market.getDashboard(input.refresh)
-        this.recordProviderSuccess(MARKET_SUCCESS_SETTING, [
-          result.overview.meta,
-          result.industry.meta,
-          result.concept.meta,
-          ...Object.values(result.rankSources ?? {}),
-        ])
-        this.archiveMarketDashboard(result)
-        return result
+        const value = (request as HanaiRequest<'dashboard.get'>).refresh ? await this.marketSnapshots.manual() : await this.marketSnapshots.read()
+        const dashboard = snapshotDashboard(value?.snapshot ?? null)
+        if (!dashboard) throw new Error('统一市场快照尚无可用面板')
+        return dashboard
       }
-      case 'market.breadth': {
-        const result = await this.market.getMarketBreadth()
-        this.recordProviderSuccess(BREADTH_SUCCESS_SETTING, [result?.meta ?? null])
-        if (result !== null && result.meta.cacheState !== 'unavailable') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
-        if (result !== null) this.archiveMarketPanel('breadth', result, result.meta, result.qdate)
-        return result
-      }
-      case 'market.ladder': {
-        const date = this.marketDateContext?.observedOn === beijingMarketDate() ? this.marketDateContext.date : undefined
-        const result = await this.market.getMarketLadder?.(date, previousDate =>
-          marketHistoryPanel(this.marketHistory.get(previousDate), 'ladder'), (request as HanaiRequest<'market.ladder'>).refresh) ?? null
-        if (result !== null) this.archiveMarketPanel('ladder', result, result.meta, result.date)
-        return result
-      }
-      case 'market.distribution': {
-        const result = await this.market.getMarketDistribution?.() ?? null
-        if (result !== null) this.archiveMarketPanel('distribution', result, result.meta)
-        return result
-      }
-      case 'market.arms': {
-        const result = await this.market.getMarketArms?.() ?? null
-        if (result !== null) this.archiveMarketPanel('arms', result, result.meta, result.point.date)
+      case 'market.breadth':
+      case 'market.ladder':
+      case 'market.distribution':
+      case 'market.arms':
+      case 'market.intraday':
+      case 'market.signals':
+      case 'market.indices': {
+        const value = endpoint === 'market.ladder' && (request as HanaiRequest<'market.ladder'>).refresh
+          ? await this.marketSnapshots.manual() : await this.marketSnapshots.read()
+        const keys = { 'market.breadth': 'breadth', 'market.ladder': 'ladder', 'market.distribution': 'distribution',
+          'market.arms': 'arms', 'market.intraday': 'intraday', 'market.signals': 'signals', 'market.indices': 'global.indices' } as const
+        const result = marketHistoryPanel(value?.snapshot ?? null, keys[endpoint])
+        if (endpoint === 'market.indices' && !result) throw new Error('统一快照尚无可用海外指数')
         return result
       }
       case 'market.history.list': return { snapshots: this.marketHistory.list('market') }
@@ -433,41 +445,12 @@ export class HanaiService {
         if (result !== null) this.archiveMarketPanel('macro.index', result, result.meta)
         return result
       }
-      case 'market.intraday': {
-        const result = await this.market.getMarketIntraday()
-        if (result !== null) {
-          this.recordProviderSuccess(ACTIVITY_SUCCESS_SETTING, [result.meta])
-          this.archiveMarketPanel('intraday', result, result.meta, result.date)
-        }
-        return result
-      }
-      case 'market.signals': {
-        const result = await this.market.getMarketSignals()
-        if (result !== null) this.archiveMarketPanel('signals', result, result.meta, result.date)
-        return result
-      }
-      case 'market.indices': {
-        const resting = isMarketResting()
-        if (resting) {
-          for (const entry of this.marketHistory.list('market')) {
-            if (entry.date > beijingMarketDate() || !entry.panels.includes('global.indices')) continue
-            const saved = marketHistoryPanel(this.marketHistory.get(entry.date), 'global.indices')
-            if (saved !== null) return { ...saved, meta: { ...saved.meta, cacheState: 'cached' }, indices: saved.indices.map(index => ({ ...index, meta: { ...index.meta, cacheState: index.meta.cacheState === 'fresh' ? 'cached' : index.meta.cacheState } })) }
-          }
-        }
-        const result = await this.market.getGlobalIndices(resting)
-        this.recordProviderSuccess(GLOBAL_SUCCESS_SETTING, result.indices.map(item => item.meta))
-        if (result.meta.cacheState !== 'unavailable' && result.meta.cacheState !== 'stale') this.recordSuccessTimestamp(MARKET_SUCCESS_SETTING, result.meta.fetchedAt)
-        // The record is the Beijing-day observation; every overseas row retains its own market date.
-        this.marketHistory.save('global.indices', result, result.meta, beijingMarketDate(Date.parse(result.meta.fetchedAt)))
-        return result
-      }
       case 'market.history.get': return this.marketHistory.get((request as HanaiRequest<'market.history.get'>).date)
       case 'sector.stocks': {
         const { sectorCode } = request as HanaiRequest<'sector.stocks'>
-        const result = await this.market.getSectorStocks(sectorCode)
-        this.recordProviderSuccess(MARKET_SUCCESS_SETTING, [result.meta])
-        this.archiveMarketPanel(`sector:${sectorCode}`, result, result.meta)
+        const value = await this.marketSnapshots.ensure([], [sectorCode])
+        const result = marketHistoryPanel(value?.snapshot ?? null, `sector:${sectorCode}`)
+        if (!result) throw new Error('统一快照缺少该板块成分')
         return result
       }
       case 'stock-data.status': return this.stockData.status()
@@ -748,24 +731,6 @@ export class HanaiService {
       date = context.date
     }
     this.marketHistory.save(key, data, meta, date)
-  }
-
-  private archiveMarketDashboard(data: DashboardData): void {
-    const date = data.overview.meta.sourceTimestamp === null ? null : marketDateFromMeta(data.overview.meta)
-    if (date !== null && data.overview.indices.length > 0 && data.overview.meta.cacheState !== 'unavailable') {
-      this.marketDateContext = { date, observedOn: beijingMarketDate() }
-      this.archiveMarketPanel('overview', data.overview, data.overview.meta, date)
-    } else {
-      this.marketDateContext = null
-    }
-    for (const kind of ['industry', 'concept'] as const) {
-      const panel = data[kind]
-      this.archiveMarketPanel(kind, panel, panel.meta)
-    }
-    for (const kind of ['gainers', 'losers', 'amount', 'turnover'] as const) {
-      const meta = data.rankSources?.[kind] ?? data.overview.meta
-      this.archiveMarketPanel(`rank.${kind}`, { entries: data.ranks[kind], meta }, meta)
-    }
   }
 
   private recordProviderSuccess(setting: string, values: ReadonlyArray<ProviderMeta | null>): void {

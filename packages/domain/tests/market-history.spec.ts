@@ -6,6 +6,7 @@ import { HanaiDatabase } from '../src/database.ts'
 import { MarketHistoryStore } from '../src/market-history.ts'
 import { marketDateFromMeta } from '../../contracts/src/market-history.ts'
 import type { MarketOverview, ProviderMeta } from '../../contracts/src/index.ts'
+import type { MarketLadderData } from '../../contracts/src/market-ladder.ts'
 import { marketHistoryPanel } from '../../contracts/src/market-history.ts'
 
 const roots: string[] = []
@@ -29,6 +30,47 @@ function setup() {
 }
 
 describe('daily market panel history', () => {
+  it('keeps the latest nonempty theme through an open board and re-seal on the same day', () => {
+    const { db, store } = setup()
+    const date = '2026-10-27'
+    const snapshot = (reason: string | null, minute: string, sealed = true, day = date): MarketLadderData => ({
+      date: day, meta: { ...meta, sourceTimestamp: day, fetchedAt: `${day}T14:${minute}:00+08:00` },
+      stocks: sealed ? [{ code: '600156', name: '华升股份', boards: 1, industry: '纺织制造', reason,
+        boardType: '换手板', firstSeal: '13:17:46', lastSeal: `14:${minute}:00`, breaks: 3, turnover: 9 }] : [],
+      brokenStocks: sealed ? [] : [{ code: '600156', name: '华升股份' }], promotion: null, broken: sealed ? 0 : 1,
+      issues: sealed && !reason?.trim() ? ['部分涨停股缺少题材归因'] : [],
+    })
+    const save = (data: MarketLadderData, history = store) => history.save('ladder', data, data.meta)
+    save(snapshot('算力租赁', '01'))
+    expect(save(snapshot(' ', '02')).stocks[0]?.reason).toBe('算力租赁')
+    expect(save(snapshot(null, '03', false)).stocks).toEqual([])
+    const restored = new MarketHistoryStore(db.sqlite)
+    const resealed = snapshot(null, '28')
+    resealed.stocks[0]!.boardType = null
+    expect(save(resealed, restored)).toMatchObject({ stocks: [{ reason: '算力租赁', boardType: '换手板', lastSeal: '14:28:00' }], issues: [] })
+    save(snapshot('重组推进', '29'))
+    save(snapshot('更旧的归因', '27'))
+    expect(save(snapshot(null, '30')).stocks[0]?.reason).toBe('重组推进')
+    const nextDay = snapshot(null, '01', true, '2026-10-28')
+    nextDay.stocks[0]!.boardType = null
+    expect(save(nextDay).stocks[0]).toMatchObject({ reason: null, boardType: null })
+  })
+  it.each(['一字板', 'T字板'])('keeps %s through missing fields but clears it on evidence of a new opening', boardType => {
+    const { store } = setup()
+    const date = '2026-10-27'
+    const stock = { code: '600156', name: '华升股份', boards: 1, industry: '纺织制造', reason: null, boardType,
+      firstSeal: '09:30:00', lastSeal: '09:30:00', breaks: 0, turnover: 1 }
+    const save = (minute: string, row: MarketLadderData['stocks'][number]) => {
+      const source = { ...meta, sourceTimestamp: date, fetchedAt: `${date}T10:${minute}:00+08:00` }
+      return store.save('ladder', { date, meta: source, stocks: [row], promotion: null, broken: 0, issues: [] }, source).stocks[0]
+    }
+    save('01', stock)
+    expect(save('02', { ...stock, boardType: null, breaks: null })?.boardType).toBe(boardType)
+    const resealed = { ...stock, boardType: null, lastSeal: '10:03:00', breaks: 1 }
+    expect(save('03', resealed)?.boardType).toBeNull()
+    expect(save('04', { ...resealed, boardType: '换手板' })?.boardType).toBe('换手板')
+    expect(save('05', { ...resealed, boardType: 'T字板' })?.boardType).toBe('T字板')
+  })
   it('lists only market dates and market capture times while retaining all macro history internally', () => {
     const { store } = setup()
     const macro = { points: [{ date: '2026-10-26', close: 4000 }], meta }

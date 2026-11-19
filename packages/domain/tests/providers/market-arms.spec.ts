@@ -29,6 +29,18 @@ describe('88AI 成交额版市场广度', () => {
     const http = new HandlerHttpClient(() => jsonResponse({ view: 'intraday', trade_date: '2026-10-30', points: [row('09:30')] }))
     await expect(fetchArms(http, new FakeClock(now), 'intraday')).rejects.toThrow('数据已过期')
   })
+  it('keeps the last observed minute when the response includes a future minute', async () => {
+    const http = new HandlerHttpClient(() => jsonResponse({ view: 'intraday', trade_date: '2026-10-30', points: [row('10:20'), row('10:21')] }))
+    const result = await fetchArms(http, new FakeClock(now), 'intraday')
+    expect(result.points.map(point => point.time)).toEqual(['10:20'])
+    expect(result.meta.sourceTimestamp).toBe(result.meta.fetchedAt)
+  })
+  it('reports an HTTP timeout separately from caller cancellation', async () => {
+    const abort = new DOMException('This operation was aborted', 'AbortError')
+    const http = new HandlerHttpClient(() => { throw abort })
+    await expect(fetchArms(http, new FakeClock(now), 'intraday')).rejects.toThrow('88AI 市场广度请求超时')
+    await expect(fetchArms(http, new FakeClock(now), 'intraday', AbortSignal.abort(abort))).rejects.toBe(abort)
+  })
   it('does not put an unfinished current day into daily history', async () => {
     const clock = new FakeClock(now)
     const http = new HandlerHttpClient(() => jsonResponse({ view: 'daily', trade_date: '2026-10-30', points: [row('2026-10-29', true), row('2026-10-30')] }))

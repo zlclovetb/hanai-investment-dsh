@@ -3,7 +3,6 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MarketActivityPanel, buildMarketActivityOption } from '../src/market-activity.tsx'
 import { LIGHT_CHART_PALETTE } from '../src/chart-options.ts'
-import type { HanaiClient } from '../src/api.ts'
 import type { MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
 import type { MarketIntradayData, MarketSignalsData } from '../../contracts/src/market-activity.ts'
 
@@ -17,22 +16,16 @@ const archived = (): MarketHistorySnapshot => ({ date: trend.date, panels: ['int
 } })
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-27T10:00:00+08:00')) })
 afterEach(() => { cleanup(); vi.useRealTimers() })
-function setup(snapshot: MarketHistorySnapshot | null = null, historical = false) {
-  const call = vi.fn(async (endpoint: string, _request?: unknown, _signal?: AbortSignal) => endpoint === 'market.intraday' ? trend : signals)
-  const client = { call } as unknown as HanaiClient
-  const props = { client, snapshot, historical, palette: LIGHT_CHART_PALETTE, refreshVersion: 0, onArchived: vi.fn(async () => {}) }
-  return { call, props, ...render(<MarketActivityPanel {...props} />) }
+function setup(snapshot: MarketHistorySnapshot | null = archived(), historical = false) {
+  const props = { snapshot, historical, palette: LIGHT_CHART_PALETTE }
+  return { props, ...render(<MarketActivityPanel {...props} />) }
 }
 describe('market activity panel', () => {
-  it('shows lunch status for fresh data and retains failure precedence', async () => {
+  it('shows lunch cache status and preserves failure precedence from the published snapshot', () => {
     vi.setSystemTime(new Date('2026-10-27T12:12:00+08:00'))
-    const { call, props, rerender } = setup()
-    rerender(<MarketActivityPanel {...props} marketStatus="break" />)
-    await act(async () => {})
+    const { props, rerender } = setup()
     expect(screen.getByText('休市缓存')).toBeTruthy()
-    call.mockRejectedValue(new Error('offline'))
-    rerender(<MarketActivityPanel {...props} marketStatus="break" refreshVersion={1} />)
-    await act(async () => {})
+    rerender(<MarketActivityPanel {...props} errors={{ signals: 'offline' }} />)
     expect(screen.getByText('刷新失败')).toBeTruthy()
     expect(screen.queryByText('休市缓存')).toBeNull()
   })
@@ -46,13 +39,12 @@ describe('market activity panel', () => {
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: show })
     Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: close })
     try {
-      const { call } = setup()
+      setup()
       await act(async () => {})
       const card = screen.getByLabelText('大盘异动')
       card.style.padding = '0 24px'
       Object.defineProperty(card, 'clientWidth', { configurable: true, value: 800 })
       vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({ x: 176, left: 176, top: 46, bottom: 446, width: 800, height: 400, right: 976, y: 46, toJSON: () => ({}) })
-      const before = call.mock.calls.length
       fireEvent.click(screen.getByRole('button', { name: '放大大盘异动' }))
       await act(async () => {})
       const dialog = screen.getByRole('dialog', { name: '放大的大盘异动' }) as HTMLDialogElement
@@ -74,7 +66,6 @@ describe('market activity panel', () => {
       await act(async () => {})
       expect(screen.queryByRole('dialog')).toBeNull()
       expect(screen.getByRole('button', { name: '放大大盘异动' }).getAttribute('aria-pressed')).toBe('false')
-      expect(call.mock.calls.length).toBe(before)
       expect(screen.getByText('机器人')).toBeTruthy()
     } finally {
       cleanup()
@@ -84,39 +75,12 @@ describe('market activity panel', () => {
       }
     }
   })
-  it('shows and refreshes prices while a slow news request is still pending', async () => {
-    const call = vi.fn((endpoint: string) => endpoint === 'market.intraday' ? Promise.resolve(trend) : new Promise(() => {}))
-    render(<MarketActivityPanel client={{ call } as unknown as HanaiClient} snapshot={null} historical={false} palette={LIGHT_CHART_PALETTE} refreshVersion={0} onArchived={async () => {}} />)
-    await act(async () => {})
-    expect(screen.getByLabelText('大盘异动分时走势图')).toBeTruthy()
-    expect(screen.getByText('正在读取异动快讯…')).toBeTruthy()
-    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
-    expect(call.mock.calls.filter(([endpoint]) => endpoint === 'market.intraday')).toHaveLength(2)
-    expect(call.mock.calls.filter(([endpoint]) => endpoint === 'market.signals')).toHaveLength(1)
-  })
-
-  it('keeps newer displayed archives when a refresh returns an older trend or another trading day', async () => {
-    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
-    const { call, props, rerender } = setup(archived())
-    await act(async () => {})
-    call.mockImplementation(async endpoint => endpoint === 'market.intraday'
-      ? { ...trend, meta: { ...meta, sourceName: '旧行情', sourceTimestamp: '2026-10-27T06:00:00Z', fetchedAt: new Date().toISOString() } }
-      : { ...signals, date: '2026-10-26', meta: { ...meta, fetchedAt: new Date().toISOString() } })
-    rerender(<MarketActivityPanel {...props} refreshVersion={1} />)
-    await act(async () => {})
-    expect(screen.queryByText(/旧行情/)).toBeNull()
-    expect(screen.getByText('机器人')).toBeTruthy()
-  })
-  it('renders the trend independently, annotates same-day signals, and polls without manual cooldown', async () => {
-    const { call, props, rerender } = setup()
-    await act(async () => {})
+  it('renders one published trend/signals pair without owning a polling loop', async () => {
+    setup()
     expect(screen.getByLabelText('大盘异动分时走势图')).toBeTruthy()
     expect(screen.getByText('机器人').closest('[aria-label="大盘异动分时走势图"]')).toBeTruthy()
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
     expect(screen.getByRole('heading', { name: '大盘异动' }).closest('header')?.textContent).not.toMatch(/腾讯行情|同花顺|数据时间|获取于/)
-    rerender(<MarketActivityPanel {...props} refreshVersion={1} />)
-    await act(async () => {})
-    await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
-    expect(call.mock.calls.filter(([endpoint]) => endpoint === 'market.intraday')).toHaveLength(3)
     const option = buildMarketActivityOption(trend, signals, LIGHT_CHART_PALETTE)!
     const scatter = (option.series as Array<{ name?: string; data?: Array<{ value: number[]; label: { show: boolean; formatter: () => string } }> }>).find(series => series.name === '板块异动')!
     expect(scatter.data?.[0]).toMatchObject({ value: [0, 3601], label: { show: true } })
@@ -129,50 +93,15 @@ describe('market activity panel', () => {
     expect((buildMarketActivityOption(trend, { ...signals, date: '2026-10-26' }, LIGHT_CHART_PALETTE)!.series as Array<{ data: unknown[] }>).at(-1)?.data).toEqual([])
   })
 
-  it('loads only the selected archive in historical mode and aborts pending live requests', async () => {
-    const { call, props, rerender } = setup()
-    const signal = call.mock.calls[0]?.[2] as AbortSignal | undefined
-    rerender(<MarketActivityPanel {...props} historical snapshot={archived()} />)
-    await act(async () => {})
-    expect(signal?.aborted).toBe(true)
-    expect(screen.getByText('机器人')).toBeTruthy()
-    await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
-    expect(call).toHaveBeenCalledTimes(2)
-    rerender(<MarketActivityPanel {...props} historical snapshot={null} />)
+  it('renders explicit historical gaps locally and keeps old signal coverage visible', () => {
+    const { props, rerender } = setup(archived(), true)
+    expect(screen.getByText('历史快照')).toBeTruthy()
+    rerender(<MarketActivityPanel {...props} snapshot={null} />)
     expect(screen.getByText('该日期未保存大盘分时')).toBeTruthy()
     expect(screen.getByText('该日期未保存板块异动')).toBeTruthy()
-  })
-
-  it('uses a complete closing archive without requests and keeps it after a failed manual refresh', async () => {
-    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
-    const { call, props, rerender } = setup(archived())
-    await act(async () => {})
-    expect(call).not.toHaveBeenCalled()
-    expect(screen.getByText('休市缓存').closest('header')).toBeTruthy()
-    call.mockRejectedValue(new Error('offline'))
-    rerender(<MarketActivityPanel {...props} refreshVersion={1} />)
-    await act(async () => {})
-    expect(screen.getByLabelText('大盘异动分时走势图')).toBeTruthy()
-    expect(screen.getByText('机器人')).toBeTruthy()
-    expect(screen.getByText(/上证分时：更新失败，沿用缓存/)).toBeTruthy()
-    expect(screen.getByText('刷新失败').closest('header')).toBeTruthy()
-    expect(screen.queryByText('最新数据')).toBeNull()
-    await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
-    expect(call).toHaveBeenCalledTimes(2)
-  })
-
-  it('refreshes old truncated news archives once in default mode but preserves explicit history', async () => {
-    vi.setSystemTime(new Date('2026-10-27T18:00:00+08:00'))
-    const snapshot = archived()
-    snapshot.records.signals!.data = { ...signals, method: undefined }
-    const { call, props, rerender } = setup(snapshot)
-    await act(async () => {})
-    expect(call.mock.calls.map(([endpoint]) => endpoint)).toEqual(['market.signals'])
-    call.mockClear()
-    rerender(<MarketActivityPanel {...props} historical />)
-    await act(async () => {})
-    expect(call).not.toHaveBeenCalled()
+    const legacy = archived()
+    legacy.records.signals!.data = { ...signals, method: undefined }
+    rerender(<MarketActivityPanel {...props} snapshot={legacy} />)
     expect(screen.getByText('旧版异动快照，仅保存了部分事件')).toBeTruthy()
-    expect(screen.getByText('历史快照').closest('header')).toBeTruthy()
   })
 })

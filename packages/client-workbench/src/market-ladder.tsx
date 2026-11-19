@@ -1,62 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type SyntheticEvent } from 'react'
 import type { SearchResult } from '../../contracts/src/index.ts'
-import type { HanaiClient } from './api.ts'
 import type { MarketLadderData } from '../../contracts/src/market-ladder.ts'
-import { LADDER_BOARD_TYPE_METHOD, limitBoardType } from '../../contracts/src/market-ladder.ts'
-import { marketHistoryPanel, type MarketHistorySnapshot } from '../../contracts/src/market-history.ts'
-import { isClosingPanelCurrent } from './market-history.tsx'
-import { isMarketOpen } from './market-hours.ts'
+import { LADDER_BOARD_TYPE_METHOD, ladderThemes, limitBoardType } from '../../contracts/src/market-ladder.ts'
 import { PanelHead } from './panel-head.tsx'
 import { MarketPanelStatus } from './market-panel-status.tsx'
 import styles from './styles.module.css'
-
-export function useMarketLadder(client: HanaiClient, snapshot: MarketHistorySnapshot | null, historical: boolean, ready: boolean, refreshVersion: number, reloadIndex: () => Promise<void>) {
-  const saved = marketHistoryPanel(snapshot, 'ladder')
-  const [live, setLive] = useState<MarketLadderData | null>(null)
-  const [failed, setFailed] = useState(false)
-  const [pending, setPending] = useState(false)
-  const appliedRefresh = useRef(refreshVersion)
-  useEffect(() => {
-    if (historical || !ready) return
-    const controller = new AbortController()
-    let busy = false
-    const manual = appliedRefresh.current !== refreshVersion
-    appliedRefresh.current = refreshVersion
-    const read = async (refresh = false) => {
-      if (busy) return
-      busy = true; setPending(true)
-      try {
-        const next = await client.call('market.ladder', refresh ? { refresh: true } : {}, controller.signal)
-        if (controller.signal.aborted) return
-        if (next !== null) { setLive(next); void reloadIndex() }
-        setFailed(next === null || next.meta.cacheState === 'stale')
-      } catch { if (!controller.signal.aborted) setFailed(true) }
-      finally { busy = false; if (!controller.signal.aborted) setPending(false) }
-    }
-    if (isMarketOpen() || saved === null || saved.method !== LADDER_BOARD_TYPE_METHOD || saved.yesterdayPerformance === undefined || saved.missedPromotions === undefined || saved.missedPromotions?.confirmed === false || saved.missedPromotions?.stocks.some(stock => stock.broken === undefined) || !isClosingPanelCurrent(saved.meta) || manual) void read(manual)
-    let wasOpen = isMarketOpen()
-    const timer = window.setInterval(() => {
-      const open = isMarketOpen()
-      if (!busy && (open || wasOpen)) {
-        wasOpen = open
-        void read()
-      }
-    }, 30_000)
-    return () => { controller.abort(); window.clearInterval(timer) }
-  }, [client, saved, historical, ready, refreshVersion, reloadIndex])
-  return { data: historical ? saved : live ?? saved, failed: !historical && failed, pending: !historical && pending }
-}
-
-export function ladderThemes(data: MarketLadderData) {
-  const groups = new Map<string, typeof data.stocks>()
-  for (const stock of data.stocks) {
-    for (const tag of new Set((stock.reason ?? '').split(/[+＋]/).map(tag => tag.trim()).filter(Boolean))) {
-      groups.set(tag, [...(groups.get(tag) ?? []), stock])
-    }
-  }
-  return [...groups].map(([name, stocks]) => ({ name, count: stocks.length, height: Math.max(...stocks.map(row => row.boards)), stocks }))
-    .sort((a, b) => b.count - a.count || b.height - a.height || a.name.localeCompare(b.name, 'zh-CN'))
-}
 
 const percentage = (numerator: number | null | undefined, denominator: number | null | undefined) => numerator == null || denominator == null || denominator === 0 ? '—' : `${(numerator / denominator * 100).toFixed(1)}%`
 

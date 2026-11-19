@@ -117,13 +117,13 @@ export class MarketLadderProvider {
     const previous = await this.previousPerformance(date, previousDate, promotion?.eligible ?? null, saved)
     if (this.quotes && previous.performance === null) issues.push('昨日涨停今日表现获取失败')
     const missedPromotions = this.missed(previous.candidates, stocks, confirmed)
-    if (missedPromotions?.stocks.length) {
-      try {
-        if (broken === 0) this.markBroken(missedPromotions, new Map())
-        else this.markBroken(missedPromotions, await this.brokenPool(date, new Set(details.keys()), broken))
-      } catch { issues.push('炸板明细暂不可用') }
-    }
-    return { method: LADDER_BOARD_TYPE_METHOD, yesterdayPerformance: previous.performance, missedPromotions, date, stocks: this.sorted(stocks), promotion, broken, issues, meta: this.meta(date, 'ths-limit-reason', '同花顺涨停池') }
+    let brokenStocks: MarketLadderData['brokenStocks'] = null
+    try {
+      const pool = broken === 0 ? new Map() : await this.brokenPool(date, new Set(details.keys()), broken)
+      this.markBroken(missedPromotions, pool)
+      brokenStocks = [...pool].map(([code, row]) => ({ code, name: row.name }))
+    } catch { issues.push('炸板明细暂不可用') }
+    return { method: LADDER_BOARD_TYPE_METHOD, yesterdayPerformance: previous.performance, missedPromotions, brokenStocks, date, stocks: this.sorted(stocks), promotion, broken, issues, meta: this.meta(date, 'ths-limit-reason', '同花顺涨停池') }
   }
   private async thsRows(date: string, endpoint: 'limit_up_pool' | 'open_limit_pool' = 'limit_up_pool') {
     const rows: Record<string, unknown>[] = []
@@ -224,31 +224,31 @@ export class MarketLadderProvider {
         if ((expected != null && rows.length !== expected) || rows.some(row => sealed.has(String(row.code)))) {
           throw new Error('同花顺涨停与炸板池状态不一致')
         }
-        return new Map<string, Timing>(rows.map(row => {
+        return new Map<string, { name: string | null; timing: Timing }>(rows.map(row => {
           const first = Number(row.first_limit_up_time)
           const last = Number(row.last_limit_up_time)
           const valid = [first, last].every(time => Number.isSafeInteger(time) && time > 0 && time < 10_000_000_000 && beijingMarketDate(time * 1000) === date)
-          return [String(row.code), valid && first <= last ? { firstTouch: beijingTime(first), lastTouch: beijingTime(last) } : undefined]
+          return [String(row.code), { name: String(row.name), timing: valid && first <= last ? { firstTouch: beijingTime(first), lastTouch: beijingTime(last) } : undefined }]
         }))
       })
     } catch {
       return this.circuit.run('eastmoney-limit-broken', async () => {
         const rows = await this.pool('getTopicZBPool', date)
         if (rows.some(row => sealed.has(String(row.c)))) throw new Error('涨停与炸板池状态不一致')
-        return new Map<string, Timing>(rows.map(row => {
+        return new Map<string, { name: string | null; timing: Timing }>(rows.map(row => {
           let timing: Timing
           if (row.fbt != null && Number(row.fbt) > 0) {
             try { timing = { firstSeal: sealTime(row.fbt) } } catch { /* The pool still confirms membership. */ }
           }
-          return [String(row.c), timing]
+          return [String(row.c), { name: typeof row.n === 'string' && row.n.trim() ? row.n : null, timing }]
         }))
       })
     }
   }
-  private markBroken(missed: LadderMissedPromotions | null, rows: ReadonlyMap<string, LadderPromotionCandidate['brokenTiming']>): void {
+  private markBroken(missed: LadderMissedPromotions | null, rows: ReadonlyMap<string, { timing: LadderPromotionCandidate['brokenTiming'] }>): void {
     for (const stock of missed?.stocks ?? []) {
       stock.broken = rows.has(stock.code)
-      const timing = rows.get(stock.code)
+      const timing = rows.get(stock.code)?.timing
       if (timing) stock.brokenTiming = timing
     }
   }
@@ -262,8 +262,17 @@ export class MarketLadderProvider {
       currentPool,
       archived ? Promise.resolve(null) : this.circuit.run('eastmoney-limit-previous', () => this.pool('getYesterdayZTPool', date)),
       currentPool.then(rows => this.brokenPool(date, new Set(rows.map(row => String(row.c))))),
-      details.size > 0 && [...details.values()].every(row => row.reason !== null)
-        ? Promise.resolve(new Map([...details].map(([code, row]) => [code, row.reason]))) : this.hotReasons(date),
+      currentPool.then(async rows => {
+        const known = new Map([...details].flatMap(([code, row]) => row.reason === null ? [] : [[code, row.reason] as const]))
+        if (rows.every(row => known.has(String(row.c)))) return known
+        try {
+          const extra = await this.hotReasons(date)
+          for (const [code, reason] of extra) if (reason !== null && !known.has(code)) known.set(code, reason)
+        } catch (error) {
+          if (known.size === 0) throw error
+        }
+        return known
+      }),
     ])
     if (current.status !== 'fulfilled') throw current.reason
     const stocks: LimitUpStock[] = current.value.map(row => {
@@ -291,7 +300,8 @@ export class MarketLadderProvider {
     if (yesterdayPerformance === null) issues.push('昨日涨停今日表现获取失败')
     const missedPromotions = this.missed(sample.candidates, stocks, confirmed)
     if (broken.status === 'fulfilled' && brokenCount !== null) this.markBroken(missedPromotions, broken.value)
-    return { method: LADDER_BOARD_TYPE_METHOD, yesterdayPerformance, missedPromotions, date, stocks: this.sorted(stocks), promotion, broken: brokenCount, issues, meta: this.meta(date, 'eastmoney-limit-up', '东方财富涨停池（兜底）') }
+    const brokenStocks = broken.status === 'fulfilled' ? [...broken.value].map(([code, row]) => ({ code, name: row.name })) : null
+    return { method: LADDER_BOARD_TYPE_METHOD, yesterdayPerformance, missedPromotions, brokenStocks, date, stocks: this.sorted(stocks), promotion, broken: brokenCount, issues, meta: this.meta(date, 'eastmoney-limit-up', '东方财富涨停池（兜底）') }
   }
   private hotReasons(date: string): Promise<Map<string, string | null>> {
     return this.circuit.run('ths-hot-reason', async () => {

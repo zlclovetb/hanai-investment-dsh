@@ -1,3 +1,4 @@
+import { DASHBOARD_PANELS } from '../../contracts/src/index.ts'
 import { isMacroRange } from '../../contracts/src/macro-range.ts'
 import { z } from 'zod'
 import type { ConnectionRpcResult as RpcResult } from '@deepseek-ai/dsh-client-connection'
@@ -17,9 +18,12 @@ const scanQuery = z.object({
   sort: z.enum(['code', 'price', 'changePct', ...Object.keys(SCAN_FIELDS)]), order: z.enum(['asc', 'desc']),
 }).strict().refine(value => scanQueryError(value as MarketScanQuery) === null, '筛选范围或排序无效')
 
+
 const schemas = {
   'bootstrap': empty,
-  'dashboard.get': z.object({ refresh: z.boolean().optional() }).strict(),
+  'market.snapshot': z.object({ refresh: z.boolean().optional(), after: z.string().max(100).optional(),
+    sector: z.string().regex(/^(?:BK\d{4}|SINA:(?:new_|gn_)[A-Za-z0-9_]{1,60})$/).optional() }).strict(),
+  'dashboard.get': z.object({ refresh: z.boolean().optional(), panels: z.array(z.enum(DASHBOARD_PANELS)).min(1).max(DASHBOARD_PANELS.length).optional() }).strict(),
   'market.scan.query': z.object({ query: scanQuery, date: z.string().refine(isMarketDate).optional(), refresh: z.boolean().optional() }).strict(),
   'market.scan.history': z.object({ query: scanQuery }).strict(),
   'market.breadth': empty,

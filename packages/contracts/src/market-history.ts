@@ -1,6 +1,6 @@
 import type { MarketLadderData } from './market-ladder.ts'
 import { isMarketScanData, type MarketScanData } from './market-scan.ts'
-import type { MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, SectorBoard, StockQuote } from './index.ts'
+import type { DashboardData, MarketBreadthData, MarketOverview, ProviderMeta, RankEntry, SectorBoard, StockQuote } from './index.ts'
 import { MACRO_GENERATION_PANELS, MACRO_ETFS, type MacroChartData, type MacroEtfInputs, type MacroAllDailyData, macroAllTotals, type MacroAllEtfData, type MacroCapitalData, type MacroEtfData, type MacroIndexData, type MacroDailyEtfData } from './market-macro.ts'
 import type { GlobalIndicesData } from './market-indices.ts'
 import type { MarketIntradayData, MarketSignalsData } from './market-activity.ts'
@@ -116,6 +116,15 @@ export function isMarketPanelPayload(key: string, value: unknown): boolean {
   if (key.startsWith('scan:')) return isMarketScanData(value) && isMarketProviderMeta(value.meta)
   if (!object(value)) return false
   if (key === 'ladder') return (value.method === undefined || value.method === 'source-board-types-v1') && isMarketProviderMeta(value.meta) && typeof value.date === 'string' && isMarketDate(value.date)
+    && (value.topicReasons === undefined || (object(value.topicReasons) && Object.entries(value.topicReasons).every(([code, reason]) =>
+      /^\d{6}$/.test(code) && typeof reason === 'string' && reason.trim() !== '')))
+    && (value.turnoverBoards === undefined || (Array.isArray(value.turnoverBoards) && value.turnoverBoards.length <= 10000
+      && value.turnoverBoards.every(code => typeof code === 'string' && /^\d{6}$/.test(code))))
+    && (value.brokenStocks == null || (Array.isArray(value.brokenStocks) && value.brokenStocks.length <= 10000
+      && value.brokenStocks.every((row, i, rows) => object(row) && typeof row.code === 'string' && /^\d{6}$/.test(row.code)
+        && (row.name === null || (typeof row.name === 'string' && row.name.trim() !== ''))
+        && !rows.slice(0, i).some(previous => object(previous) && previous.code === row.code)
+        && Array.isArray(value.stocks) && !value.stocks.some(stock => object(stock) && stock.code === row.code))))
     && (value.yesterdayPerformance === undefined || value.yesterdayPerformance === null || (object(value.yesterdayPerformance)
       && isMarketProviderMeta(value.yesterdayPerformance.meta) && marketDateFromMeta(value.yesterdayPerformance.meta) === value.date
       && ['sample', 'up', 'down', 'flat'].every(key => Number.isSafeInteger((value.yesterdayPerformance as Record<string, unknown>)[key]) && Number((value.yesterdayPerformance as Record<string, unknown>)[key]) >= 0)
@@ -295,4 +304,18 @@ export function marketHistoryPanel(snapshot: MarketHistorySnapshot | null, key: 
 export function marketHistoryPanel(snapshot: MarketHistorySnapshot | null, key: string): unknown {
   const panel = snapshot?.records[key]
   return panel?.version === 1 && isMarketPanelPayload(key, panel.data) ? panel.data : null
+}
+
+export function snapshotDashboard(snapshot: MarketHistorySnapshot | null): DashboardData | null {
+  if (snapshot === null) return null
+  const missing: ProviderMeta = { providerId: 'history-missing', sourceName: '该日期未保存', sourceTimestamp: null, fetchedAt: snapshot.capturedAt, cacheState: 'unavailable' }
+  const ranks = { gainers: marketHistoryPanel(snapshot, 'rank.gainers'), losers: marketHistoryPanel(snapshot, 'rank.losers'),
+    amount: marketHistoryPanel(snapshot, 'rank.amount'), turnover: marketHistoryPanel(snapshot, 'rank.turnover') }
+  return {
+    overview: marketHistoryPanel(snapshot, 'overview') ?? { indices: [], breadth: { up: null, down: null, flat: null, limitUp: null, limitDown: null, totalAmount: null }, marketStatus: 'unknown', meta: missing },
+    industry: marketHistoryPanel(snapshot, 'industry') ?? { type: 'industry', sectors: [], meta: missing },
+    concept: marketHistoryPanel(snapshot, 'concept') ?? { type: 'concept', sectors: [], meta: missing },
+    ranks: { gainers: ranks.gainers?.entries ?? [], losers: ranks.losers?.entries ?? [], amount: ranks.amount?.entries ?? [], turnover: ranks.turnover?.entries ?? [] },
+    rankSources: { gainers: ranks.gainers?.meta ?? missing, losers: ranks.losers?.meta ?? missing, amount: ranks.amount?.meta ?? missing, turnover: ranks.turnover?.meta ?? missing },
+  }
 }

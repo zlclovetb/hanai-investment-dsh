@@ -1,9 +1,41 @@
 import type { DatabaseSync } from 'node:sqlite'
 import type { MarketOverview, ProviderMeta } from '../../contracts/src/index.ts'
 import type { GlobalIndicesData } from '../../contracts/src/market-indices.ts'
-import { isMarketDate, isMarketPanelPayload, isMarketProviderMeta, marketDateFromMeta, marketHistoryPanel, type MarketHistorySnapshot, type MarketHistorySummary, type MarketPanelSnapshot } from '../../contracts/src/market-history.ts'
+import { limitBoardType, type MarketLadderData } from '../../contracts/src/market-ladder.ts'
+import { isMarketDate, isMarketPanelPayload, isMarketProviderMeta, marketDateFromMeta, marketHistoryPanel, type MarketPanelPayloads, type MarketHistorySnapshot, type MarketHistorySummary, type MarketPanelSnapshot } from '../../contracts/src/market-history.ts'
 
 const observationTime = (meta: ProviderMeta): number => Date.parse(meta.sourceTimestamp !== null && !isMarketDate(meta.sourceTimestamp) ? meta.sourceTimestamp : meta.fetchedAt)
+
+function mergeLadderDetails(previous: MarketLadderData | null, incoming: MarketLadderData): MarketLadderData {
+  if (previous && observationTime(previous.meta) > observationTime(incoming.meta)) return incoming
+  const topicReasons = { ...previous?.topicReasons }
+  const turnoverBoards = new Set(previous?.turnoverBoards)
+  const previousStocks = new Map(previous?.stocks.map(stock => [stock.code, stock]))
+  for (const stock of previous?.stocks ?? []) {
+    const reason = stock.reason?.trim()
+    if (reason) topicReasons[stock.code] = reason
+    if (limitBoardType(stock.boardType) === '换手板') turnoverBoards.add(stock.code)
+  }
+  const stocks = incoming.stocks.map(stock => {
+    const reason = stock.reason?.trim() || topicReasons[stock.code] || null
+    const prior = previousStocks.get(stock.code)
+    // A new open or seal may invalidate an earlier 一字板 or T字板 classification.
+    const sameSeal = prior && prior.firstSeal === stock.firstSeal && prior.lastSeal === stock.lastSeal
+      && (stock.breaks === null || (prior.breaks ?? 0) === stock.breaks)
+    const boardType = limitBoardType(stock.boardType) ?? (turnoverBoards.has(stock.code) ? '换手板' : sameSeal ? limitBoardType(prior.boardType) : null)
+    delete topicReasons[stock.code]
+    turnoverBoards.delete(stock.code)
+    return reason === stock.reason && boardType === stock.boardType ? stock : { ...stock, reason, boardType }
+  })
+  const issues = stocks.every(stock => stock.reason !== null)
+    ? incoming.issues.filter(issue => issue !== '部分涨停股缺少题材归因') : incoming.issues
+  const merged = { ...incoming, stocks, issues }
+  if (Object.keys(topicReasons).length) merged.topicReasons = topicReasons
+  else delete merged.topicReasons
+  if (turnoverBoards.size) merged.turnoverBoards = [...turnoverBoards]
+  else delete merged.turnoverBoards
+  return merged
+}
 
 function mergeGlobalIndices(previous: GlobalIndicesData | null, incoming: GlobalIndicesData): GlobalIndicesData | null {
   const indices = new Map((previous?.indices ?? []).map(index => [index.code, index]))
@@ -55,18 +87,25 @@ interface PanelRow {
 export class MarketHistoryStore {
   constructor(private readonly sqlite: DatabaseSync) {}
 
-  save(key: string, data: unknown, meta: ProviderMeta, date = marketDateFromMeta(meta), capturedAt = new Date().toISOString()): void {
+  save<K extends keyof MarketPanelPayloads>(key: K, data: MarketPanelPayloads[K], meta: ProviderMeta, date?: string, capturedAt?: string): MarketPanelPayloads[K]
+  save(key: string, data: unknown, meta: ProviderMeta, date?: string, capturedAt?: string): unknown
+  save(key: string, data: unknown, meta: ProviderMeta, date = marketDateFromMeta(meta), capturedAt = new Date().toISOString()): unknown {
     if (date === null || !isMarketDate(date) || !/^[A-Za-z0-9_.:-]{1,150}$/.test(key) || !Number.isFinite(Date.parse(capturedAt))) throw new Error('市场历史日期或面板标识无效')
     if (!isMarketProviderMeta(meta) || !isMarketPanelPayload(key, data)) throw new Error('市场历史面板数据无效')
-    if (meta.cacheState === 'unavailable' || (meta.cacheState === 'stale' && meta.sourceTimestamp === null)) return
+    if (meta.cacheState === 'unavailable' || (meta.cacheState === 'stale' && meta.sourceTimestamp === null)) return data
+    if (key === 'ladder') {
+      const ladder = data as MarketLadderData
+      if (ladder.date !== date) throw new Error('涨停梯队日期与归档日期不符')
+      data = mergeLadderDetails(marketHistoryPanel(this.get(date, 'ladder'), 'ladder'), ladder)
+    }
     if (key === 'global.indices') {
       const merged = mergeGlobalIndices(marketHistoryPanel(this.get(date), 'global.indices'), data as GlobalIndicesData)
-      if (merged === null) return
+      if (merged === null) return marketHistoryPanel(this.get(date), 'global.indices') ?? data
       data = merged
     }
     if (key === 'overview') {
       const merged = mergeOverview(marketHistoryPanel(this.get(date), 'overview'), data as MarketOverview, date)
-      if (merged === null) return
+      if (merged === null) return marketHistoryPanel(this.get(date), 'overview') ?? data
       data = merged
       meta = merged.meta
     }
@@ -82,6 +121,7 @@ export class MarketHistoryStore {
         OR (? = 'macro.series' AND excluded.observed_at = market_panel_snapshots.observed_at)
         OR ? IN ('overview', 'global.indices')
     `).run(date, key, capturedAt, observedAt, JSON.stringify(data), JSON.stringify(meta), key, key)
+    return data
   }
 
   get(date: string, key?: string): MarketHistorySnapshot | null {

@@ -11,6 +11,7 @@ import type { MarketDistributionData } from '../../../contracts/src/market-distr
 import type { MarketArmsData } from '../../../contracts/src/market-arms.ts'
 import type {
   DashboardData,
+  DashboardPanelKey,
   KLinePeriod,
   MarketOverview,
   ProviderMeta,
@@ -221,6 +222,7 @@ export class MarketDataService {
       ['sina', '新浪', 'security'], ['eastmoney-push2', '东方财富', 'security'],
       ['legu', '乐咕乐股（AKShare 同源）', 'breadth'],
       ['88ai-arms', '88AI投（成交额版阿姆氏指标）', 'breadth'],
+      ['88ai-arms-daily', '88AI投（阿姆氏指标日线）', 'breadth'],
       ['88ai-scan', '88AI投（公开财务扫描汇总）', 'market'],
       ['sina', '新浪涨跌分布', 'breadth'],
       ['tencent', '腾讯涨跌分布', 'breadth'],
@@ -304,15 +306,16 @@ export class MarketDataService {
     }
   }
 
-  async getDashboard(): Promise<DashboardData> {
+  async getDashboard(_refresh = false, panels?: DashboardPanelKey[]): Promise<DashboardData> {
+    const selected = (key: DashboardPanelKey) => panels === undefined || panels.includes(key)
     const [overview, industry, concept, gainers, losers, amount, turnover] = await Promise.all([
-      optional(this.getMarketOverview()),
-      this.getSectorBoard('industry'),
-      this.getSectorBoard('concept'),
-      this.getRankList('gainers'),
-      this.getRankList('losers'),
-      this.getRankList('amount'),
-      this.getRankList('turnover'),
+      selected('overview') ? optional(this.getMarketOverview()) : null,
+      selected('industry') ? this.getSectorBoard('industry') : null,
+      selected('concept') ? this.getSectorBoard('concept') : null,
+      selected('rank.gainers') ? this.getRankList('gainers') : null,
+      selected('rank.losers') ? this.getRankList('losers') : null,
+      selected('rank.amount') ? this.getRankList('amount') : null,
+      selected('rank.turnover') ? this.getRankList('turnover') : null,
     ])
     return {
       overview: overview ?? {
@@ -474,7 +477,11 @@ export class MarketDataService {
   }
 
   clearMarketCache(): number {
-    return this.preparationTencent.clearQuoteMetrics() + this.preparationEastmoney.clearQuoteCache() + this.baostock.clearCache() + this.scan.clear() + this.ladder.clear() + this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.distributionCache.clear() + this.tencent.clearQuoteMetrics() + this.sina.clearCache() + this.financials.clearCache() + this.globalIndices.clear() + this.activity.clear() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
+    return this.clearMarketPanelsCache() + this.preparationTencent.clearQuoteMetrics() + this.preparationEastmoney.clearQuoteCache() + this.baostock.clearCache() + this.scan.clear() + this.tencent.clearQuoteMetrics() + this.financials.clearCache() + this.macro.clear() + this.macroDaily.clear() + this.macroCapital.clear() + this.macroAll.clear()
+  }
+
+  clearMarketPanelsCache(): number {
+    return this.ladder.clear() + this.eastmoney.clearQuoteCache() + this.breadthCache.clear() + this.armsCache.clear() + this.distributionCache.clear() + this.sina.clearCache() + this.globalIndices.clear() + this.activity.clear()
   }
 
   async syncSecurities(
