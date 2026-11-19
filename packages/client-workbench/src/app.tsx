@@ -76,18 +76,49 @@ type JudgementLaunchRequest = { key: number; stock: SearchResult | null; masterI
 
 const BRAND_NAME = 'Hanai Worth · 值见'
 
-const NAV: ReadonlyArray<{ page: TopPage; path: string; icon: string; label: string }> = [
-  { page: 'dashboard', path: '/dashboard', icon: '◈', label: '今日市场' },
-  { page: 'macro', path: '/dashboard/macro', icon: '▥', label: '宏观数据' },
-  { page: 'watch', path: '/watch', icon: '☆', label: '自选与发现' },
-  { page: 'market-scan', path: '/market-scan', icon: '扫', label: '市场扫描' },
-  { page: 'screener', path: '/screener', icon: '选', label: 'AI选股' },
-  { page: 'research', path: '/research', icon: 'AI', label: 'AI研究助手' },
-  { page: 'judgements', path: '/judgements', icon: '研', label: '大师研判' },
-  { page: 'expert-chats', path: '/expert-chats', icon: '聊', label: '专家对谈' },
-  { page: 'personas', path: '/personas', icon: '◉', label: '专家中心' },
-  { page: 'settings', path: '/settings', icon: '⚙', label: '设置与诊断' },
-]
+const NAV_GROUPS = [
+  {
+    id: 'market', icon: '◈', label: '市场观察', items: [
+      { page: 'dashboard', path: '/dashboard', label: '今日市场' },
+      { page: 'macro', path: '/dashboard/macro', label: '宏观数据' },
+    ],
+  },
+  {
+    id: 'selection', icon: '☆', label: '选股工具', items: [
+      { page: 'watch', path: '/watch', label: '自选与发现' },
+      { page: 'market-scan', path: '/market-scan', label: '市场扫描' },
+      { page: 'screener', path: '/screener', label: 'AI选股' },
+    ],
+  },
+  {
+    id: 'research', icon: '◉', label: '研究与专家', items: [
+      { page: 'research', path: '/research', label: 'AI研究助手' },
+      { page: 'judgements', path: '/judgements', label: '大师研判' },
+      { page: 'expert-chats', path: '/expert-chats', label: '专家对谈' },
+      { page: 'personas', path: '/personas', label: '专家中心' },
+    ],
+  },
+] as const satisfies ReadonlyArray<{
+  id: string
+  icon: string
+  label: string
+  items: ReadonlyArray<{ page: TopPage; path: string; label: string }>
+}>
+
+function activeNavPage(route: AppRoute): TopPage | null {
+  switch (route.page) {
+    case 'judgement-detail': return 'judgements'
+    case 'expert-chat-detail': return 'expert-chats'
+    case 'screener-detail': return 'screener'
+    case 'research-detail': return 'research'
+    case 'stock': return null
+    default: return route.page
+  }
+}
+
+function navGroupFor(page: TopPage | null) {
+  return NAV_GROUPS.find(group => group.items.some(item => item.page === page))?.id ?? null
+}
 
 export interface HanaiWorkbenchProps {
   client: HanaiClient
@@ -98,6 +129,10 @@ export interface HanaiWorkbenchProps {
 export function HanaiWorkbench({ client, onClose, initialPath }: HanaiWorkbenchProps) {
   const [bootstrap, setBootstrap] = useState<BootstrapData | null>(null)
   const [route, setRoute] = useState<AppRoute>(() => routeFromHash(initialPath ?? ''))
+  const activePage = activeNavPage(route)
+  const activeGroup = navGroupFor(activePage)
+  const [collapsedGroups, setCollapsedGroups] = useState<Array<(typeof NAV_GROUPS)[number]['id']>>([])
+  const navId = useId()
   const [searchOpen, setSearchOpen] = useState(false)
   const [launchRequest, setLaunchRequest] = useState<JudgementLaunchRequest | null>(null)
   const [loading, setLoading] = useState(true)
@@ -166,11 +201,6 @@ export function HanaiWorkbench({ client, onClose, initialPath }: HanaiWorkbenchP
   const openStock = (stock: Pick<SecurityMaster, 'secId'>) => navigate(`/stock/${encodeURIComponent(stock.secId)}`)
   const openJudgement = (id: string) => navigate(`/judgements/${encodeURIComponent(id)}`)
   const openExpertChat = (id: string) => navigate(`/expert-chats/${encodeURIComponent(id)}`)
-  const activePage = route.page === 'judgement-detail'
-    ? 'judgements'
-    : route.page === 'expert-chat-detail'
-      ? 'expert-chats'
-      : route.page === 'screener-detail' ? 'screener' : route.page === 'research-detail' ? 'research' : route.page === 'stock' ? null : route.page
 
   return (
     <div className={styles['app']} data-theme={bootstrap.theme} data-hanai-root>
@@ -180,17 +210,48 @@ export function HanaiWorkbench({ client, onClose, initialPath }: HanaiWorkbenchP
           <span className={styles['brandCopy']}><strong>Hanai</strong><small>WORTH · 值见</small></span>
         </button>
         <nav className={styles['nav']} aria-label="主导航">
-          {NAV.map(item => (
-            <button
-              key={item.page}
-              className={activePage === item.page ? styles['navActive'] : ''}
-              onClick={() => navigate(item.path)}
-              aria-current={activePage === item.page ? 'page' : undefined}
-            >
-              <span className={styles['navIcon']}>{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {NAV_GROUPS.map(group => {
+            const expanded = !collapsedGroups.includes(group.id)
+            const submenuId = `${navId}-${group.id}`
+            return (
+              <div key={group.id}>
+                <button
+                  type="button"
+                  className={activeGroup === group.id ? styles['navGroupActive'] : undefined}
+                  aria-expanded={expanded}
+                  aria-controls={submenuId}
+                  onClick={() => setCollapsedGroups(groups => groups.includes(group.id)
+                    ? groups.filter(id => id !== group.id)
+                    : [...groups, group.id])}
+                >
+                  <span className={styles['navIcon']} aria-hidden="true">{group.icon}</span>
+                  <span>{group.label}</span>
+                  <span className={styles['navChevron']} aria-hidden="true" />
+                </button>
+                <ul id={submenuId} className={styles['navSubmenu']} hidden={!expanded}>
+                  {group.items.map(item => (
+                    <li key={item.page}>
+                      <button
+                        type="button"
+                        className={activePage === item.page ? styles['navActive'] : undefined}
+                        onClick={() => navigate(item.path)}
+                        aria-current={activePage === item.page ? 'page' : undefined}
+                      >{item.label}</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+          <button
+            type="button"
+            className={activePage === 'settings' ? styles['navActive'] : undefined}
+            onClick={() => navigate('/settings')}
+            aria-current={activePage === 'settings' ? 'page' : undefined}
+          >
+            <span className={styles['navIcon']} aria-hidden="true">⚙</span>
+            <span>设置与诊断</span>
+          </button>
         </nav>
       </aside>
 

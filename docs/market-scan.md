@@ -1,6 +1,6 @@
 # 市场扫描
 
-侧栏「市场扫描」位于 `#/market-scan`。本次先实际操作 [88AI 桌面市场扫描器](https://88aitou.com/market) 的快捷策略、Expert、服务端排序、搜索跳转和 CSV 导出，并核对其公开 [OpenAPI](https://88aitou.com/openapi.json)，取代早期榜单样本过滤实现。操作证据见 [参考页核实](market-scan-reference-audit.md)。
+「选股工具 → 市场扫描」位于 `#/market-scan`。本次先实际操作 [88AI 桌面市场扫描器](https://88aitou.com/market) 的快捷策略、Expert、服务端排序、搜索跳转和 CSV 导出，并核对其公开 [OpenAPI](https://88aitou.com/openapi.json)，取代早期榜单样本过滤实现。操作证据见 [参考页核实](market-scan-reference-audit.md)。
 
 ## 财务筛选与结果
 

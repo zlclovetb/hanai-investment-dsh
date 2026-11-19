@@ -1,6 +1,6 @@
 # AI 选股
 
-入口为侧栏「AI选股」，地址 `#/screener`，详情 `#/screener/:id`。本次实际操作 [88AI AI选股页](https://88aitou.com/search) 的示例、提交、候选结果和历史入口，并核对其公开 API 文档，替换此前仅展示通用聊天的实现。详见 [交互核实记录](ai-stock-screener-reference-audit.md)。
+入口为「选股工具 → AI选股」，地址 `#/screener`，详情 `#/screener/:id`。本次实际操作 [88AI AI选股页](https://88aitou.com/search) 的示例、提交、候选结果和历史入口，并核对其公开 API 文档，替换此前仅展示通用聊天的实现。详见 [交互核实记录](ai-stock-screener-reference-audit.md)。
 
 ## 实际流程
 

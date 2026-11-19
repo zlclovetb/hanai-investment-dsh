@@ -275,22 +275,41 @@ describe('HanaiWorkbench old-client parity', () => {
     expect(css).not.toMatch(/ocean|jade|marketing/i)
   })
 
-  it('keeps the original navigation and adds expert chat with hash history under the Hanai Worth brand', async () => {
+  it('opens all menu groups initially and preserves independent folding when navigating', async () => {
     const { container } = renderAt('/dashboard')
     await screen.findByRole('heading', { name: '今日市场' })
 
     expect(screen.getByLabelText('Hanai Worth · 值见').textContent).toContain('WORTH · 值见')
     expect(document.title).toBe('今日市场 — Hanai Worth · 值见')
     const nav = screen.getByRole('navigation', { name: '主导航' })
-    expect(within(nav).getAllByRole('button').map(button => button.querySelector('span:last-child')?.textContent)).toEqual([
-      '今日市场', '宏观数据', '自选与发现', '市场扫描', 'AI选股', 'AI研究助手', '大师研判', '专家对谈', '专家中心', '设置与诊断',
-    ])
+    const menu = within(nav)
+    const market = menu.getByRole('button', { name: '市场观察', expanded: true })
+    menu.getByRole('button', { name: '选股工具', expanded: true })
+    const research = menu.getByRole('button', { name: '研究与专家', expanded: true })
+    expect(menu.getByRole('button', { name: '今日市场', current: 'page' })).toBeTruthy()
+    expect(menu.getByRole('button', { name: '自选与发现' })).toBeTruthy()
+    expect(menu.getByRole('button', { name: '专家对谈' })).toBeTruthy()
     expect(container.querySelector('[data-theme="dark"]')).not.toBeNull()
     expect(screen.queryByText('市场全景')).toBeNull()
     expect(screen.queryByText('大师图鉴')).toBeNull()
 
-    fireEvent.click(within(nav).getByRole('button', { name: /自选与发现/ }))
+    fireEvent.click(market)
+    expect(menu.queryByRole('button', { name: '今日市场' })).toBeNull()
+    expect(menu.getByRole('button', { name: '专家对谈' })).toBeTruthy()
+    fireEvent.click(research)
+    expect(menu.queryByRole('button', { name: '专家对谈' })).toBeNull()
+    expect(screen.getByRole('heading', { name: '今日市场' })).toBeTruthy()
+    expect(menu.getByRole('button', { name: '市场扫描' })).toBeTruthy()
+    expect(menu.getByRole('button', { name: 'AI选股' })).toBeTruthy()
+    fireEvent.click(menu.getByRole('button', { name: '自选与发现' }))
     await screen.findByRole('heading', { name: '自选与发现' })
+    expect(menu.getByRole('button', { name: '自选与发现', current: 'page' })).toBeTruthy()
+    expect(menu.getByRole('button', { name: '市场观察', expanded: false })).toBe(market)
+    expect(menu.getByRole('button', { name: '研究与专家', expanded: false })).toBe(research)
+    fireEvent.click(market)
+    expect(menu.getByRole('button', { name: '今日市场' })).toBeTruthy()
+    expect(menu.getByRole('button', { name: '自选与发现', current: 'page' })).toBeTruthy()
+    expect(menu.queryByRole('button', { name: '专家对谈' })).toBeNull()
     expect(window.location.hash).toBe('#/native-session')
     expect(document.title).toBe('自选与发现 — Hanai Worth · 值见')
   })
@@ -307,6 +326,9 @@ describe('HanaiWorkbench old-client parity', () => {
     cleanup()
     renderAt('/dashboard/macro', client)
     await screen.findByRole('heading', { name: '宏观数据' })
+    const nav = within(screen.getByRole('navigation', { name: '主导航' }))
+    expect(nav.getByRole('button', { name: '市场观察', expanded: true })).toBeTruthy()
+    expect(nav.getByRole('button', { name: '宏观数据', current: 'page' })).toBeTruthy()
   })
 
   it('keeps the sidebar footer empty regardless of provider health timestamps', async () => {
