@@ -139,6 +139,15 @@
   background: var(--bg);
 }
 
+.app[data-page="emotion"] { min-width: 0; }
+@media (max-width: 760px) {
+  .app[data-page="emotion"] .sidebar { width: 60px; min-width: 60px; padding: 12px 6px; }
+  .app[data-page="emotion"] .brandCopy,
+  .app[data-page="emotion"] .nav button > span:last-child { display: none; }
+  .app[data-page="emotion"] .nav button { justify-content: center; padding: 10px 0; }
+  .app[data-page="emotion"] .searchTrigger { flex: 1; width: auto; min-width: 0; }
+}
+
 .sidebar {
   z-index: 4;
   display: flex;

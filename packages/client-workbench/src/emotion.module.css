@@ -1,0 +1,16 @@
+.page { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; overflow: auto; }
+.page > * { flex: 0 0 auto; min-width: 0; }
+.evidence {
+  min-width: 0; padding: clamp(12px, 2vw, 18px); border: 1px solid var(--border);
+  border-radius: 10px; background: var(--panel);
+}
+.evidence header { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.evidence h2, .evidence p { margin: 0 0 5px; }
+.evidence p { color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.evidence p.feedback { margin-top: 10px; color: var(--text); font-size: 14px; font-weight: 650; }
+.metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin: 10px 0; }
+.metrics > div { border-top: 1px solid var(--border); padding-top: 7px; }
+.metrics dt { color: var(--muted); font-size: 11px; }
+.metrics dd { margin: 3px 0 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.evidence summary { margin-bottom: 6px; color: var(--gold-strong); font-size: 12px; cursor: pointer; }
+.evidence p.warning { color: var(--gold-strong); }

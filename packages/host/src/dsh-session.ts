@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller'
+import type {} from '@deepseek-ai/dsh-llm'
 import type { SessionRequestId, SessionWireEvent } from '@deepseek-ai/dsh-api-session-controller/types'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { ModelSelectionInput } from '../../contracts/src/index.ts'
@@ -11,7 +12,13 @@ const HANAI_AGENT_PRESET = 'standard'
 export class DshSessionGateway {
   constructor(private readonly ctx: Context) {}
 
-  async create(judgementId: string, cwd: string, model?: ModelSelectionInput): Promise<string> {
+  async listModels(provider: string): Promise<readonly string[]> {
+    return (await this.ctx.llm.listModels(provider)).map(model => model.id)
+  }
+
+  async create(judgementId: string, cwd: string, model?: ModelSelectionInput, options?: { rememberModel: boolean }): Promise<string> {
+    const sessionOnly = options?.rememberModel === false
+    if (sessionOnly && model) await this.ctx.llm.resolveCallConfig({ provider: model.provider, model: model.model })
     const requestedId = SessionId(`hanai-${judgementId}`)
     const created = await this.ctx.sessionController.create({
       cwd, sessionId: requestedId, agentPreset: HANAI_AGENT_PRESET,
@@ -25,12 +32,18 @@ export class DshSessionGateway {
     }
     if (model !== undefined) {
       try {
-        await this.ctx.sessionController.selectModel({
-          sessionId: created.sessionId,
-          provider: model.provider,
-          model: model.model,
-          ...(model.reasoningEffort === undefined ? {} : { reasoningEffort: model.reasoningEffort }),
-        })
+        if (sessionOnly) {
+          const resolved = await this.ctx.sessionController.resolveAgent(created.sessionId)
+          if ('error' in resolved) throw resolved.error
+          resolved.agent.model.select({ provider: model.provider, model: model.model })
+        } else {
+          await this.ctx.sessionController.selectModel({
+            sessionId: created.sessionId,
+            provider: model.provider,
+            model: model.model,
+            ...(model.reasoningEffort === undefined ? {} : { reasoningEffort: model.reasoningEffort }),
+          })
+        }
       } catch (error) {
         await this.rejectCreatedSession(created.sessionId, error)
       }

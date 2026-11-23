@@ -1,3 +1,4 @@
+import type { CycleEndpoints } from './topic-cycle.ts'
 import type { ResearchAttachment } from './research-assistant.ts'
 import type { ScreeningRun } from './ai-screener.ts'
 import type { MarketScanQuery, MarketScanResult } from './market-scan.ts'
@@ -467,7 +468,7 @@ export interface CreateExpertChatInput {
   model?: ModelSelectionInput
 }
 
-export interface HanaiEndpointMap {
+export interface HanaiEndpointMap extends CycleEndpoints {
   'market.snapshot': { request: { refresh?: boolean; after?: string; sector?: string }; response: import('./market-snapshot.ts').MarketSnapshotResponse }
   'bootstrap': { request: Record<string, never>; response: BootstrapData }
   'dashboard.get': { request: { refresh?: boolean; panels?: DashboardPanelKey[] }; response: DashboardData }

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { ConnectionRpcResult as RpcResult } from '@deepseek-ai/dsh-client-connection'
 import type { HanaiEndpoint, HanaiRequest, HanaiResponse } from '../../contracts/src/index.ts'
 import { isMarketDate } from '../../contracts/src/market-history.ts'
+import { cycleRequests } from '../../contracts/src/topic-cycle.ts'
 import { SCAN_FIELDS, scanQueryError, type MarketScanQuery, type ScanSort } from '../../contracts/src/market-scan.ts'
 
 const empty = z.object({}).strict()
@@ -18,8 +19,8 @@ const scanQuery = z.object({
   sort: z.enum(['code', 'price', 'changePct', ...Object.keys(SCAN_FIELDS)]), order: z.enum(['asc', 'desc']),
 }).strict().refine(value => scanQueryError(value as MarketScanQuery) === null, '筛选范围或排序无效')
 
-
 const schemas = {
+  ...cycleRequests,
   'bootstrap': empty,
   'market.snapshot': z.object({ refresh: z.boolean().optional(), after: z.string().max(100).optional(),
     sector: z.string().regex(/^(?:BK\d{4}|SINA:(?:new_|gn_)[A-Za-z0-9_]{1,60})$/).optional() }).strict(),

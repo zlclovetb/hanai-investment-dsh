@@ -1,5 +1,7 @@
 import { snapshotDashboard } from '../../contracts/src/market-history.ts'
 import { MarketSnapshots } from './market-snapshots.ts'
+import { TopicCycle } from './topic-cycle.ts'
+import { saveLeaderCheckpoint } from './leader-decision.ts'
 import { LocalScreening } from './local-screening.ts'
 import { AiScreener } from './ai-screener.ts'
 import { StockDataSync } from './stock-data.ts'
@@ -117,7 +119,8 @@ export interface MarketFacade {
 }
 
 export interface SessionFacade {
-  create(judgementId: string, cwd: string, model?: import('../../contracts/src/index.ts').ModelSelectionInput): Promise<string>
+  create(judgementId: string, cwd: string, model?: import('../../contracts/src/index.ts').ModelSelectionInput, options?: { rememberModel: boolean }): Promise<string>
+  listModels(provider: string): Promise<readonly string[]>
   archive(sessionId: string): Promise<void>
   prompt(sessionId: string, text: string, mode?: 'queue' | 'steer'): Promise<void>
   isRunning(sessionId: string): Promise<boolean>
@@ -164,11 +167,12 @@ export class HanaiService {
   private readonly stockData: StockDataSync
   private readonly technicalData: TechnicalData
   private readonly marketSnapshots: MarketSnapshots
+  private readonly topicCycle: TopicCycle
   private readonly macroIndicators: MacroIndicators
   startBackgroundUpdates(): void { this.marketSnapshots.start(); this.macroSeries.start(); if ((this.market.getTechnicalBars || this.market.getTechnicalHistory) && this.market.getTechnicalCalendar) this.stockData.start() }
 
   private disposed = false
-  dispose(): void { this.marketSnapshots.dispose(); this.disposed = true; this.screener.dispose(); this.stockData.dispose(); this.technicalData.dispose(); this.macroSeries.dispose(); this.macroIndicators.dispose() }
+  dispose(): void { this.marketSnapshots.dispose(); this.topicCycle.dispose(); this.disposed = true; this.screener.dispose(); this.stockData.dispose(); this.technicalData.dispose(); this.macroSeries.dispose(); this.macroIndicators.dispose() }
 
   constructor(options: HanaiServiceOptions) {
     this.paths = options.paths
@@ -189,6 +193,8 @@ export class HanaiService {
     }
     this.localScreening = new LocalScreening(this.database, () => this.stockData.ensure())
     this.technicalData = new TechnicalData(this.database, technicalSource)
+    this.topicCycle = new TopicCycle(this.database, this.paths, this.marketHistory, this.technicalData, this.sessions, this.defaultModel, ids => this.market.getQuotes(ids))
+    this.marketSnapshots.setTopicCodes(() => this.topicCycle.trackedCodes())
     this.stockData = new StockDataSync(this.database, this.technicalData, async signal => {
       const result = this.market.syncScreeningSecurities ? await this.market.syncScreeningSecurities(this.database, signal, false) : await this.market.syncSecurities(this.database, false, signal)
       if (!result.updatedAt || !Number.isFinite(Date.parse(result.updatedAt)) || Date.parse(result.updatedAt) > Date.now() || Date.now() - Date.parse(result.updatedAt) >= 24 * 3600000) throw new Error('证券名录已过期且未确认更新，保留旧范围')
@@ -212,6 +218,8 @@ export class HanaiService {
     }, this.marketHistory, this.database)
     this.macroSeries = new MacroSeries(this.market, this.marketHistory, this.database, slot => this.macroIndicators.tick(slot))
     this.marketSnapshots.onPublish(value => {
+      const ladder = marketHistoryPanel(value.snapshot, 'ladder')
+      if (ladder) saveLeaderCheckpoint(this.database, ladder, new Date())
       const record = (setting: string, metas: Array<ProviderMeta | null>) => {
         const valid = metas.filter((meta): meta is ProviderMeta => meta !== null && meta.cacheState !== 'unavailable')
         if (valid.length) this.recordProviderSuccess(setting, valid)
@@ -243,6 +251,9 @@ export class HanaiService {
   }
 
   async recover(): Promise<void> {
+    await this.topicCycle.recover().catch(cause => {
+      console.error('[hanai-investment-dsh] topic cycle recovery failed:', messageOf(cause))
+    })
     for (const judgement of this.database.listJudgements()) {
       if (judgement.reportStatus === 'preparing') {
         this.failReportAttempt(
@@ -301,6 +312,7 @@ export class HanaiService {
   }
 
   handleSessionEvent(sessionId: string, event: SessionEvent): void {
+    if (this.topicCycle.observe(sessionId, event)) return
     const judgement = this.database.getJudgementBySession(sessionId)
     if (judgement !== null) {
       if (event.type === 'turn/start') {
@@ -358,6 +370,9 @@ export class HanaiService {
   ): Promise<unknown> {
     switch (endpoint) {
       case 'bootstrap': return this.bootstrap(signal)
+      case 'topic-cycle.view': return this.topicCycle.view((request as HanaiRequest<'topic-cycle.view'>).date)
+      case 'topic-cycle.generate': return this.topicCycle.generate((request as HanaiRequest<'topic-cycle.generate'>).date)
+      case 'topic-cycle.confirm': return this.topicCycle.confirm((request as HanaiRequest<'topic-cycle.confirm'>).draft)
       case 'market.scan.query': {
         const { query, date, refresh } = request as HanaiRequest<'market.scan.query'>
         return this.scan.query(query, date, refresh)

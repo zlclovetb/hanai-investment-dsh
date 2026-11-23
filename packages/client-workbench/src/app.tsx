@@ -1,6 +1,7 @@
 import { DASHBOARD_PANELS, type DashboardPanelKey } from '../../contracts/src/index.ts'
 import { AiScreenerPage } from './ai-screener.tsx'
 import { StockDataPanel } from './stock-data.tsx'
+import { EmotionPage } from './emotion.tsx'
 import { MarketScanPage } from './market-scan.tsx'
 import { ResearchAssistantPage } from './research-assistant.tsx'
 import { MarketLadderPanels } from './market-ladder.tsx'
@@ -63,7 +64,7 @@ import { DataSources } from './data-sources.tsx'
 import { classForChange, dateTime, money, number, percent, quantity, ratio } from './format.ts'
 import styles from './styles.module.css'
 
-type TopPage = 'market-scan' | 'screener' | 'research' | 'macro' | 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
+type TopPage = 'emotion' | 'market-scan' | 'screener' | 'research' | 'macro' | 'dashboard' | 'watch' | 'judgements' | 'expert-chats' | 'personas' | 'settings'
 type AppRoute =
   | { page: TopPage }
   | { page: 'stock'; secId: string }
@@ -81,6 +82,7 @@ const NAV_GROUPS = [
     id: 'market', icon: '◈', label: '市场观察', items: [
       { page: 'dashboard', path: '/dashboard', label: '今日市场' },
       { page: 'macro', path: '/dashboard/macro', label: '宏观数据' },
+      { page: 'emotion', path: '/emotion', label: '情绪周期' },
     ],
   },
   {
@@ -201,9 +203,8 @@ export function HanaiWorkbench({ client, onClose, initialPath }: HanaiWorkbenchP
   const openStock = (stock: Pick<SecurityMaster, 'secId'>) => navigate(`/stock/${encodeURIComponent(stock.secId)}`)
   const openJudgement = (id: string) => navigate(`/judgements/${encodeURIComponent(id)}`)
   const openExpertChat = (id: string) => navigate(`/expert-chats/${encodeURIComponent(id)}`)
-
   return (
-    <div className={styles['app']} data-theme={bootstrap.theme} data-hanai-root>
+    <div className={styles['app']} data-theme={bootstrap.theme} data-page={route.page} data-hanai-root>
       <aside className={styles['sidebar']}>
         <button className={styles['brand']} onDoubleClick={() => navigate('/dashboard')} aria-label={BRAND_NAME}>
           <BrandMark />
@@ -311,6 +312,7 @@ export function HanaiWorkbench({ client, onClose, initialPath }: HanaiWorkbenchP
           {route.page === 'judgement-detail' && (
             <JudgementDetailPage client={client} id={route.judgementId} onBack={() => navigate('/judgements')} onRetry={(stock, masterId) => { setLaunchRequest({ key: Date.now(), stock, masterId }); navigate('/judgements') }} notify={notify} />
           )}
+          {route.page === 'emotion' && <EmotionPage client={client} onStock={openStock} />}
           {route.page === 'market-scan' && <MarketScanPage client={client} onStock={openStock} />}
           {(route.page === 'screener' || route.page === 'screener-detail') && <AiScreenerPage onDataSettings={() => navigate('/settings')} groups={bootstrap.groups} onGroups={setGroups} onStock={openStock} client={client} selectedId={route.page === 'screener-detail' ? route.chatId : null} onOpen={id => navigate(`/screener/${encodeURIComponent(id)}`)} onHome={() => navigate('/screener')} />}
           {(route.page === 'research' || route.page === 'research-detail') && <ResearchAssistantPage key="research" client={client} selectedId={route.page === 'research-detail' ? route.chatId : null} onOpen={id => navigate(`/research/${encodeURIComponent(id)}`)} onHome={() => navigate('/research')} />}
@@ -2160,6 +2162,7 @@ function optionalToneMetric(label: string, value: number | null | undefined): { 
 
 function routeTitle(route: AppRoute): string {
   switch (route.page) {
+    case 'emotion': return '情绪周期'
     case 'market-scan': return '市场扫描'
     case 'screener':
     case 'screener-detail': return 'AI选股'
@@ -2187,6 +2190,7 @@ function routeFromHash(hash: string): AppRoute {
   if (judgement?.[1]) return { page: 'judgement-detail', judgementId: decodeURIComponent(judgement[1]) }
   const screener = /^\/screener\/([^/]+)$/.exec(path)
   if (screener?.[1]) return { page: 'screener-detail', chatId: decodeURIComponent(screener[1]) }
+  if (path === '/emotion') return { page: 'emotion' }
   if (path === '/market-scan') return { page: 'market-scan' }
   if (path === '/screener') return { page: 'screener' }
   const research = /^\/research\/([^/]+)$/.exec(path)

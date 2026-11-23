@@ -43,6 +43,7 @@ class FakeSessions implements SessionFacade {
   running = false
 
   async create(judgementId: string): Promise<string> { return `hanai-${judgementId}` }
+  async listModels(provider: string): Promise<readonly string[]> { return provider === 'openai-codex' ? ['test-codex'] : [] }
   async archive(sessionId: string): Promise<void> { this.archived.push(sessionId) }
   async prompt(sessionId: string, text: string): Promise<void> { this.prompts.push({ sessionId, text }) }
   async isRunning(): Promise<boolean> { return this.running }
@@ -362,6 +363,27 @@ describe('HanaiService report lifecycle', () => {
       await service.call('cache.clear', { scope: 'market' }, signal)
       expect(await service.call('market.history.get', { date: '2026-10-27' }, signal)).toEqual(snapshot)
     } finally { database.close(); vi.useRealTimers() }
+  })
+  it('waits for a manual review request after the verified close', async () => {
+    vi.useFakeTimers()
+    const date = '2026-10-30'
+    vi.setSystemTime(new Date(date + 'T16:09:00+08:00'))
+    const { database, service, sessions } = fixture()
+    try {
+      const meta: ProviderMeta = { providerId: 'fixture', sourceName: '样本宽度', sourceTimestamp: date,
+        fetchedAt: date + 'T15:06:00+08:00', cacheState: 'fresh' }
+      new MarketHistoryStore(database.sqlite).save('breadth', {
+        qdate: date, up: 10, down: 2, flat: 0, limitUp: 0, limitDown: 0, meta,
+      }, meta, date)
+      service.startBackgroundUpdates()
+      await service.recover()
+      await vi.advanceTimersByTimeAsync(180_000)
+      expect(sessions.prompts).toHaveLength(0)
+      const signal = new AbortController().signal
+      expect(await service.call('topic-cycle.view', { date }, signal)).toMatchObject({ canGenerate: true, selected: null })
+      expect(await service.call('topic-cycle.generate', { date }, signal)).toMatchObject({ status: 'running' })
+      expect(sessions.prompts).toHaveLength(1)
+    } finally { service.dispose(); database.close(); vi.useRealTimers() }
   })
   it('archives macro series independently by their source dates and retains them after failure and cache clearing', async () => {
     vi.useFakeTimers()

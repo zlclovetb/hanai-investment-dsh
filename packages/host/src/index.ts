@@ -18,7 +18,7 @@ import { badRequest, internalError, isHanaiEndpoint, ok, parseHanaiRequest } fro
 import { HanaiService } from './service.ts'
 
 export const name = 'hanai-investment-dsh'
-export const inject = ['connection', 'webServer', 'sessionController', 'workspaceController', 'sessions', 'agentDefaultModel']
+export const inject = ['connection', 'webServer', 'sessionController', 'workspaceController', 'sessions', 'agentDefaultModel', 'llm']
 export const VERSION = '0.1.0'
 
 export interface Config {

@@ -41,8 +41,7 @@ function fixture() {
 }
 it('coalesces all readers into one complete round and persists its identity', async () => {
   const f = fixture()
-  f.feed.setCandidates(() => ['600001', '000001', '600001'])
-  const values = await Promise.all([f.feed.read(), f.feed.read(), f.feed.ensure()])
+  const values = await Promise.all([f.feed.ensure(['600001', '000001', '600001']), f.feed.read(), f.feed.read()])
   expect(new Set(values.map(value => value?.id)).size).toBe(1)
   for (const name of ['getDashboard', 'getMarketLadder', 'getMarketBreadth', 'getMarketArms', 'getMarketDistribution', 'getMarketIntraday', 'getMarketSignals', 'getGlobalIndices', 'getQuotes'] as const) expect(f.market[name]).toHaveBeenCalledTimes(1)
   expect(f.market.getQuotes).toHaveBeenCalledWith(['0.000001', '1.600001'])
@@ -61,6 +60,17 @@ it('acquires requested sector members after close and archives their source date
   expect(marketHistoryPanel(f.history.get('2026-11-10'), 'sector:BK0475')).toEqual(panel)
   expect(f.market.getQuotes).not.toHaveBeenCalled()
   expect(f.market.getGlobalIndices).toHaveBeenLastCalledWith(true)
+})
+it('tracks confirmed topic roles in the same intraday quote batch without polling them after close', async () => {
+  const f = fixture()
+  f.feed.setTopicCodes(() => ['002242', '002724', '002242'])
+  const current = await f.feed.ensure(['002242'])
+  expect(current?.quoteCodes).toEqual(['002242', '002724'])
+  expect(f.market.getQuotes).toHaveBeenCalledExactlyOnceWith(['0.002242', '0.002724'])
+  vi.setSystemTime(new Date('2026-11-10T18:00:00+08:00'))
+  const closed = await f.feed.update()
+  expect(closed?.quoteCodes).toEqual([])
+  expect(f.market.getQuotes).toHaveBeenCalledTimes(1)
 })
 it('keeps the prior publication immutable until every source and consumer finishes', async () => {
   const f = fixture()

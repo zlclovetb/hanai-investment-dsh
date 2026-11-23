@@ -25,7 +25,7 @@ export class MarketSnapshots {
   private quoteDate = ''
   private readonly extraCodes = new Set<string>()
   private readonly sectors = new Set<string>()
-  private candidates: () => string[] = () => []
+  private topicCodes: () => string[] = () => []
   private listeners: Array<(value: MarketSnapshot) => Promise<void> | void> = []
 
   constructor(private readonly market: MarketFacade, private readonly history: MarketHistoryStore, private readonly database: HanaiDatabase) {
@@ -55,14 +55,13 @@ export class MarketSnapshots {
       }
     }
   }
-  setCandidates(read: () => string[]): void { this.candidates = read }
+  setTopicCodes(read: () => string[]): void { this.topicCodes = read }
   onPublish(listener: (value: MarketSnapshot) => Promise<void> | void): void { this.listeners.push(listener) }
   peek(): MarketSnapshot | null { return this.current }
   get refreshAvailableAt(): number {
     const last = this.database.getSetting(MANUAL)
     return last && Number.isFinite(Number(last)) ? Number(last) + 60_000 : 0
   }
-  async settled(): Promise<MarketSnapshot | null> { return this.pending ? this.pending : this.current }
   start(): void {
     if (this.timer || this.stopped) return
     this.timer = setInterval(() => { void this.update().catch(() => {}) }, 30_000)
@@ -122,7 +121,7 @@ export class MarketSnapshots {
     const today = beijingMarketDate()
     if (this.quoteDate !== today) { this.quoteDate = today; this.extraCodes.clear(); this.sectors.clear() }
     if (force) this.market.clearMarketPanelsCache?.()
-    const codes = [...new Set([...this.candidates(), ...this.extraCodes])].sort()
+    const codes = resting ? [] : [...new Set([...this.topicCodes(), ...this.extraCodes])].sort()
     const panels: Record<string, Panel> = {}
     const errors: Record<string, string> = {}
     const previous = this.current

@@ -5,14 +5,29 @@ import { DshSessionGateway } from '../src/dsh-session.ts'
 
 function gateway(doubles: Record<string, unknown> = {}, archiveSession = vi.fn().mockResolvedValue({})) {
   const create = vi.fn().mockResolvedValue({ sessionId: 'hanai-test', agentPreset: 'standard' })
+  const resolveCallConfig = vi.fn().mockResolvedValue({})
   const context = {
     sessionController: { create, ...doubles },
     workspaceController: { archiveSession },
+    llm: { resolveCallConfig },
   } as unknown as Context
-  return { gateway: new DshSessionGateway(context), create, archiveSession }
+  return { gateway: new DshSessionGateway(context), create, archiveSession, resolveCallConfig }
 }
 
 describe('DshSessionGateway controller lifecycle', () => {
+  it('can bind a review model without using the controller that saves the global default', async () => {
+    const select = vi.fn()
+    const selectModel = vi.fn()
+    const resolveAgent = vi.fn().mockResolvedValue({ agent: { model: { select } } })
+    const harness = gateway({ resolveAgent, selectModel })
+    const model = { provider: 'deepseek-official', model: 'deepseek-flash' }
+    await expect(harness.gateway.create('test', '/tmp/hanai-workspace', model, { rememberModel: false })).resolves.toBe('hanai-test')
+    expect(harness.resolveCallConfig).toHaveBeenCalledWith(model)
+    expect(resolveAgent).toHaveBeenCalledWith('hanai-test')
+    expect(select).toHaveBeenCalledWith(model)
+    expect(selectModel).not.toHaveBeenCalled()
+  })
+
   it('pins the standard preset and applies the requested model to the created session', async () => {
     const selectModel = vi.fn().mockResolvedValue({})
     const harness = gateway({ selectModel })
